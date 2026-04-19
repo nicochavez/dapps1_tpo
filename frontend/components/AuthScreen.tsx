@@ -49,9 +49,9 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('')
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="">
       <ScrollView
-        className="flex-1"
+        className="flex-auto"
         contentContainerClassName="flex-grow px-4"
         showsVerticalScrollIndicator={false}
       >
