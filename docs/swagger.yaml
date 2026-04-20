@@ -1680,6 +1680,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /subastas/cliente/{userId}:
+    get:
+      tags: [Subastas]
+      summary: Listar subastas donde el usuario tiene productos como cliente
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subastas del dueño
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubastaResumen'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   # ═══════════════ PUJAS ═══════════════
 
@@ -1847,6 +1872,42 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProductoDetalle'
+
+  /productos/{productId}:
+    put:
+      tags: [Productos]
+      summary: Editar produrcto
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fecha:
+                  type: string
+                  format: date
+                disponible:
+                  type: boolean
+                descripcionCatalogo:
+                  type: string
+                  default: 'No Posee'
+                descripcionCompleta:
+                  type: string
+                revisor:
+                  type: integer
+                seguro:
+                  type: string
+                categoria:
+                  type: string
+                subcategoria:
+                  type: string
 
   /productos/{productoId}:
     get:
@@ -2103,6 +2164,33 @@ paths:
           $ref: '#/components/responses/NotFound'
 
   # ═══════════════ COMPRAS ═══════════════
+
+  /clientes/me/newCompra:
+    post:
+      tags: [Compras]
+      summary: Crear una compra
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Compras del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedCompras'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /clientes/me/compras:
     get:
