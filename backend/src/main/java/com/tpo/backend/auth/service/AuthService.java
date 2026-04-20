@@ -36,19 +36,19 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
-        String doc = request.getDocumento();
-        String storedPwd = store.credentials.get(doc);
+        String username = request.getUsername();
+        String storedPwd = store.credentials.get(username);
 
         if (storedPwd == null || !storedPwd.equals(request.getPassword())) {
             throw new UnauthorizedException("Credenciales invalidas.");
         }
 
-        if (!Boolean.TRUE.equals(store.registered.get(doc))) {
+        if (!Boolean.TRUE.equals(store.registered.get(username))) {
             throw new UnauthorizedException("Credenciales invalidas.");
         }
 
         // Return a mock JWT token
-        String mockToken = "mock-jwt-token-for-" + doc;
+        String mockToken = "mock-jwt-token-for-" + username;
         return new LoginResponse(mockToken);
     }
 }
