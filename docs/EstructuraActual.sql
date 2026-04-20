@@ -177,7 +177,37 @@ CREATE TABLE pujos(
     CONSTRAINT fk_pujos_itemsCatalogo FOREIGN KEY (item) REFERENCES itemsCatalogo(identificador)
 );
 
--- 16. RegistroDeSubasta
+-- 16. Direcciones
+CREATE TABLE direcciones(
+    identificador SERIAL PRIMARY KEY,
+    persona INTEGER NOT NULL,
+    calle TEXT NOT NULL,
+    numero TEXT NOT NULL,
+    piso TEXT,
+    departamento TEXT,
+    ciudad TEXT NOT NULL,
+    provincia TEXT NOT NULL,
+    codigoPostal TEXT,
+    pais INTEGER,
+    favorito BOOLEAN DEFAULT false NOT NULL,
+    CONSTRAINT fk_direcciones_personas FOREIGN KEY (persona) REFERENCES personas(identificador) ON DELETE CASCADE,
+    CONSTRAINT fk_direcciones_paises FOREIGN KEY (pais) REFERENCES paises(numero)
+);
+
+-- 17. MediosDePago
+CREATE TABLE mediosDePago(
+    identificador SERIAL PRIMARY KEY,
+    persona INTEGER NOT NULL,
+    tipo TEXT NOT NULL CHECK (tipo IN ('tarjeta_credito', 'tarjeta_debito', 'transferencia', 'efectivo', 'otro')),
+    descripcion TEXT,
+    numeroCuenta TEXT,
+    titular TEXT,
+    vencimiento DATE,
+    activo BOOLEAN DEFAULT true NOT NULL,
+    CONSTRAINT fk_mediosDePago_personas FOREIGN KEY (persona) REFERENCES personas(identificador) ON DELETE CASCADE
+);
+
+-- 18. RegistroDeSubasta
 CREATE TABLE registroDeSubasta(
     identificador SERIAL PRIMARY KEY,
     subasta INTEGER NOT NULL,
