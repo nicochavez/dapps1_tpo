@@ -1,0 +1,11 @@
+[
+  {
+    "id": "pm1",
+    "userId": "u1",
+    "type": "Credit",
+    "tier": "PREMIUM",
+    "lastFour": "1234",
+    "cardHolder": "JULIAN ALVAREZ",
+    "expiry": "12/28"
+  }
+]

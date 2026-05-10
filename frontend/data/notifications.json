@@ -1,0 +1,47 @@
+[
+  {
+    "id": "n1",
+    "userId": "u1",
+    "type": "outbid",
+    "title": "You've been outbid!",
+    "message": "Someone placed a $1,300 bid on the Vintage Collector's Watch. Tap here to bid now",
+    "timestamp": "5 min ago",
+    "isRead": false
+  },
+  {
+    "id": "n2",
+    "userId": "u1",
+    "type": "won",
+    "title": "Auction Won! 🏆",
+    "message": "Congratulations! You won the auction for the Lenovo thinkpad t14 gen 5 with a bid of $1250. Tap here to complete your payment.",
+    "timestamp": "2 hours ago",
+    "isRead": true
+  },
+  {
+    "id": "n3",
+    "userId": "u1",
+    "type": "payment",
+    "title": "Payment Received",
+    "message": "The buyer has paid for the Limited Edition Sneakers. Please prepare your shipment.",
+    "timestamp": "4 hours ago",
+    "isRead": false
+  },
+  {
+    "id": "n4",
+    "userId": "u1",
+    "type": "view",
+    "title": "New Views",
+    "message": "Your item \"Mid-Century Chair\" received 45 new views today.",
+    "timestamp": "Yesterday",
+    "isRead": true
+  },
+  {
+    "id": "n5",
+    "userId": "u1",
+    "type": "info",
+    "title": "Scheduled Maintenance",
+    "message": "BidFlow will be down for maintenance on Sunday from 02:00 to 04:00 AM.",
+    "timestamp": "2 days ago",
+    "isRead": true
+  }
+]

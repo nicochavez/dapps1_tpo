@@ -1,0 +1,57 @@
+[
+  {
+    "id": "c1",
+    "title": "The Heritage Collection",
+    "description": "Curated selection of vintage timepieces and automobilia.",
+    "image": "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?q=80&w=600&auto=format&fit=crop",
+    "status": "LIVE",
+    "endDate": "Ends Oct 24, 2 PM",
+    "totalItems": 6,
+    "ownerId": "u1",
+    "category": "Watches"
+  },
+  {
+    "id": "c2",
+    "title": "Mid-Century Modern",
+    "description": "Iconic furniture pieces and decor that define the mid-century aesthetic, carefully restored.",
+    "image": "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?q=80&w=600&auto=format&fit=crop",
+    "status": "Upcoming",
+    "endDate": "Nov 02, 10 AM",
+    "totalItems": 1,
+    "ownerId": "u2",
+    "category": "Fine Art"
+  },
+  {
+    "id": "c3",
+    "title": "Contemporary Masters",
+    "description": "Post-war and contemporary art featuring works from emerging talents and established artists.",
+    "image": "https://images.unsplash.com/photo-1536924940846-227afb31e2a5?q=80&w=600&auto=format&fit=crop",
+    "status": "Upcoming",
+    "endDate": "Nov 12, 2 PM",
+    "totalItems": 1,
+    "ownerId": "u3",
+    "category": "Fine Art"
+  },
+  {
+    "id": "c4",
+    "title": "Motorcar Legends",
+    "description": "A superb selection of concours-condition classic automobiles, highlighted by pre-war classics.",
+    "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=600&auto=format&fit=crop",
+    "status": "Upcoming",
+    "endDate": "Dec 05, 2 PM",
+    "totalItems": 1,
+    "ownerId": "u4",
+    "category": "Luxury Cars"
+  },
+  {
+    "id": "c5",
+    "title": "New Tech",
+    "description": "Cutting-edge modern technology, computers, and top-tier electronics for professionals.",
+    "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop",
+    "status": "LIVE",
+    "endDate": "Ends Oct 30, 8 PM",
+    "totalItems": 1,
+    "ownerId": "u1",
+    "category": "Computers"
+  }
+]

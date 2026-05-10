@@ -1,0 +1,50 @@
+[
+  {
+    "id": "b1",
+    "userId": "u1",
+    "itemId": "i1",
+    "amount": 1250,
+    "status": "WINNING",
+    "category": "Active"
+  },
+  {
+    "id": "b2",
+    "userId": "u1",
+    "itemId": "i2",
+    "amount": 780,
+    "status": "OUTBID",
+    "category": "Active"
+  },
+  {
+    "id": "b3",
+    "userId": "u1",
+    "itemId": "i3",
+    "amount": 900,
+    "status": "WINNING",
+    "category": "Active"
+  },
+  {
+    "id": "b4",
+    "userId": "u1",
+    "itemId": "i4",
+    "amount": 1200,
+    "status": "OUTBID",
+    "category": "Active"
+  },
+  {
+    "id": "b5",
+    "userId": "u1",
+    "itemId": "i8",
+    "amount": 9500,
+    "status": "WON",
+    "category": "Won"
+  },
+  {
+    "id": "b6",
+    "userId": "u1",
+    "itemId": "i9",
+    "amount": 450,
+    "status": "WON",
+    "category": "Won"
+  }
+]

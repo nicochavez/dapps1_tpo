@@ -1,0 +1,128 @@
+[
+  {
+    "id": "i1",
+    "pieceNumber": "LOT #2401",
+    "title": "Patek Philippe Nautilus",
+    "description": "Iconic sports watch designed by Gérald Genta.",
+    "currentBid": 84500,
+    "image": "https://images.unsplash.com/photo-1548171915-e76a380eb922?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "2h 15m left",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i2",
+    "pieceNumber": "LOT #1088",
+    "title": "Vintage Eames Lounge",
+    "description": "Original 1956 production with rosewood shells.",
+    "currentBid": 4200,
+    "image": "https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "1d 4h left",
+    "catalogId": "c2",
+    "catalogName": "Mid-Century Modern"
+  },
+  {
+    "id": "i3",
+    "pieceNumber": "LOT #3412-X",
+    "title": "Lenovo thinkpad t14 gen 5",
+    "description": "The ThinkPad T14 laptop is everything you need for work and everything you want to do after work. Display options include a best-in-class 4K UHD widescreen display with Dolby Vision™.",
+    "currentBid": 1245.00,
+    "image": "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=600&auto=format&fit=crop",
+    "gallery": [
+      "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=600&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?q=80&w=600&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1603302576837-37561b2e2302?q=80&w=600&auto=format&fit=crop"
+    ],
+    "category": "COMPUTERS",
+    "isLive": true,
+    "timeLeft": "04h 22m 15s",
+    "catalogId": "c5",
+    "catalogName": "New Tech"
+  },
+  {
+    "id": "i4",
+    "pieceNumber": "LOT #0912",
+    "title": "Colombian Emerald Ring",
+    "description": "4.5ct emerald cut center stone with diamond halo.",
+    "currentBid": 28900,
+    "image": "https://images.unsplash.com/photo-1605100804763-247f67963c9e?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "5h 30m left",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i5",
+    "pieceNumber": "PIECE #2043",
+    "title": "DELMA Commodore",
+    "description": "The Commodore is widely considered DELMA's most elegant divers' watch.",
+    "currentBid": 4250,
+    "image": "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "1d 8h left",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i6",
+    "pieceNumber": "PIECE #2042",
+    "title": "Perpetual 1908",
+    "description": "Reference 5513 'Meters First' with exceptional creamy patina.",
+    "currentBid": 3500,
+    "image": "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "2d 10h left",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i7",
+    "pieceNumber": "PIECE #2042",
+    "title": "Patek Philippe Twenty",
+    "description": "Reference 2526 in 18k yellow gold with the legendary caliber 12-600 AT.",
+    "currentBid": 4500,
+    "image": "https://images.unsplash.com/photo-1548171915-e76a380eb922?q=80&w=200&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "3d 12h left",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i8",
+    "pieceNumber": "LOT #1120",
+    "title": "Rolex Submariner 1990",
+    "description": "Mint condition, original box and papers included.",
+    "currentBid": 9500,
+    "image": "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?q=80&w=200&auto=format&fit=crop",
+    "isLive": false,
+    "timeLeft": "Auction Ended",
+    "catalogId": "c1",
+    "catalogName": "The Heritage Collection"
+  },
+  {
+    "id": "i9",
+    "pieceNumber": "LOT #0054",
+    "title": "Abstract Canvas 'Ocean'",
+    "description": "Large scale oil painting by local artist.",
+    "currentBid": 450,
+    "image": "https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=200&auto=format&fit=crop",
+    "isLive": false,
+    "timeLeft": "Auction Ended",
+    "catalogId": "c3",
+    "catalogName": "Contemporary Masters"
+  },
+  {
+    "id": "i10",
+    "pieceNumber": "LOT #4001",
+    "title": "1954 Mercedes-Benz 300 SL",
+    "description": "Iconic gullwing coupe in impeccable restored condition.",
+    "currentBid": 1250000,
+    "image": "https://images.unsplash.com/photo-1563720225384-9d54e4ae0fdb?q=80&w=600&auto=format&fit=crop",
+    "isLive": true,
+    "timeLeft": "5d 10h left",
+    "catalogId": "c4",
+    "catalogName": "Motorcar Legends"
+  }
+]

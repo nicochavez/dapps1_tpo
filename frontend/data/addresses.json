@@ -1,0 +1,24 @@
+[
+  {
+    "id": "a1",
+    "userId": "u1",
+    "label": "Home",
+    "fullName": "Julian Alvarez",
+    "street": "123 Curator Avenue, Apt 4B",
+    "city": "New York",
+    "zipCode": "10001",
+    "country": "United States",
+    "isDefault": true
+  },
+  {
+    "id": "a2",
+    "userId": "u1",
+    "label": "Work",
+    "fullName": "Julian Alvarez",
+    "street": "456 Auction Block Blvd, Suite 900",
+    "city": "San Francisco",
+    "zipCode": "94105",
+    "country": "United States",
+    "isDefault": false
+  }
+]

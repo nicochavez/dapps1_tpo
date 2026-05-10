@@ -1,0 +1,42 @@
+[
+  {
+  "id": "u0",
+  "email": "admin",
+  "password": "admin",
+  "name": "Admin User",
+  "avatar": "https://ui-avatars.com/api/?name=Julian+Alvarez&background=a78bfa&color=fff&rounded=true&bold=true",
+  "badge": "ADMIN"
+  },
+  {
+    "id": "u1",
+    "email": "julian.alvarez@gmail.com",
+    "password": "123",
+    "name": "Julian Alvarez",
+    "avatar": "https://ui-avatars.com/api/?name=Julian+Alvarez&background=a78bfa&color=fff&rounded=true&bold=true",
+    "badge": "GOLD MEMBER"
+  },
+  {
+    "id": "u2",
+    "email": "sofia.martinez@gmail.com",
+    "password": "123",
+    "name": "Sofia Martinez",
+    "avatar": "https://ui-avatars.com/api/?name=Sofia+Martinez&background=60a5fa&color=fff&rounded=true&bold=true",
+    "badge": "SILVER MEMBER"
+  },
+  {
+    "id": "u3",
+    "email": "enzo.fernandez@gmail.com",
+    "password": "123",
+    "name": "Enzo Fernandez",
+    "avatar": "https://ui-avatars.com/api/?name=Enzo+Fernandez&background=34d399&color=fff&rounded=true&bold=true",
+    "badge": "PLATINUM MEMBER"
+  },
+  {
+    "id": "u4",
+    "email": "lucia.gomez@hotmail.com",
+    "password": "123",
+    "name": "Lucia Gomez",
+    "avatar": "https://ui-avatars.com/api/?name=Lucia+Gomez&background=fb923c&color=fff&rounded=true&bold=true",
+    "badge": "VERIFIED BUYER"
+  }
+]
