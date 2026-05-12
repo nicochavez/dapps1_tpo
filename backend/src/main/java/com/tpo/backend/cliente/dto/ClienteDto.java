@@ -12,9 +12,8 @@ public class ClienteDto {
     private Long identificador;
     private String documento;
     private String nombre;
-    private String direccion;
     private String estado;
     private String categoria;
-    private String admitido;
+    private boolean admitido;
     private PaisDto pais;
 }

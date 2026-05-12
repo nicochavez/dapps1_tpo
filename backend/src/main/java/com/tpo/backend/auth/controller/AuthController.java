@@ -1,8 +1,6 @@
 package com.tpo.backend.auth.controller;
 
-import com.tpo.backend.auth.dto.LoginRequest;
-import com.tpo.backend.auth.dto.LoginResponse;
-import com.tpo.backend.auth.dto.RegisterRequest;
+import com.tpo.backend.auth.dto.*;
 import com.tpo.backend.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,14 +18,23 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/set-contrasenia")
+    public ResponseEntity<Void> setContrasenia(@Valid @RequestBody SetContraseniaRequest request) {
+        authService.setContrasenia(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/documentacion")
+    public ResponseEntity<Boolean> enviarDocumentacion() {
+        return ResponseEntity.ok(true);
     }
 }

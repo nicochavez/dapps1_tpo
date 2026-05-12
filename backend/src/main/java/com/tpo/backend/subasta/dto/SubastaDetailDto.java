@@ -16,6 +16,8 @@ public class SubastaDetailDto {
     private String categoria;
     private String moneda;
     private Integer capacidadAsistentes;
+    private Boolean tieneDeposito;
+    private Boolean seguridadPropia;
     private SubastadorDto subastador;
     private CatalogoDto catalogo;
 }
