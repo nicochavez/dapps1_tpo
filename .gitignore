@@ -1,1 +1,10 @@
 .claude/*
+package-lock.json
+.idea/caches/deviceStreaming.xml
+.idea/deviceManager.xml
+.idea/dapps1_tpo.iml
+.idea/markdown.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/studiobot.xml
+.idea/vcs.xml
