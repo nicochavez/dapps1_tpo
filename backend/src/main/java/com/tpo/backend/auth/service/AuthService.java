@@ -5,6 +5,8 @@ import com.tpo.backend.auth.dto.LoginResponse;
 import com.tpo.backend.auth.dto.RegisterRequest;
 import com.tpo.backend.auth.dto.RegisterResponse;
 import com.tpo.backend.auth.dto.SetContraseniaRequest;
+import com.tpo.backend.cliente.entity.ClienteEntity;
+import com.tpo.backend.cliente.repository.ClienteRepository;
 import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
@@ -22,27 +24,39 @@ import java.util.Optional;
 @Service
 public class AuthService {
 
+    private static final Long VERIFICADOR_SISTEMA_ID = 2L;
+    private static final Integer PAIS_ARGENTINA = 32;
+
     private final UsuarioRepository usuarioRepository;
     private final PersonaRepository personaRepository;
+    private final ClienteRepository clienteRepository;
 
     public AuthService(UsuarioRepository usuarioRepository,
-                       PersonaRepository personaRepository) {
+                       PersonaRepository personaRepository,
+                       ClienteRepository clienteRepository) {
         this.usuarioRepository = usuarioRepository;
         this.personaRepository = personaRepository;
+        this.clienteRepository = clienteRepository;
     }
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        String email = request.getEmail();
+        String email = request.getEmail().trim().toLowerCase();
+        String documento = request.getDocumento().trim();
 
         if (usuarioRepository.existsByEmail(email)) {
             throw new ConflictException("El usuario ya completo su registro.");
         }
 
+        if (personaRepository.existsByDocumento(documento)) {
+            throw new ConflictException("Ya existe una persona registrada con ese documento.");
+        }
+
         PersonaEntity persona = new PersonaEntity();
-        persona.setNombre(request.getNombre() + " " + request.getApellido());
-        persona.setDocumento("");
-        persona.setEstado("activo");
+        persona.setNombre(request.getNombre().trim() + " " + request.getApellido().trim());
+        persona.setDocumento(documento);
+        persona.setDireccion(request.getDireccion());
+        persona.setEstado("pendiente_verificacion");
         persona = personaRepository.save(persona);
 
         UsuarioEntity usuario = new UsuarioEntity();
@@ -52,6 +66,22 @@ public class AuthService {
         usuario.setActivo(true);
         usuario.setUltimoAcceso(OffsetDateTime.now());
         usuario = usuarioRepository.save(usuario);
+
+        ClienteEntity cliente = new ClienteEntity();
+        cliente.setId(persona.getId());
+        cliente.setNumeroPais(request.getNumeroPais() != null ? request.getNumeroPais() : PAIS_ARGENTINA);
+        cliente.setAdmitido(false);
+        cliente.setCategoria("pendiente");
+        cliente.setVerificador(VERIFICADOR_SISTEMA_ID);
+        clienteRepository.save(cliente);
+
+        System.out.println(
+                "Nuevo cliente pendiente de validacion: " +
+                        persona.getNombre() +
+                        " | DNI: " + documento +
+                        " | Email: " + email +
+                        " | ClienteId: " + cliente.getId()
+        );
 
         return new RegisterResponse(usuario.getId());
     }
@@ -89,8 +119,10 @@ public class AuthService {
         if (request.getContrasenia() == null || request.getContrasenia().isBlank()) {
             throw new BadRequestException("La contrasenia no puede estar vacia.");
         }
+
         UsuarioEntity usuario = usuarioRepository.findById(request.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + request.getId()));
+
         usuario.setPasswordHash(request.getContrasenia());
         usuarioRepository.save(usuario);
     }
