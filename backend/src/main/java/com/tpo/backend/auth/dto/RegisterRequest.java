@@ -8,12 +8,23 @@ import lombok.Data;
 public class RegisterRequest {
     @NotBlank
     private String nombre;
+
     @NotBlank
     private String apellido;
+
+    @NotBlank
+    private String documento;
+
     @Email
     @NotBlank
     private String email;
+
     @NotBlank
     private String contrasenia;
+
+    private String direccion;
+
+    private Integer numeroPais = 32;
+
     private boolean verificado = false;
 }
