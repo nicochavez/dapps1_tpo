@@ -210,6 +210,8 @@ export default function ViewAuctionScreen({ route, navigation }) {
                         navigation.navigate('ItemDetail', {
                           itemId: item.identificador,
                           subastaId,
+                          catalogoId: catalogos[0]?.identificador,
+                          itemResumen: item,
                         })
                       }
                       className="bg-white rounded-3xl p-3 mb-4 shadow-sm shadow-slate-200 flex-row items-center"

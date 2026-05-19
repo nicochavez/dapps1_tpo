@@ -68,3 +68,22 @@ export function conectarASubasta(subastaId, token) {
     token,
   });
 }
+
+export function getItemCatalogoDetalle(catalogoId, itemId) {
+  return apiRequest(`/catalogos/${catalogoId}/items/${itemId}`);
+}
+
+export function getHistorialPujas(subastaId, itemId) {
+  return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`);
+}
+
+export function realizarPuja(subastaId, itemId, importe, medioPagoId, token) {
+  return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`, {
+    method: 'POST',
+    token,
+    body: JSON.stringify({
+      importe: Number(importe),
+      medioPagoId,
+    }),
+  });
+}
