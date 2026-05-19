@@ -146,18 +146,27 @@ public class SubastaService {
     @Transactional
     public ConectarResponse conectar(Long subastaId) {
         SubastaEntity subasta = findOrThrow(subastaId);
+
         if (!"abierta".equalsIgnoreCase(subasta.getEstado())) {
             throw new ConflictException("La subasta no esta abierta.");
         }
 
-        Long clienteId = clienteService.currentClienteEntity().getId();
+        var cliente = clienteService.currentClienteEntity();
+
+        if (!Boolean.TRUE.equals(cliente.getAdmitido())) {
+            throw new ForbiddenException("El cliente todavia no fue aprobado por la empresa.");
+        }
+
+        Long clienteId = cliente.getId();
 
         boolean elsewhere = asistenteRepository.findByCliente(clienteId).stream()
                 .anyMatch(a -> !a.getSubasta().equals(subastaId));
-        if (elsewhere) throw new ForbiddenException("Ya esta conectado a otra subasta.");
+
+        if (elsewhere) throw new ConflictException("Ya esta conectado a otra subasta.");
 
         boolean hasVerified = medioPagoRepository.findByCliente(clienteId).stream()
                 .anyMatch(m -> Boolean.TRUE.equals(m.getVerificado()));
+
         if (!hasVerified) throw new ForbiddenException("No tiene medio de pago verificado.");
 
         AsistenteEntity asistente = asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
@@ -171,7 +180,6 @@ public class SubastaService {
 
         return new ConectarResponse(new AsistenteDto(asistente.getCliente(), asistente.getNumeroPostor()));
     }
-
     @Transactional
     public void desconectar(Long subastaId) {
         findOrThrow(subastaId);
