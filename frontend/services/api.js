@@ -87,3 +87,25 @@ export function realizarPuja(subastaId, itemId, importe, medioPagoId, token) {
     }),
   });
 }
+export function registerRequest({
+  nombre,
+  apellido,
+  documento,
+  email,
+  contrasenia,
+  direccion,
+  numeroPais = 32,
+}) {
+  return apiRequest('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre,
+      apellido,
+      documento,
+      email,
+      contrasenia,
+      direccion,
+      numeroPais,
+    }),
+  });
+}
