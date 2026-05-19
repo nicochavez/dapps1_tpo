@@ -108,7 +108,7 @@ export default function HomeScreen({ navigation }) {
                   className="w-72 h-48 rounded-3xl overflow-hidden justify-end mr-4"
                 >
                   <ImageBackground
-                    source={{ uri: subasta.imagen || auctionFallbackImage }}
+                    source={{ uri: auctionFallbackImage }}
                     className="w-full h-full justify-end"
                     imageStyle={{ borderRadius: 24 }}
                   >
