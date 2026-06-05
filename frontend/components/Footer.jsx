@@ -32,7 +32,7 @@ export default function Footer() {
       </TouchableOpacity>
 
       {/* Tab Sell */}
-      <TouchableOpacity onPress={() => navigation.navigate('CreateAuction')} className="items-center w-1/5">
+      <TouchableOpacity onPress={() => navigation.navigate('CreateObjectStep1')} className="items-center w-1/5">
         <Feather name="plus-circle" size={24} color="#94a3b8" />
         <Text className="text-slate-400 text-[10px] mt-1">Sell</Text>
       </TouchableOpacity>

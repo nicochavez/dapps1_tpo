@@ -3,7 +3,29 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingVi
 import { Feather } from '@expo/vector-icons';
 
 export default function CreateObjectStep1({ navigation }) {
-  const [status, setStatus] = useState('New');
+  // Estados para almacenar los datos del formulario
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
+  const [condition, setCondition] = useState('New');
+  const [description, setDescription] = useState('');
+
+  // Estados para manejar si los desplegables están abiertos o cerrados
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false);
+
+  // Listas de opciones para los desplegables (simulando los datos de tu plataforma)
+  const categoriesList = ['Luxury Watches', 'Fine Art', 'Classic Cars', 'Jewelry', 'Electronics'];
+  const subCategoriesList = ['Vintage', 'Modern', 'Contemporary', 'Antique', 'Limited Edition'];
+
+  // Validación: Todos los campos deben estar completos
+  const isFormValid = title.trim().length > 0 && category.length > 0 && subCategory.length > 0 && description.trim().length > 0;
+
+  const handleNext = () => {
+    // Empaquetamos los datos sumando la subcategoría
+    const itemData = { title, category, subCategory, condition, description };
+    navigation.navigate('CreateObjectStep2', { itemData });
+  };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-[#f8fafc]">
@@ -40,66 +62,125 @@ export default function CreateObjectStep1({ navigation }) {
             <View className="w-8 h-8 rounded-full bg-slate-200 items-center justify-center mb-2">
               <Text className="text-slate-500 font-bold text-xs">3</Text>
             </View>
-            <Text className="text-[10px] text-slate-500 font-medium">Price</Text>
+            <Text className="text-[10px] text-slate-500 font-medium">Review</Text>
           </View>
         </View>
 
-        {/* FORMULARIO */}
-        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest">Title</Text>
-        <TextInput className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-4" placeholder="Patek Philippe Twenty" />
+        {/* --- TÍTULO --- */}
+        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Title</Text>
+        <TextInput 
+          className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-6" 
+          placeholder="e.g., Patek Philippe Twenty" 
+          value={title}
+          onChangeText={setTitle}
+        />
 
-        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest">Category</Text>
-        <TextInput className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-4" placeholder="Luxury Watches" />
+        {/* --- DESPLEGABLE: CATEGORÍA --- */}
+        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Category</Text>
+        <TouchableOpacity 
+          onPress={() => {
+            setIsCategoryOpen(!isCategoryOpen);
+            if (isSubCategoryOpen) setIsSubCategoryOpen(false); // Cierra el otro si está abierto
+          }}
+          className="bg-slate-200/60 rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
+        >
+          <Text className={category ? "text-slate-800 font-medium" : "text-slate-400 font-medium"}>
+            {category || "Select a category"}
+          </Text>
+          <Feather name={isCategoryOpen ? "chevron-up" : "chevron-down"} size={18} color="#64748b" />
+        </TouchableOpacity>
+        
+        {/* Opciones de Categoría (Se muestran solo si isCategoryOpen es true) */}
+        {isCategoryOpen && (
+          <View className="bg-white border border-slate-200 rounded-xl mb-4 overflow-hidden shadow-sm">
+            {categoriesList.map((cat, index) => (
+              <TouchableOpacity 
+                key={index}
+                onPress={() => { setCategory(cat); setIsCategoryOpen(false); }}
+                className={`px-4 py-3 ${index < categoriesList.length - 1 ? 'border-b border-slate-100' : ''}`}
+              >
+                <Text className="text-slate-700">{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View className={isCategoryOpen ? "" : "mb-4"} />
 
-        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest">Sub-category</Text>
-        <View className="bg-slate-200/60 rounded-xl px-4 py-3 mb-6 flex-row justify-between items-center">
-          <Text className="text-slate-800 font-medium">Vintage Watches</Text>
-          <Feather name="chevron-down" size={18} color="#64748b" />
-        </View>
+        {/* --- DESPLEGABLE: SUB-CATEGORÍA --- */}
+        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Sub-category</Text>
+        <TouchableOpacity 
+          onPress={() => {
+            setIsSubCategoryOpen(!isSubCategoryOpen);
+            if (isCategoryOpen) setIsCategoryOpen(false); // Cierra el otro si está abierto
+          }}
+          className="bg-slate-200/60 rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
+        >
+          <Text className={subCategory ? "text-slate-800 font-medium" : "text-slate-400 font-medium"}>
+            {subCategory || "Select a sub-category"}
+          </Text>
+          <Feather name={isSubCategoryOpen ? "chevron-up" : "chevron-down"} size={18} color="#64748b" />
+        </TouchableOpacity>
+        
+        {/* Opciones de Sub-categoría */}
+        {isSubCategoryOpen && (
+          <View className="bg-white border border-slate-200 rounded-xl mb-4 overflow-hidden shadow-sm">
+            {subCategoriesList.map((sub, index) => (
+              <TouchableOpacity 
+                key={index}
+                onPress={() => { setSubCategory(sub); setIsSubCategoryOpen(false); }}
+                className={`px-4 py-3 ${index < subCategoriesList.length - 1 ? 'border-b border-slate-100' : ''}`}
+              >
+                <Text className="text-slate-700">{sub}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View className={isSubCategoryOpen ? "" : "mb-4"} />
 
-        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest">Product Status</Text>
+        {/* --- CONDICIÓN DEL PRODUCTO --- */}
+        <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Product Condition</Text>
         <View className="flex-row bg-slate-200/60 rounded-xl p-1 mb-6">
-          <TouchableOpacity onPress={() => setStatus('New')} className={`flex-1 py-2.5 rounded-lg items-center ${status === 'New' ? 'bg-white shadow-sm' : ''}`}>
-            <Text className={`font-bold text-xs ${status === 'New' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>New</Text>
+          <TouchableOpacity onPress={() => setCondition('New')} className={`flex-1 py-2.5 rounded-lg items-center ${condition === 'New' ? 'bg-white shadow-sm' : ''}`}>
+            <Text className={`font-bold text-xs ${condition === 'New' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>New</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setStatus('Used')} className={`flex-1 py-2.5 rounded-lg items-center ${status === 'Used' ? 'bg-white shadow-sm' : ''}`}>
-            <Text className={`font-bold text-xs ${status === 'Used' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>Used</Text>
+          <TouchableOpacity onPress={() => setCondition('Used')} className={`flex-1 py-2.5 rounded-lg items-center ${condition === 'Used' ? 'bg-white shadow-sm' : ''}`}>
+            <Text className={`font-bold text-xs ${condition === 'Used' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>Used</Text>
           </TouchableOpacity>
         </View>
 
+        {/* --- DESCRIPCIÓN DETALLADA (Hecha más grande) --- */}
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="font-bold text-[10px] text-slate-800 tracking-widest">Detailed Description</Text>
+          <Text className="font-bold text-[10px] text-slate-800 tracking-widest uppercase">Detailed Description</Text>
           <View className="bg-purple-100 px-2 py-0.5 rounded">
             <Text className="text-[#7C3AED] text-[8px] font-bold uppercase tracking-widest">Required</Text>
           </View>
         </View>
+        {/* Le agregamos min-h-[120px] y numberOfLines={8} para que el cuadro de texto sea el doble de alto */}
         <TextInput 
-          className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-6" 
-          placeholder="Describe the characteristics, history, state of preservation, and any other details relevant to bidders." 
+          className="bg-slate-200/60 rounded-xl px-4 py-4 text-slate-800 font-medium mb-6 min-h-[120px]" 
+          placeholder="Describe the characteristics, history, state of preservation, and any other relevant details..." 
           placeholderTextColor="#94a3b8"
           multiline
-          numberOfLines={4}
+          numberOfLines={8}
           textAlignVertical="top"
+          value={description}
+          onChangeText={setDescription}
         />
-
-        {/* TIP CARD */}
-        <View className="bg-purple-50 rounded-2xl p-4 flex-row mb-8 border border-purple-100">
-          <Feather name="check-circle" size={18} color="#7C3AED" className="mt-0.5 mr-3" />
-          <View className="flex-1">
-            <Text className="text-[#7C3AED] font-bold text-xs mb-1">Expert Tip</Text>
-            <Text className="text-slate-500 text-[11px] leading-4">Auctions with descriptions of more than 200 words and precise technical details typically receive 35% more bids.</Text>
-          </View>
-        </View>
 
       </ScrollView>
 
       {/* FOOTER BUTTONS */}
       <View className="flex-row px-6 py-4 bg-white border-t border-slate-100 space-x-4">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="flex-1 py-4 border border-slate-200 rounded-2xl items-center flex-row justify-center">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="flex-1 py-4 border border-slate-200 rounded-2xl items-center flex-row justify-center mr-2">
           <Feather name="chevron-left" size={16} color="#64748b" />
           <Text className="font-bold text-slate-600 text-sm ml-1">Back</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('CreateObjectStep2')} className="flex-1 py-4 bg-[#a78bfa] rounded-2xl items-center flex-row justify-center shadow-sm shadow-purple-200">
+        
+        <TouchableOpacity 
+          onPress={handleNext} 
+          disabled={!isFormValid}
+          className={`flex-1 py-4 rounded-2xl items-center flex-row justify-center shadow-sm ml-2 ${isFormValid ? 'bg-[#a78bfa] shadow-purple-200' : 'bg-slate-300'}`}
+        >
           <Text className="font-bold text-white text-sm mr-1">Next</Text>
           <Feather name="chevron-right" size={16} color="white" />
         </TouchableOpacity>

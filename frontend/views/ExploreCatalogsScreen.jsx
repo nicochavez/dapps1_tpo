@@ -11,9 +11,21 @@ export default function ExploreCatalogsScreen({ navigation }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const getStatusLabel = (status) => {
+    if (status === 'abierta') return 'LIVE';
+    if (status === 'cerrada') return 'ENDED';
+    return 'UPCOMING';
+  };
+
+  const getStatusClass = (status) => {
+    if (status === 'abierta') return 'bg-red-500';
+    if (status === 'cerrada') return 'bg-slate-600';
+    return 'bg-blue-500';
+  };
+
   // 1. GENERACIÓN DINÁMICA DE CATEGORÍAS
-  // Extraemos todas las categorías, quitamos los duplicados con Set, y filtramos los undefined/null
-  const uniqueCategories = [...new Set(catalogsData.map(c => c.category).filter(Boolean))];
+  // Extraemos todas las categorías desde la subasta, quitamos duplicados y filtramos valores vacios
+  const uniqueCategories = [...new Set(catalogsData.map(c => c.subasta?.categoria).filter(Boolean))];
   
   // Armamos el array final poniendo 'All' siempre al principio
   const dynamicCategories = ['All', ...uniqueCategories];
@@ -22,16 +34,15 @@ export default function ExploreCatalogsScreen({ navigation }) {
   const filteredCatalogs = catalogsData.filter((catalog) => {
     
     // A) Chequeo de Categoría
-    const matchesCategory = activeCategory === 'All' || catalog.category === activeCategory;
+    const matchesCategory = activeCategory === 'All' || catalog.subasta?.categoria === activeCategory;
 
     // B) Chequeo de Búsqueda (Texto seguro)
     const query = searchQuery.toLowerCase().trim();
     
     // Nos aseguramos de que existan antes de pasarlos a minúsculas para evitar crasheos
-    const title = catalog.title ? catalog.title.toLowerCase() : '';
-    const description = catalog.description ? catalog.description.toLowerCase() : '';
-    
-    const matchesSearch = query === '' || title.includes(query) || description.includes(query);
+    const description = catalog.descripcion ? catalog.descripcion.toLowerCase() : '';
+    const category = catalog.subasta?.categoria ? catalog.subasta.categoria.toLowerCase() : '';
+    const matchesSearch = query === '' || description.includes(query) || category.includes(query);
 
     // Solo se muestra si pasa ambos filtros
     return matchesCategory && matchesSearch;
@@ -44,7 +55,7 @@ export default function ExploreCatalogsScreen({ navigation }) {
       <ScrollView className="flex-1 px-6 pt-2" showsVerticalScrollIndicator={false}>
         
         <Text className="text-3xl font-bold text-slate-800 mb-6">
-          Explore Catalogs
+          Explore Auctions
         </Text>
         
         {/* --- BARRA DE BÚSQUEDA --- */}
@@ -106,20 +117,20 @@ export default function ExploreCatalogsScreen({ navigation }) {
                     resizeMode="cover"
                   />
                   
-                  <View className="absolute top-4 left-4 bg-purple-100/95 px-2.5 py-1 rounded-lg flex-row items-center">
-                    {catalog.status === 'LIVE' && (
+                  <View className={`absolute top-4 left-4 px-2.5 py-1 rounded-lg flex-row items-center ${getStatusClass(catalog.subasta?.estado)}`}>
+                    {catalog.subasta?.estado === 'abierta' && (
                       <View className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] mr-1.5" />
                     )}
-                    <Text className="text-[#7C3AED] font-bold text-[10px] uppercase tracking-wider">
-                      {catalog.status}
+                    <Text className="text-white font-bold text-[10px] uppercase tracking-wider">
+                      {getStatusLabel(catalog.subasta?.estado)}
                     </Text>
                   </View>
                 </View>
 
                 <View className="p-5">
-                  <Text className="text-xl font-bold text-slate-800 mb-2">{catalog.title}</Text>
+                  <Text className="text-xl font-bold text-slate-800 mb-2">{catalog.descripcion}</Text>
                   <Text className="text-sm text-slate-500 mb-5 leading-5" numberOfLines={2}>
-                    {catalog.description}
+                    Auction {catalog.subasta?.identificador} | {catalog.subasta?.categoria}
                   </Text>
                   
                   <View className="flex-row items-center">
@@ -133,7 +144,7 @@ export default function ExploreCatalogsScreen({ navigation }) {
                     <View className="flex-row items-center">
                       <Feather name="calendar" size={14} color="#64748b" />
                       <Text className="text-xs text-slate-600 font-medium ml-1.5">
-                        {catalog.endDate}
+                        {catalog.subasta?.fecha} {catalog.subasta?.hora}
                       </Text>
                     </View>
                   </View>

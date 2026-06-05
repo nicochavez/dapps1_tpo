@@ -17,7 +17,7 @@ export default function CardForm() {
           <MaterialCommunityIcons name="contactless-payment-circle-outline" size={28} color="white" />
           <Text className="text-white font-bold tracking-widest text-sm opacity-90">PREMIUM</Text>
         </View>
-        <Text className="text-white text-xl font-medium tracking-[4px] mb-8 opacity-90">
+        <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">
           •••• •••• •••• ••••
         </Text>
         <View className="flex-row justify-between items-end">

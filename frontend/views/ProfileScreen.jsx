@@ -145,7 +145,7 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            <Text className="text-white text-xl font-medium tracking-[4px] mb-8 opacity-90">
+            <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">
               •••• •••• •••• {userPaymentMethod.lastFour}
             </Text>
 

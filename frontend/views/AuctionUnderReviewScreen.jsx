@@ -41,7 +41,7 @@ export default function AuctionUnderReviewScreen({ route, navigation }) {
           Auction Under Review
         </Text>
         <Text className="text-center text-slate-500 mb-10 px-2 leading-6">
-          Your catalog <Text className="font-bold text-slate-700">'{catalog.title}'</Text> has been successfully submitted and is currently being reviewed by our curation team.
+          Your catalog has been successfully submitted and is currently being reviewed by our curation team.
         </Text>
 
         {/* --- TARJETA DE INFORMACIÓN (WHAT HAPPENS NEXT) --- */}
