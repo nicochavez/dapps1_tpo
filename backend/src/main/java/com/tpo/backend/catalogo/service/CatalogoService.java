@@ -7,7 +7,9 @@ import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
 import com.tpo.backend.catalogo.repository.CatalogoRepository;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
+import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
@@ -19,19 +21,25 @@ import java.util.List;
 @Service
 public class CatalogoService {
 
+    /** Minimo de imagenes por item de catalogo (RF-14). */
+    private static final int MIN_FOTOS = 6;
+
     private final CatalogoRepository catalogoRepository;
     private final ItemCatalogoRepository itemRepository;
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
+    private final ClienteService clienteService;
 
     public CatalogoService(CatalogoRepository catalogoRepository,
                            ItemCatalogoRepository itemRepository,
                            ProductoRepository productoRepository,
-                           FotoRepository fotoRepository) {
+                           FotoRepository fotoRepository,
+                           ClienteService clienteService) {
         this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
+        this.clienteService = clienteService;
     }
 
     @Transactional
@@ -77,6 +85,8 @@ public class CatalogoService {
         CatalogoEntity catalogo = catalogoRepository.findById(request.getCatalogo())
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + request.getCatalogo()));
 
+        validarMinimoFotos(producto.getId());
+
         ItemCatalogoEntity item = new ItemCatalogoEntity();
         item.setCatalogo(catalogo.getId());
         item.setProducto(producto.getId());
@@ -86,6 +96,15 @@ public class CatalogoService {
         item = itemRepository.save(item);
 
         return toDetailDto(item);
+    }
+
+    /** RF-14: cada item debe tener al menos 6 imagenes. */
+    private void validarMinimoFotos(Long productoId) {
+        int cantidad = fotoRepository.findByProducto(productoId).size();
+        if (cantidad < MIN_FOTOS) {
+            throw new UnprocessableEntityException(
+                    "El producto debe tener al menos " + MIN_FOTOS + " imagenes (tiene " + cantidad + ").");
+        }
     }
 
     @Transactional
@@ -114,7 +133,7 @@ public class CatalogoService {
         return new CatalogoListDto.ItemDto(
                 item.getId(),
                 descripcion,
-                item.getPrecioBase(),
+                precioVisible(item.getPrecioBase()),
                 Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
                 imagenPrincipal
         );
@@ -129,11 +148,20 @@ public class CatalogoService {
                 .toList();
         return new ItemCatalogoDetailDto(
                 item.getId(),
-                item.getPrecioBase(),
+                precioVisible(item.getPrecioBase()),
                 item.getComision(),
                 Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
-                        producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(), fotos)
+                        producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),
+                        producto.getArtista(),
+                        producto.getFecha() != null ? producto.getFecha().toString() : null,
+                        producto.getResenia(),
+                        fotos)
         );
+    }
+
+    /** RF-13: el precio base solo es visible para usuarios registrados. */
+    private java.math.BigDecimal precioVisible(java.math.BigDecimal precioBase) {
+        return clienteService.isAuthenticated() ? precioBase : null;
     }
 }

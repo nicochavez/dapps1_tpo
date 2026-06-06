@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "itemscatalogo")
@@ -34,4 +35,8 @@ public class ItemCatalogoEntity {
 
     @Column(name = "subastado")
     private Boolean subastado;
+
+    /** Momento programado de cierre automatico del item (se extiende con cada puja). */
+    @Column(name = "cierre_programado")
+    private OffsetDateTime cierreProgramado;
 }

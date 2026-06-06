@@ -43,4 +43,11 @@ public class ProductoEntity {
 
     @Column(name = "seguro")
     private String seguro;
+
+    /** Metadatos de arte/diseno (RF-15). */
+    @Column(name = "artista")
+    private String artista;
+
+    @Column(name = "resena_historica")
+    private String resenia;
 }

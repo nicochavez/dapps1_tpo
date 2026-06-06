@@ -12,6 +12,8 @@ public interface PujaRepository extends JpaRepository<PujaEntity, Long> {
 
     List<PujaEntity> findByItemOrderByImporteDesc(Long item);
 
+    List<PujaEntity> findByItemOrderByFechaAsc(Long item);
+
     List<PujaEntity> findByAsistente(Long asistente);
 
     Optional<PujaEntity> findFirstByItemOrderByImporteDesc(Long item);

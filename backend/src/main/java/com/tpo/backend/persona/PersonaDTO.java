@@ -5,18 +5,16 @@ public class PersonaDTO {
     private Long id;
     private String documento;
     private String nombre;
-    private String direccion;
     private String estado;
     private String fotoBase64; // Image handled as Base64 string for JSON
-    private final String ESTADO_INICIAL = "activo"; // Default state for new personas
+    private final String ESTADO_INICIAL = "pendiente"; // estado_registro: pendiente|aprobado|rechazado
     // Constructors
     public PersonaDTO() {}
 
-    public PersonaDTO(Long id, String documento, String nombre, String direccion, String fotoBase64) {
+    public PersonaDTO(Long id, String documento, String nombre, String fotoBase64) {
         this.id = id;
         this.documento = documento;
         this.nombre = nombre;
-        this.direccion = direccion;
         this.estado = ESTADO_INICIAL;
         this.fotoBase64 = fotoBase64;
     }
@@ -30,9 +28,6 @@ public class PersonaDTO {
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
-
-    public String getDireccion() { return direccion; }
-    public void setDireccion(String direccion) { this.direccion = direccion; }
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }

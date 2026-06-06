@@ -23,4 +23,8 @@ public class AsistenteEntity {
 
     @Column(name = "subasta", nullable = false)
     private Long subasta;
+
+    /** true = espectador (no puede pujar); false/null = postor habilitado. */
+    @Column(name = "espectador")
+    private Boolean espectador;
 }

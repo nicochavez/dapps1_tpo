@@ -20,32 +20,32 @@ public class DireccionService {
     }
 
     @Transactional
-    public List<DireccionDto> listar(Long userId) {
-        return direccionRepository.findByCliente(userId).stream()
+    public List<DireccionDto> listar(Long personaId) {
+        return direccionRepository.findByPersona(personaId).stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Transactional
-    public DireccionDto crear(Long userId, DireccionRequest request) {
+    public DireccionDto crear(Long personaId, DireccionRequest request) {
         DireccionEntity dir = new DireccionEntity();
-        dir.setCliente(userId);
+        dir.setPersona(personaId);
         applyRequest(dir, request);
         dir = direccionRepository.save(dir);
         return toDto(dir);
     }
 
     @Transactional
-    public DireccionDto getFavorita(Long userId) {
-        DireccionEntity dir = direccionRepository.findByClienteAndFavoritoTrue(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("No hay direccion favorita para el usuario: " + userId));
+    public DireccionDto getFavorita(Long personaId) {
+        DireccionEntity dir = direccionRepository.findByPersonaAndFavoritoTrue(personaId)
+                .orElseThrow(() -> new ResourceNotFoundException("No hay direccion favorita para la persona: " + personaId));
         return toDto(dir);
     }
 
     @Transactional
-    public DireccionDto actualizar(Long userId, Long direccionId, DireccionRequest request) {
+    public DireccionDto actualizar(Long personaId, Long direccionId, DireccionRequest request) {
         DireccionEntity dir = direccionRepository.findById(direccionId)
-                .filter(d -> d.getCliente().equals(userId))
+                .filter(d -> d.getPersona().equals(personaId))
                 .orElseThrow(() -> new ResourceNotFoundException("Direccion no encontrada: " + direccionId));
         applyRequest(dir, request);
         direccionRepository.save(dir);
@@ -53,9 +53,9 @@ public class DireccionService {
     }
 
     @Transactional
-    public void eliminar(Long userId, Long direccionId) {
+    public void eliminar(Long personaId, Long direccionId) {
         DireccionEntity dir = direccionRepository.findById(direccionId)
-                .filter(d -> d.getCliente().equals(userId))
+                .filter(d -> d.getPersona().equals(personaId))
                 .orElseThrow(() -> new ResourceNotFoundException("Direccion no encontrada: " + direccionId));
         direccionRepository.delete(dir);
     }

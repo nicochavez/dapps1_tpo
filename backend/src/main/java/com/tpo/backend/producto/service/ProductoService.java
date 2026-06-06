@@ -65,6 +65,8 @@ public class ProductoService {
         if (request.getSeguro() != null) prod.setSeguro(request.getSeguro());
         if (request.getCategoria() != null) prod.setCategoria(request.getCategoria());
         if (request.getSubcategoria() != null) prod.setSubcategoria(request.getSubcategoria());
+        if (request.getArtista() != null) prod.setArtista(request.getArtista());
+        if (request.getResenia() != null) prod.setResenia(request.getResenia());
         productoRepository.save(prod);
         return toDto(prod);
     }
@@ -81,6 +83,8 @@ public class ProductoService {
         prod.setSeguro(request.getSeguro());
         prod.setCategoria(request.getCategoria());
         prod.setSubcategoria(request.getSubcategoria());
+        prod.setArtista(request.getArtista());
+        prod.setResenia(request.getResenia());
         prod.setDuenio(duenioId);
         prod = productoRepository.save(prod);
         return toDto(prod);

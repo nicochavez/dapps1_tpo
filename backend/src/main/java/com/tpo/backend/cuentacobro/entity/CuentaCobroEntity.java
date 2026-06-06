@@ -15,7 +15,8 @@ public class CuentaCobroEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
+    // En el ERD la columna es 'duenio' (FK a duenios); se conserva el nombre Java por compatibilidad.
+    @Column(name = "duenio", nullable = false)
     private Long cliente;
 
     @Column(name = "banco", nullable = false)

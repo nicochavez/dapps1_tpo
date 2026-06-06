@@ -53,15 +53,15 @@ public class AuthService {
         }
 
         PersonaEntity persona = new PersonaEntity();
-        persona.setNombre(request.getNombre().trim() + " " + request.getApellido().trim());
+        persona.setNombre(request.getNombre().trim());
+        persona.setApellido(request.getApellido().trim());
         persona.setDocumento(documento);
-        persona.setDireccion(request.getDireccion());
-        persona.setEstado("pendiente_verificacion");
+        persona.setEstado("pendiente"); // estado_registro: pendiente | aprobado | rechazado
         persona = personaRepository.save(persona);
 
         UsuarioEntity usuario = new UsuarioEntity();
         usuario.setEmail(email);
-        usuario.setPasswordHash(request.getContrasenia());
+        // usuario.setPasswordHash(request.getContrasenia());
         usuario.setPersonaId(persona.getId());
         usuario.setActivo(true);
         usuario.setUltimoAcceso(OffsetDateTime.now());
@@ -71,7 +71,8 @@ public class AuthService {
         cliente.setId(persona.getId());
         cliente.setNumeroPais(request.getNumeroPais() != null ? request.getNumeroPais() : PAIS_ARGENTINA);
         cliente.setAdmitido(false);
-        cliente.setCategoria("pendiente");
+        // categoria queda null hasta la aprobacion (CHECK del ERD: comun|especial|plata|oro|platino).
+        cliente.setCategoria(null);
         cliente.setVerificador(VERIFICADOR_SISTEMA_ID);
         clienteRepository.save(cliente);
 
@@ -100,7 +101,8 @@ public class AuthService {
         UsuarioEntity usuario = usuarioRepository.findByPersonaId(personaOpt.get().getId())
                 .orElseThrow(() -> new UnauthorizedException("Credenciales invalidas."));
 
-        if (!usuario.getPasswordHash().equals(request.getContrasenia())) {
+        if (usuario.getPasswordHash() == null
+                || !usuario.getPasswordHash().equals(request.getContrasenia())) {
             throw new UnauthorizedException("Credenciales invalidas.");
         }
 

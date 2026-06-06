@@ -6,11 +6,14 @@ import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
 import com.tpo.backend.catalogo.repository.CatalogoRepository;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
+import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.dto.PagedResponse;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.exception.UnprocessableEntityException;
+import com.tpo.backend.common.util.CategoriaUtil;
 import com.tpo.backend.mediospago.entity.MedioPagoEntity;
 import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import com.tpo.backend.persona.PersonaEntity;
@@ -79,12 +82,17 @@ public class SubastaService {
     @Transactional
     public PagedResponse<SubastaListItemDto> listar(String estado, String categoria, String fecha,
                                                      String moneda, int page, int size) {
+        // RF-20: si hay usuario autenticado, solo ve subastas de su categoria o inferiores.
+        ClienteEntity actual = clienteService.currentClienteOrNull();
+        String categoriaUsuario = actual != null ? actual.getCategoria() : null;
+
         List<SubastaEntity> all = subastaRepository.findAll();
         List<SubastaListItemDto> filtered = all.stream()
                 .filter(s -> estado == null || (s.getEstado() != null && s.getEstado().equalsIgnoreCase(estado)))
                 .filter(s -> categoria == null || (s.getCategoria() != null && s.getCategoria().equalsIgnoreCase(categoria)))
                 .filter(s -> fecha == null || (s.getFecha() != null && s.getFecha().toString().equals(fecha)))
                 .filter(s -> moneda == null || (s.getMoneda() != null && s.getMoneda().equalsIgnoreCase(moneda)))
+                .filter(s -> categoriaUsuario == null || CategoriaUtil.puedeAcceder(categoriaUsuario, s.getCategoria()))
                 .map(this::toListItemDto)
                 .toList();
 
@@ -145,6 +153,16 @@ public class SubastaService {
 
     @Transactional
     public ConectarResponse conectar(Long subastaId) {
+        return conectar(subastaId, false);
+    }
+
+    /**
+     * Conecta al cliente a la subasta.
+     * @param espectador si true, ingresa como espectador (RF-21): no requiere medio de pago verificado
+     *                   pero tampoco podra pujar; si false, ingresa como postor (RF-22).
+     */
+    @Transactional
+    public ConectarResponse conectar(Long subastaId, boolean espectador) {
         SubastaEntity subasta = findOrThrow(subastaId);
 
         if (!"abierta".equalsIgnoreCase(subasta.getEstado())) {
@@ -164,10 +182,12 @@ public class SubastaService {
 
         if (elsewhere) throw new ConflictException("Ya esta conectado a otra subasta.");
 
-        boolean hasVerified = medioPagoRepository.findByCliente(clienteId).stream()
-                .anyMatch(m -> Boolean.TRUE.equals(m.getVerificado()));
-
-        if (!hasVerified) throw new ForbiddenException("No tiene medio de pago verificado.");
+        // RF-22: para pujar (no espectador) hace falta medio de pago verificado.
+        if (!espectador) {
+            boolean hasVerified = medioPagoRepository.findByCliente(clienteId).stream()
+                    .anyMatch(m -> Boolean.TRUE.equals(m.getVerificado()));
+            if (!hasVerified) throw new ForbiddenException("No tiene medio de pago verificado.");
+        }
 
         AsistenteEntity asistente = asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
                 .orElseGet(() -> {
@@ -175,8 +195,15 @@ public class SubastaService {
                     a.setSubasta(subastaId);
                     a.setCliente(clienteId);
                     a.setNumeroPostor((int) (100 + asistenteRepository.countBySubasta(subastaId) + 1));
+                    a.setEspectador(espectador);
                     return asistenteRepository.save(a);
                 });
+
+        // Permite promover de espectador a postor al reconectar con medio de pago verificado.
+        if (!espectador && Boolean.TRUE.equals(asistente.getEspectador())) {
+            asistente.setEspectador(false);
+            asistente = asistenteRepository.save(asistente);
+        }
 
         return new ConectarResponse(new AsistenteDto(asistente.getCliente(), asistente.getNumeroPostor()));
     }
@@ -226,6 +253,13 @@ public class SubastaService {
         CatalogoEntity catalogo = catalogoRepository.findById(request.getCatalogo())
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + request.getCatalogo()));
 
+        // RF-14: el item debe tener al menos 6 imagenes.
+        int cantidadFotos = fotoRepository.findByProducto(producto.getId()).size();
+        if (cantidadFotos < 6) {
+            throw new UnprocessableEntityException(
+                    "El producto debe tener al menos 6 imagenes (tiene " + cantidadFotos + ").");
+        }
+
         ItemCatalogoEntity item = new ItemCatalogoEntity();
         item.setCatalogo(catalogo.getId());
         item.setProducto(producto.getId());
@@ -240,7 +274,11 @@ public class SubastaService {
                 .toList();
         return new ItemCatalogoDetailDto(item.getId(), item.getPrecioBase(), item.getComision(), "no",
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
-                        producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(), fotos));
+                        producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),
+                        producto.getArtista(),
+                        producto.getFecha() != null ? producto.getFecha().toString() : null,
+                        producto.getResenia(),
+                        fotos));
     }
 
     @Transactional
@@ -322,7 +360,8 @@ public class SubastaService {
                 item.getId(),
                 item.getNumeroPieza(),
                 descripcion,
-                item.getPrecioBase(),
+                // RF-13: el precio base solo es visible para usuarios registrados.
+                clienteService.isAuthenticated() ? item.getPrecioBase() : null,
                 item.getComision(),
                 Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
                 buildFotoRefs(item.getProducto())

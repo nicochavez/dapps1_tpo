@@ -5,9 +5,12 @@ import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ConflictException;
+import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.ws.SubastaEventPublisher;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.ProductoRepository;
+import com.tpo.backend.subasta.service.AdjudicacionService;
 import com.tpo.backend.puja.dto.MiPujaDto;
 import com.tpo.backend.puja.dto.PujaHistorialDto;
 import com.tpo.backend.puja.dto.PujaRequest;
@@ -34,19 +37,22 @@ public class PujaService {
     private final AsistenteRepository asistenteRepository;
     private final ProductoRepository productoRepository;
     private final ClienteService clienteService;
+    private final SubastaEventPublisher eventPublisher;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemRepository,
                        PujaRepository pujaRepository,
                        AsistenteRepository asistenteRepository,
                        ProductoRepository productoRepository,
-                       ClienteService clienteService) {
+                       ClienteService clienteService,
+                       SubastaEventPublisher eventPublisher) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
         this.asistenteRepository = asistenteRepository;
         this.productoRepository = productoRepository;
         this.clienteService = clienteService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -68,6 +74,11 @@ public class PujaService {
         Long clienteId = clienteService.currentClienteEntity().getId();
         AsistenteEntity asistente = asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
                 .orElseThrow(() -> new ConflictException("Debe conectarse a la subasta antes de pujar."));
+
+        // RF-21: los espectadores no pueden pujar.
+        if (Boolean.TRUE.equals(asistente.getEspectador())) {
+            throw new ForbiddenException("Esta conectado como espectador y no puede pujar.");
+        }
 
         BigDecimal mejorOferta = pujaRepository.findFirstByItemOrderByImporteDesc(itemId)
                 .map(PujaEntity::getImporte)
@@ -97,6 +108,17 @@ public class PujaService {
         nueva.setGanador(false);
         nueva = pujaRepository.save(nueva);
 
+        // Mantiene el item "en vivo": reinicia la ventana de cierre con cada puja (RF-25/RF-35).
+        item.setCierreProgramado(OffsetDateTime.now().plusSeconds(AdjudicacionService.VENTANA_PUJA_SEGUNDOS));
+        itemRepository.save(item);
+
+        // RF-25: propaga la nueva oferta a los conectados.
+        eventPublisher.publish(subastaId, "nueva-puja", new java.util.HashMap<>(java.util.Map.of(
+                "itemId", itemId,
+                "importe", nueva.getImporte(),
+                "numeroPostor", asistente.getNumeroPostor())));
+
+        // RF-32: la respuesta se devuelve confirmada solo tras persistir y propagar la puja.
         return new PujaResponse(nueva.getId(), nueva.getImporte(), "no", true);
     }
 
@@ -104,7 +126,8 @@ public class PujaService {
     public List<PujaHistorialDto> getHistorialByItem(Long subastaId, Long itemId) {
         subastaRepository.findById(subastaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
-        return pujaRepository.findByItemOrderByImporteDesc(itemId).stream()
+        // RF-33: historial ordenado temporalmente.
+        return pujaRepository.findByItemOrderByFechaAsc(itemId).stream()
                 .map(this::toHistorialDto)
                 .toList();
     }
