@@ -90,6 +90,20 @@ public class ClienteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado para la persona: " + persona.getId()));
     }
 
+    /** Cliente autenticado o {@code null} si no hay token valido (para endpoints publicos). */
+    public ClienteEntity currentClienteOrNull() {
+        try {
+            return currentClienteEntity();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** true si el request trae un token que mapea a un cliente registrado (RF-13). */
+    public boolean isAuthenticated() {
+        return currentClienteOrNull() != null;
+    }
+
     private String getDocumentoFromToken() {
         ServletRequestAttributes attrs =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();

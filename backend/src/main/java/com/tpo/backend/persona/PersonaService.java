@@ -66,8 +66,9 @@ public class PersonaService {
     private void mapDtoToEntity(PersonaDTO dto, PersonaEntity entity) {
         entity.setDocumento(dto.getDocumento());
         entity.setNombre(dto.getNombre());
-        entity.setDireccion(dto.getDireccion());
-        entity.setEstado(dto.getEstado());
+        // personas.apellido es NOT NULL en el ERD; el DTO legacy no lo expone.
+        if (entity.getApellido() == null) entity.setApellido("-");
+        entity.setEstado(dto.getEstado() != null ? dto.getEstado() : "pendiente");
 
         // Convert Base64 string back to byte[] for database storage
         if (dto.getFotoBase64() != null && !dto.getFotoBase64().isEmpty()) {
@@ -81,7 +82,6 @@ public class PersonaService {
         dto.setId(entity.getId());
         dto.setDocumento(entity.getDocumento());
         dto.setNombre(entity.getNombre());
-        dto.setDireccion(entity.getDireccion());
         dto.setEstado(entity.getEstado());
 
         // Convert byte[] from database back to Base64 string for JSON response

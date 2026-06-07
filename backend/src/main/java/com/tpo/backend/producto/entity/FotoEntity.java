@@ -18,7 +18,7 @@ public class FotoEntity {
     @Column(name = "producto", nullable = false)
     private Long producto;
 
-    @Lob
+    // byte[] sin @Lob mapea a bytea (coincide con el ERD); con @Lob Hibernate usaria oid.
     @Column(name = "foto", nullable = false)
     private byte[] foto;
 }

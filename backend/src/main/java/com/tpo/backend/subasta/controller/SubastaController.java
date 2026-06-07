@@ -55,8 +55,11 @@ public class SubastaController {
     }
 
     @PostMapping("/{subastaId}/conectar")
-    public ResponseEntity<ConectarResponse> conectar(@PathVariable Long subastaId) {
-        return ResponseEntity.ok(subastaService.conectar(subastaId));
+    public ResponseEntity<ConectarResponse> conectar(
+            @PathVariable Long subastaId,
+            @RequestParam(required = false, defaultValue = "postor") String modo) {
+        boolean espectador = "espectador".equalsIgnoreCase(modo);
+        return ResponseEntity.ok(subastaService.conectar(subastaId, espectador));
     }
 
     @PostMapping("/{subastaId}/desconectar")

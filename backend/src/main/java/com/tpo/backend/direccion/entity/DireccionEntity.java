@@ -15,8 +15,8 @@ public class DireccionEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
-    private Long cliente;
+    @Column(name = "persona", nullable = false)
+    private Long persona;
 
     @Column(name = "nombre")
     private String nombre;

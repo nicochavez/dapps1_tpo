@@ -18,5 +18,5 @@ public class EmpleadoEntity {
     private String cargo;
 
     @Column(name = "sector")
-    private Integer sector;
+    private Long sector;
 }

@@ -24,6 +24,9 @@ public class ItemCatalogoDetailDto {
         private Long identificador;
         private String descripcionCatalogo;
         private String descripcionCompleta;
+        private String artista;
+        private String fecha;
+        private String resenia;
         private List<FotoDto> fotos;
     }
 

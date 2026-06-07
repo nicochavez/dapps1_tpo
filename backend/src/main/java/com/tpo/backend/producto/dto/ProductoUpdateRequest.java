@@ -12,4 +12,6 @@ public class ProductoUpdateRequest {
     private String seguro;
     private String categoria;
     private String subcategoria;
+    private String artista;
+    private String resenia;
 }

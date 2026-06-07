@@ -21,13 +21,13 @@ public class PersonaEntity {
     @Column(name = "nombre", nullable = false)
     private String nombre;
 
-    @Column(name = "direccion")
-    private String direccion;
+    @Column(name = "apellido", nullable = false)
+    private String apellido;
 
-    @Column(name = "estado")
+    /** Estado de registro: pendiente | aprobado | rechazado (columna estado_registro del ERD). */
+    @Column(name = "estado_registro")
     private String estado;
 
-    @Lob
     @Column(name = "foto")
     private byte[] foto;
 }

@@ -19,11 +19,6 @@ public class RegisterRequest {
     @NotBlank
     private String email;
 
-    @NotBlank
-    private String contrasenia;
-
-    private String direccion;
-
     private Integer numeroPais = 32;
 
     private boolean verificado = false;
