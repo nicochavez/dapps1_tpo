@@ -1,171 +1,268 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
+// Asumiendo que catalogs.json ya incluye el atributo itemCategory
 import catalogsData from '../data/catalogs.json';
 
-export default function ExploreCatalogsScreen({ navigation }) {
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const getStatusLabel = (status) => {
-    if (status === 'abierta') return 'LIVE';
-    if (status === 'cerrada') return 'ENDED';
-    return 'UPCOMING';
-  };
-
-  const getStatusClass = (status) => {
-    if (status === 'abierta') return 'bg-red-500';
-    if (status === 'cerrada') return 'bg-slate-600';
-    return 'bg-blue-500';
-  };
-
-  // 1. GENERACIÓN DINÁMICA DE CATEGORÍAS
-  // Extraemos todas las categorías desde la subasta, quitamos duplicados y filtramos valores vacios
-  const uniqueCategories = [...new Set(catalogsData.map(c => c.subasta?.categoria).filter(Boolean))];
-  
-  // Armamos el array final poniendo 'All' siempre al principio
-  const dynamicCategories = ['All', ...uniqueCategories];
-
-  // 2. LÓGICA DE FILTRADO (Búsqueda + Categoría)
-  const filteredCatalogs = catalogsData.filter((catalog) => {
-    
-    // A) Chequeo de Categoría
-    const matchesCategory = activeCategory === 'All' || catalog.subasta?.categoria === activeCategory;
-
-    // B) Chequeo de Búsqueda (Texto seguro)
-    const query = searchQuery.toLowerCase().trim();
-    
-    // Nos aseguramos de que existan antes de pasarlos a minúsculas para evitar crasheos
-    const description = catalog.descripcion ? catalog.descripcion.toLowerCase() : '';
-    const category = catalog.subasta?.categoria ? catalog.subasta.categoria.toLowerCase() : '';
-    const matchesSearch = query === '' || description.includes(query) || category.includes(query);
-
-    // Solo se muestra si pasa ambos filtros
-    return matchesCategory && matchesSearch;
-  });
-
+// --- COMPONENTE DROPDOWN COMPACTO (Se mantiene igual que en la versión anterior) ---
+const CustomDropdown = ({ label, options, selectedValue, isOpen, onToggle, onSelect, zIndex }) => {
   return (
-    <View className="flex-1 bg-[#f8fafc]">
-      <Header />
-
-      <ScrollView className="flex-1 px-6 pt-2" showsVerticalScrollIndicator={false}>
-        
-        <Text className="text-3xl font-bold text-slate-800 mb-6">
-          Explore Auctions
+    <View className="relative w-full" style={{ zIndex }}>
+      <Text className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">{label}</Text>
+      
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={onToggle}
+        className={`flex-row justify-between items-center bg-white border rounded-xl px-2.5 py-2.5 ${isOpen ? 'border-[#a78bfa] shadow-sm shadow-purple-200' : 'border-slate-200'}`}
+      >
+        <Text 
+          className={`font-medium text-xs flex-1 mr-1 ${selectedValue === 'All' ? 'text-slate-400' : 'text-slate-800'}`} 
+          numberOfLines={1}
+        >
+          {selectedValue === 'All' ? 'All' : selectedValue}
         </Text>
-        
-        {/* --- BARRA DE BÚSQUEDA --- */}
-        <View className="flex-row items-center bg-slate-200/60 rounded-2xl px-4 py-4 mb-6">
-          <Feather name="search" size={20} color="#64748b" />
-          <TextInput 
-            className="flex-1 ml-3 text-slate-800"
-            placeholder="Search catalogs, auctions..."
-            placeholderTextColor="#94a3b8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none" // Ayuda a que el teclado del celu no joda con las mayúsculas en las búsquedas
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
-              <Feather name="x-circle" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <Feather name={isOpen ? "chevron-up" : "chevron-down"} size={14} color={isOpen ? "#a78bfa" : "#94a3b8"} />
+      </TouchableOpacity>
 
-        {/* --- FILTROS DE CATEGORÍAS (AHORA DINÁMICOS) --- */}
-        <View className="mb-6">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
-            {dynamicCategories.map((category) => {
-              const isActive = activeCategory === category;
-              return (
-                <TouchableOpacity 
-                  key={category}
-                  onPress={() => setActiveCategory(category)}
-                  className={`px-5 py-2.5 rounded-full mr-3 border ${
-                    isActive 
-                      ? 'bg-[#a78bfa] border-[#a78bfa]' 
-                      : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <Text className={`font-bold text-sm ${isActive ? 'text-white' : 'text-slate-600'}`}>
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+      {isOpen && (
+        <View 
+          className="absolute top-[55px] left-0 bg-white border border-slate-100 rounded-xl shadow-xl shadow-slate-300 overflow-hidden min-w-[120px]" 
+          style={{ elevation: 5 }}
+        >
+          <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 180 }}>
+            {options.map((option, index) => (
+              <TouchableOpacity 
+                key={option}
+                onPress={() => {
+                  onSelect(option);
+                  onToggle();
+                }}
+                className={`px-3 py-3 ${index !== options.length - 1 ? 'border-b border-slate-50' : ''} ${selectedValue === option ? 'bg-purple-50' : 'bg-white'}`}
+              >
+                <Text className={`text-xs ${selectedValue === option ? 'font-bold text-[#7C3AED]' : 'text-slate-600'}`}>
+                  {option === 'All' ? 'All' : option}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
-
-        {/* --- RESULTADOS --- */}
-        <View className="mb-10">
-          {filteredCatalogs.length > 0 ? (
-            filteredCatalogs.map((catalog) => (
-              <TouchableOpacity 
-                key={catalog.id} 
-                className="bg-white rounded-3xl mb-6 shadow-sm shadow-slate-200 overflow-hidden"
-                onPress={() => navigation.navigate('CatalogItems', { catalogId: catalog.id })}
-              >
-                
-                <View className="relative">
-                  <Image 
-                    source={{ uri: catalog.image }} 
-                    className="w-full h-44" 
-                    resizeMode="cover"
-                  />
-                  
-                  <View className={`absolute top-4 left-4 px-2.5 py-1 rounded-lg flex-row items-center ${getStatusClass(catalog.subasta?.estado)}`}>
-                    {catalog.subasta?.estado === 'abierta' && (
-                      <View className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] mr-1.5" />
-                    )}
-                    <Text className="text-white font-bold text-[10px] uppercase tracking-wider">
-                      {getStatusLabel(catalog.subasta?.estado)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="p-5">
-                  <Text className="text-xl font-bold text-slate-800 mb-2">{catalog.descripcion}</Text>
-                  <Text className="text-sm text-slate-500 mb-5 leading-5" numberOfLines={2}>
-                    Auction {catalog.subasta?.identificador} | {catalog.subasta?.categoria}
-                  </Text>
-                  
-                  <View className="flex-row items-center">
-                    <View className="flex-row items-center mr-6">
-                      <Feather name="package" size={14} color="#64748b" />
-                      <Text className="text-xs text-slate-600 font-medium ml-1.5">
-                        {catalog.totalItems} Items
-                      </Text>
-                    </View>
-                    
-                    <View className="flex-row items-center">
-                      <Feather name="calendar" size={14} color="#64748b" />
-                      <Text className="text-xs text-slate-600 font-medium ml-1.5">
-                        {catalog.subasta?.fecha} {catalog.subasta?.hora}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-              </TouchableOpacity>
-            ))
-          ) : (
-            /* Estado vacío si la búsqueda no encuentra nada */
-            <View className="items-center justify-center py-10 mt-4 bg-white rounded-3xl border border-slate-100 border-dashed">
-              <Feather name="search" size={32} color="#cbd5e1" className="mb-3" />
-              <Text className="text-slate-800 font-bold text-base mb-1">No results found</Text>
-              <Text className="text-slate-400 text-sm text-center px-6">
-                Try adjusting your search "{searchQuery}" or selecting a different category.
-              </Text>
-            </View>
-          )}
-        </View>
-
-      </ScrollView>
-      <Footer />
+      )}
     </View>
+  );
+};
+
+export default function ExploreCatalogsScreen({ navigation }) {
+  // ESTADOS DE FILTROS
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeItemCategory, setActiveItemCategory] = useState('All');
+  const [activeStatus, setActiveStatus] = useState('All');
+  const [activeUserCategory, setActiveUserCategory] = useState('All');
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  // EXTRACCIÓN DINÁMICA DE OPCIONES
+  const itemCategories = ['All', ...new Set(catalogsData.map(c => c.itemCategory).filter(Boolean))];
+  const statuses = ['All', ...new Set(catalogsData.map(c => c.subasta?.estado).filter(Boolean))];
+  const userCategories = ['All', ...new Set(catalogsData.map(c => c.subasta?.categoria).filter(Boolean))];
+
+  // UTILIDADES DE UI PARA ESTADOS
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'abierta':
+        return { label: 'LIVE', color: 'bg-red-500', textColor: 'text-red-700', icon: 'pulse' };
+      case 'cerrada':
+        return { label: 'ENDED', color: 'bg-slate-500', textColor: 'text-slate-700', icon: 'check-circle-outline' };
+      default:
+        return { label: 'UPCOMING', color: 'bg-blue-500', textColor: 'text-blue-700', icon: 'clock-outline' };
+    }
+  };
+
+  // LÓGICA DE FILTRADO
+  const filteredCatalogs = catalogsData.filter((catalog) => {
+    const query = searchQuery.toLowerCase().trim();
+    const description = catalog.descripcion ? catalog.descripcion.toLowerCase() : '';
+    const matchesSearch = query === '' || description.includes(query);
+    const matchesItemCat = activeItemCategory === 'All' || catalog.itemCategory === activeItemCategory;
+    const matchesStatus = activeStatus === 'All' || catalog.subasta?.estado === activeStatus;
+    const matchesUserCat = activeUserCategory === 'All' || catalog.subasta?.categoria === activeUserCategory;
+    return matchesSearch && matchesItemCat && matchesStatus && matchesUserCat;
+  });
+
+  const handleTouchOutside = () => {
+    if (openDropdown !== null) setOpenDropdown(null);
+  };
+
+  // Formateador de fecha simple (ej: "OCT 24, 2026")
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options).toUpperCase();
+  };
+
+  // Formateador de hora simple (ej: "2:00 PM")
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  return (
+    <TouchableWithoutFeedback onPress={handleTouchOutside}>
+      <View className="flex-1 bg-[#f8fafc]">
+        <Header />
+
+        <ScrollView 
+          className="flex-1 px-6 pt-2" 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          
+          <Text className="text-3xl font-bold text-slate-800 mb-6">
+            Explore Auctions
+          </Text>
+          
+          {/* --- BARRA DE BÚSQUEDA --- */}
+          <View className="flex-row items-center bg-slate-100 rounded-2xl px-4 py-3.5 mb-4 border border-slate-200">
+            <Feather name="search" size={18} color="#64748b" />
+            <TextInput 
+              className="flex-1 ml-3 text-sm text-slate-800"
+              placeholder="Search catalogs, descriptions..."
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              onFocus={() => setOpenDropdown(null)} 
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
+                <Feather name="x-circle" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* --- SECCIÓN DE DROPDOWNS EN HORIZONTAL --- */}
+          <View className="flex-row justify-between items-center mb-6 z-50 relative" style={{ zIndex: 50 }}>
+            <View className="flex-1 mr-2" style={{ zIndex: 3000 }}>
+              <CustomDropdown label="Category" options={itemCategories} selectedValue={activeItemCategory} isOpen={openDropdown === 'item'} onToggle={() => setOpenDropdown(openDropdown === 'item' ? null : 'item')} onSelect={setActiveItemCategory} zIndex={3000} />
+            </View>
+            <View className="flex-1 mr-2" style={{ zIndex: 2000 }}>
+              <CustomDropdown label="Status" options={statuses} selectedValue={activeStatus} isOpen={openDropdown === 'status'} onToggle={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')} onSelect={setActiveStatus} zIndex={2000} />
+            </View>
+            <View className="flex-1" style={{ zIndex: 1000 }}>
+              <CustomDropdown label="User" options={userCategories} selectedValue={activeUserCategory} isOpen={openDropdown === 'user'} onToggle={() => setOpenDropdown(openDropdown === 'user' ? null : 'user')} onSelect={setActiveUserCategory} zIndex={1000} />
+            </View>
+          </View>
+
+          {/* --- RESULTADOS: NUEVO DISEÑO DE TARJETAS --- */}
+          <View>
+            {filteredCatalogs.length > 0 ? (
+              filteredCatalogs.map((catalog) => {
+                const statusInfo = getStatusInfo(catalog.subasta?.estado);
+                
+                return (
+                  <TouchableOpacity 
+                    key={catalog.id} 
+                    className="bg-white rounded-3xl mb-6 shadow-md shadow-slate-100 overflow-hidden border border-slate-100"
+                    onPress={() => navigation.navigate('CatalogItems', { catalogId: catalog.id })}
+                  >
+                    <View className="flex-row p-4 items-center">
+                      {/* Panel de Imagen Izquierdo */}
+                      <View className="relative mr-4">
+                        <Image 
+                          source={{ uri: catalog.image }} 
+                          className="w-28 h-28 rounded-2xl" 
+                          resizeMode="cover"
+                        />
+                        {/* Etiqueta de Estado Flotante */}
+                        <View className={`absolute top-2 left-2 px-2.5 py-1 rounded-lg ${statusInfo.color}`}>
+                          <Text className="text-white font-bold text-[9px] uppercase tracking-wider">
+                            {statusInfo.label}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Panel de Información Derecho */}
+                      <View className="flex-1 pr-2">
+                        <Text className="text-lg font-bold text-slate-900 mb-1" numberOfLines={2}>
+                          {catalog.descripcion}
+                        </Text>
+                        
+                        {/* Fila de Estado Detallado */}
+                        <View className="flex-row items-center mb-3">
+                          <MaterialCommunityIcons name={statusInfo.icon} size={14} className={statusInfo.textColor} />
+                          <Text className={`text-xs font-medium ml-1.5 ${statusInfo.textColor}`}>
+                            Status: {catalog.subasta?.estado.charAt(0).toUpperCase() + catalog.subasta?.estado.slice(1)}
+                          </Text>
+                        </View>
+
+                        {/* Detalles Clave con Iconos */}
+                        <View className="space-y-1.5 border-t border-slate-100 pt-3">
+                          <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center">
+                              <Feather name="calendar" size={13} color="#64748b" />
+                              <Text className="text-xs text-slate-600 font-medium ml-2">
+                                {formatDate(catalog.subasta?.fecha)}
+                              </Text>
+                            </View>
+                            <Text className="text-xs text-slate-600 font-medium">
+                              {formatTime(catalog.subasta?.hora)}
+                            </Text>
+                          </View>
+                          
+                          <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center">
+                              <Feather name="package" size={13} color="#64748b" />
+                              <Text className="text-xs text-slate-600 font-medium ml-2">
+                                {catalog.totalItems} Items
+                              </Text>
+                            </View>
+                            <View className="bg-amber-100 px-2 py-0.5 rounded">
+                              <Text className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                                {catalog.subasta?.categoria}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      
+                      {/* Indicador de flecha de micro-interacción */}
+                      <Feather name="chevron-right" size={18} color="#cbd5e1" className="ml-1" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              // Vista de "No se encontraron resultados" (Se mantiene igual)
+              <View className="items-center justify-center py-10 mt-4 bg-white rounded-3xl border border-slate-100 border-dashed">
+                <Feather name="filter" size={32} color="#cbd5e1" className="mb-3" />
+                <Text className="text-slate-800 font-bold text-base mb-1">No matches found</Text>
+                <Text className="text-slate-400 text-sm text-center px-6 mb-4">
+                  Try adjusting your search or resetting the dropdowns.
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSearchQuery('');
+                    setActiveItemCategory('All');
+                    setActiveStatus('All');
+                    setActiveUserCategory('All');
+                  }}
+                  className="bg-purple-100 px-5 py-2.5 rounded-xl"
+                >
+                  <Text className="font-bold text-purple-600">Clear all filters</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+        </ScrollView>
+        <Footer />
+      </View>
+    </TouchableWithoutFeedback>
   );
 }

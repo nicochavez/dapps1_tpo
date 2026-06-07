@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import Footer from '../components/Footer';
@@ -17,6 +17,19 @@ export default function BidsScreen({ navigation }) {
 
   // 1. Obtenemos al usuario logueado desde la memoria global
   const { user: currentUser } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in required',
+        'You need to be logged in to view your bids.',
+        [
+          { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+        ]  
+      );
+    }
+  }, [currentUser]);
 
   if (!currentUser) return null;
 

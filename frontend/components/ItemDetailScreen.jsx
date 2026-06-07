@@ -52,10 +52,12 @@ export default function ItemDetailScreen({ route, navigation }) {
     : '—';
   // ────────────────────────────────────────────────────────────────────────
 
-  // Enmascaramos los precios en el item antes de pasarlo a los sub-componentes.
-  // Asi no importa como los rendericen: nunca tendran el valor real.
+  // El dueño del item siempre puede ver los precios de su propio item
+  const isOwner = isLoggedIn && currentUser.id === item?.ownerId;
+
+  // Enmascaramos los precios solo si no tiene acceso Y no es el dueño
   const MASKED = '$ —,—';
-  const maskedItem = canAccessPrices
+  const maskedItem = (canAccessPrices || isOwner)
     ? item
     : {
         ...item,
@@ -70,9 +72,10 @@ export default function ItemDetailScreen({ route, navigation }) {
     parentCatalog,
     navigation,
     canAccessPrices,
-    lockReason,
+    lockReason: isOwner ? null : lockReason, // el dueño no ve el banner de restriccion
     requiredLabel,
     currentUser,
+    isOwner,
   };
 
   const renderStateView = () => {

@@ -2,6 +2,7 @@
   {
     "id": "c1",
     "descripcion": "The Heritage Collection",
+    "itemCategory": "Luxury Watches",
     "subasta": {
       "identificador": 101,
       "fecha": "2026-10-24",
@@ -15,6 +16,7 @@
   {
     "id": "c2",
     "descripcion": "Mid-Century Modern",
+    "itemCategory": "Fine Art",
     "subasta": {
       "identificador": 102,
       "fecha": "2026-11-02",
@@ -28,6 +30,7 @@
   {
     "id": "c3",
     "descripcion": "Contemporary Masters",
+    "itemCategory": "Jewelry",
     "subasta": {
       "identificador": 103,
       "fecha": "2026-12-12",
@@ -41,6 +44,7 @@
   {
     "id": "c4",
     "descripcion": "Motorcar Legends",
+    "itemCategory": "Classic Cars",
     "subasta": {
       "identificador": 104,
       "fecha": "2026-12-05",
@@ -54,6 +58,7 @@
   {
     "id": "c5",
     "descripcion": "New Tech",
+    "itemCategory": "Electronics",
     "subasta": {
       "identificador": 105,
       "fecha": "2026-10-10",

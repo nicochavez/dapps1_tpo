@@ -1,8 +1,24 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { AuthContext } from '../context/AuthContext';
 
 export default function CreateObjectStep1({ navigation }) {
+  const { user: currentUser } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in required',
+        'You need to be logged in to list an item.',
+        [
+          { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+        ]  
+      );
+    }
+  }, [currentUser]);
+
   // Estados para almacenar los datos del formulario
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -17,6 +33,8 @@ export default function CreateObjectStep1({ navigation }) {
   // Listas de opciones para los desplegables (simulando los datos de tu plataforma)
   const categoriesList = ['Luxury Watches', 'Fine Art', 'Classic Cars', 'Jewelry', 'Electronics'];
   const subCategoriesList = ['Vintage', 'Modern', 'Contemporary', 'Antique', 'Limited Edition'];
+
+  if (!currentUser) return null;
 
   // Validación: Todos los campos deben estar completos
   const isFormValid = title.trim().length > 0 && category.length > 0 && subCategory.length > 0 && description.trim().length > 0;

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as Linking from 'expo-linking'; // <-- 1. NUEVO IMPORT DE EXPO LINKING
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from './views/SplashScreen';
@@ -27,14 +28,29 @@ import ProfileScreen from './views/ProfileScreen';
 import { AuthProvider } from './context/AuthContext';
 import MyAuctionsScreen from './views/MyAuctionsScreen';
 
-
 const Stack = createNativeStackNavigator();
 
+// <-- 2. CREAMOS EL PREFIJO PARA EXPO -->
+const prefix = Linking.createURL('/');
+
 export default function App() {
+  
+  // <-- 3. DEFINIMOS LA CONFIGURACIÓN DE RUTAS PROFUNDAS -->
+  const linking = {
+    prefixes: [prefix],
+    config: {
+      screens: {
+        // Mapeamos la vista 'RegisterStep3' al path '/registro/confirmacion'
+        RegisterStep3: 'registro/confirmacion', 
+      },
+    },
+  };
+
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Login">
+      {/* <-- 4. PASAMOS LA CONFIGURACIÓN AL NAVIGATION CONTAINER --> */}
+      <NavigationContainer linking={linking}>
+        <Stack.Navigator initialRouteName="Splash">
           
           <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>

@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Header1 from '../components/Header1';
 
 export default function RegisterStep1({ navigation }) {
+  // 1. Agregamos el estado para guardar todos los datos del formulario
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    addressFullName: '',
+    streetAddress: '',
+    city: '',
+    zipCode: '',
+    country: 'Argentina'
+  });
+
+  // 2. Función para validar y pasar al Paso 2
+  const handleNext = () => {
+    // Validamos que los campos principales no estén vacíos
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.streetAddress || !formData.city) {
+      alert('Por favor completa todos los campos para continuar.');
+      return;
+    }
+
+    // Navegamos al Paso 2 enviando los datos en los parámetros
+    navigation.navigate('RegisterStep2', { step1Data: formData });
+  };
+
   return (
     <KeyboardAvoidingView 
       // En Android 'padding' suele ser más estable para evitar saltos bruscos
@@ -41,39 +65,84 @@ export default function RegisterStep1({ navigation }) {
         <View className="flex-row justify-between mb-4">
           <View className="flex-1 mr-2">
             <Text className="font-bold text-black mb-2 text-sm">First Name</Text>
-            <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" placeholder="e.g. Alex" placeholderTextColor="#94a3b8" />
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" 
+              placeholder="e.g. Alex" 
+              placeholderTextColor="#94a3b8" 
+              value={formData.firstName}
+              onChangeText={(text) => setFormData({...formData, firstName: text})}
+            />
           </View>
           <View className="flex-1 ml-2">
             <Text className="font-bold text-black mb-2 text-sm">Last Name</Text>
-            <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" placeholder="e.g. Rivers" placeholderTextColor="#94a3b8" />
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" 
+              placeholder="e.g. Rivers" 
+              placeholderTextColor="#94a3b8" 
+              value={formData.lastName}
+              onChangeText={(text) => setFormData({...formData, lastName: text})}
+            />
           </View>
         </View>
 
         <Text className="font-bold text-black mb-2 text-sm">Email</Text>
-        <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-6" placeholder="email" placeholderTextColor="#94a3b8" keyboardType="email-address" />
+        <TextInput 
+          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-6" 
+          placeholder="email" 
+          placeholderTextColor="#94a3b8" 
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={formData.email}
+          onChangeText={(text) => setFormData({...formData, email: text})}
+        />
 
         <Text className="font-bold text-black mb-4 text-base">Add Address</Text>
         
         <Text className="font-bold text-black mb-2 text-sm">Full Name</Text>
-        <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4" placeholder="name" placeholderTextColor="#94a3b8" />
+        <TextInput 
+          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4" 
+          placeholder="name" 
+          placeholderTextColor="#94a3b8" 
+          value={formData.addressFullName}
+          onChangeText={(text) => setFormData({...formData, addressFullName: text})}
+        />
 
         <Text className="font-bold text-black mb-2 text-sm">Street Address</Text>
-        <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4" placeholder="street 1234" placeholderTextColor="#94a3b8" />
+        <TextInput 
+          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4" 
+          placeholder="street 1234" 
+          placeholderTextColor="#94a3b8" 
+          value={formData.streetAddress}
+          onChangeText={(text) => setFormData({...formData, streetAddress: text})}
+        />
 
         <View className="flex-row justify-between mb-4">
           <View className="flex-1 mr-2">
             <Text className="font-bold text-black mb-2 text-sm">City</Text>
-            <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" placeholder="Buenos Aires" placeholderTextColor="#94a3b8" />
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" 
+              placeholder="Buenos Aires" 
+              placeholderTextColor="#94a3b8" 
+              value={formData.city}
+              onChangeText={(text) => setFormData({...formData, city: text})}
+            />
           </View>
           <View className="flex-1 ml-2">
             <Text className="font-bold text-black mb-2 text-sm">ZIP Code</Text>
-            <TextInput className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" placeholder="0000" placeholderTextColor="#94a3b8" />
+            <TextInput 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black" 
+              placeholder="0000" 
+              placeholderTextColor="#94a3b8"
+              keyboardType="numeric"
+              value={formData.zipCode}
+              onChangeText={(text) => setFormData({...formData, zipCode: text})}
+            />
           </View>
         </View>
 
         <Text className="font-bold text-black mb-2 text-sm">Country</Text>
         <View className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-8 flex-row justify-between items-center">
-          <Text className="text-black">Argentina</Text>
+          <Text className="text-black">{formData.country}</Text>
           <Feather name="chevron-down" size={20} color="#94a3b8" />
         </View>
 
@@ -84,7 +153,7 @@ export default function RegisterStep1({ navigation }) {
         
         <TouchableOpacity 
           className="bg-[#7C3AED] rounded-2xl py-4 items-center flex-row justify-center mb-6"
-          onPress={() => navigation.navigate('RegisterStep2')}
+          onPress={handleNext} /* 3. Cambiamos el onPress para usar la validación */
         >
           <Text className="text-white font-bold text-lg mr-2">Continue</Text>
           <Feather name="arrow-right" size={20} color="white" />

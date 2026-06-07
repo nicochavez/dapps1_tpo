@@ -1,5 +1,5 @@
-import React, { useContext } from 'react'; // <-- Agregamos useContext
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useContext, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'; 
 
 import Footer from '../components/Footer';
@@ -29,7 +29,19 @@ export default function NotificationsScreen({ navigation }) {
   // Obtenemos al usuario activo desde la burbuja global
   const { user: currentUser } = useContext(AuthContext);
 
-  // Protección estándar por si se corta la sesión
+  useEffect(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in required',
+        'You need to be logged in to view your notifications.',
+        [
+          { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+        ]  
+      );
+    }
+  }, [currentUser]);
+
   if (!currentUser) return null;
 
   // Filtramos la base de datos usando el ID dinámico

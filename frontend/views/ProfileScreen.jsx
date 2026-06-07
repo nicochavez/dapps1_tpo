@@ -1,8 +1,9 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { Alert } from 'react-native';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -19,6 +20,21 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
 
   const { user: currentUser, logout } = useContext(AuthContext);
+
+  // Redirige a Login si no hay usuario logueado (ya sea que nunca se logueó
+  // o que acaba de hacer logout). useEffect evita el render parcial.
+  useEffect(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in required',
+        'You need to be logged in to view your profile.',
+        [
+          { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+        ]     
+      );
+    }
+  }, [currentUser]);
 
   if (!currentUser) return null;
 
@@ -44,8 +60,11 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    // Limpiamos el contexto (setUser(null) y setToken(null) en AuthContext).
+    // El useEffect de arriba detecta el cambio de currentUser a null
+    // y hace el reset de navegación automáticamente.
     logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
   return (
@@ -172,7 +191,7 @@ export default function ProfileScreen() {
 
         {/* --- BOTÓN LOG OUT --- */}
         <TouchableOpacity 
-          onPress={handleLogout} 
+          onPress={handleLogout } 
           className="bg-red-50 rounded-2xl py-4 items-center justify-center mb-10 border border-red-100"
         >
           <Text className="text-red-500 font-bold text-sm">Log Out</Text>

@@ -8,7 +8,7 @@ import { AuthContext } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [dni, setDni] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -18,13 +18,13 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = () => {
     setErrorMessage('');
 
-    if (!email || !password) {
-      setErrorMessage('Please enter both email and password.');
+    if (!dni || !password) {
+      setErrorMessage('Please enter both DNI and password.');
       return;
     }
 
     const foundUser = usersData.find(
-      u => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
+      u => u.dni === dni.trim() && u.password === password
     );
 
     if (foundUser) {
@@ -33,7 +33,7 @@ export default function LoginScreen({ navigation }) {
       // 2. Navegamos al Home (¡Ya no hace falta pasarle el parámetro!)
       navigation.navigate('Home');
     } else {
-      setErrorMessage('Invalid email or password. Please try again.');
+      setErrorMessage('Invalid DNI or password. Please try again.');
     }
   };
 
@@ -66,17 +66,16 @@ export default function LoginScreen({ navigation }) {
             ) : null}
 
             {/* --- CAMPO EMAIL --- */}
-            <Text className="font-bold text-black mb-2 ml-1 text-sm">Email</Text>
+            <Text className="font-bold text-black mb-2 ml-1 text-sm">DNI</Text>
             <View className="bg-slate-50 rounded-2xl mb-6 border border-transparent focus:border-purple-200">
               <TextInput 
                 className="px-4 py-4 text-black"
-                placeholder="Enter your email"
+                placeholder="Enter your DNI"
                 placeholderTextColor="#94a3b8"
-                keyboardType="email-address"
-                autoCapitalize="none"
+                keyboardType="numeric"
                 // Conectamos el input al estado
-                value={email}
-                onChangeText={setEmail}
+                value={dni}
+                onChangeText={setDni}
               />
             </View>
 

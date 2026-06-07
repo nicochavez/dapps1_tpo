@@ -6,7 +6,7 @@ export default function SplashScreen({ navigation }) {
   useEffect(() => {
     // A los 2000 milisegundos (2 segundos) reemplaza la pantalla por el Login
     const timer = setTimeout(() => {
-      navigation.replace('Login'); 
+      navigation.replace('Home'); 
     }, 2000);
 
     return () => clearTimeout(timer); // Limpiamos el timer por las dudas

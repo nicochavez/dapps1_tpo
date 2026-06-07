@@ -1,5 +1,5 @@
-import React, { useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useContext, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -12,6 +12,19 @@ import itemsData from '../data/items.json';
 export default function MyAuctionsScreen() {
   const navigation = useNavigation();
   const { user: currentUser } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in required',
+        'You need to be logged in to view your auctions.',
+        [
+          { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+        ]  
+      );
+    }
+  }, [currentUser]);
 
   if (!currentUser) return null;
 

@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Header1 from '../components/Header1';
 
-export default function RegisterStep2({ navigation }) {
+export default function RegisterStep2({ route, navigation }) {
+  // Recibimos los datos del Paso 1
+  const { step1Data } = route.params || {};
+
   const [selectedImages, setSelectedImages] = useState({});
+  const [idCardNumber, setIdCardNumber] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const pickImage = async (imageKey) => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -20,6 +25,53 @@ export default function RegisterStep2({ navigation }) {
         ...prev,
         [imageKey]: result.assets[0].uri,
       }));
+    }
+  };
+
+  const handleRegister = async () => {
+    // 1. Validamos que el DNI no esté vacío
+    if (!idCardNumber) {
+      alert('Please enter your Id Card Number.');
+      return;
+    }
+    
+    // 2. Validamos que ambas fotos estén cargadas
+    if (!selectedImages['id-front'] || !selectedImages['id-back']) {
+      alert('Please upload both front and back photos of your ID.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      /* ========================================================
+        CÓDIGO PARA EL BACKEND (Descomentar y ajustar la URL)
+        ========================================================
+        const response = await fetch('http://TU_IP_O_DOMINIO/api/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...step1Data,          
+            dni: idCardNumber,     
+            verificado: false      
+          })
+        });
+
+        if (!response.ok) throw new Error('Error creating user');
+        const userData = await response.json();
+        const userId = userData.id;
+      */
+
+      // SIMULACIÓN TEMPORAL (Borrar cuando conecten el backend real)
+      const userId = "demo-user-id-123"; 
+
+      // Avanzamos al Paso Pendiente pasando el ID del usuario Y los datos del Step1
+      // para que RegisterPending pueda usarlos al llamar a login() (email real, etc.)
+      navigation.navigate('RegisterPending', { userId, step1Data });
+
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,13 +106,15 @@ export default function RegisterStep2({ navigation }) {
           </View>
         </View>
 
-        {/* --- NUEVO CAMPO DNI --- */}
+        {/* --- CAMPO DNI --- */}
         <Text className="font-bold text-black mb-2 text-sm">Id Card Number</Text>
         <TextInput 
           className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 mb-6"
           placeholder="Enter your Id Card Number"
           placeholderTextColor="#94a3b8"
           keyboardType="numeric"
+          value={idCardNumber}
+          onChangeText={setIdCardNumber}
         />
 
         {/* Uploaders */}
@@ -110,10 +164,17 @@ export default function RegisterStep2({ navigation }) {
 
         <TouchableOpacity 
           className="bg-[#7C3AED] rounded-2xl py-4 items-center flex-row justify-center mb-6"
-          onPress={() => navigation.navigate('RegisterPending')}
+          onPress={handleRegister}
+          disabled={loading}
         >
-          <Text className="text-white font-bold text-lg mr-2">Continue</Text>
-          <Feather name="arrow-right" size={20} color="white" />
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <>
+              <Text className="text-white font-bold text-lg mr-2">Continue</Text>
+              <Feather name="arrow-right" size={20} color="white" />
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>

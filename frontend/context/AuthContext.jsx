@@ -1,7 +1,11 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 import { loginRequest } from '../services/api';
 
 export const AuthContext = createContext();
+
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -25,6 +29,7 @@ export const AuthProvider = ({ children }) => {
       email: credentialsOrUser?.email,
       name: credentialsOrUser?.name,
       avatar: credentialsOrUser?.avatar,
+      category: credentialsOrUser?.category,  // campo correcto para la regla de categorias
       badge: credentialsOrUser?.badge,
       documento,
       token: receivedToken,
