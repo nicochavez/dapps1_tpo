@@ -33,7 +33,7 @@ const CustomDropdown = ({ label, options, selectedValue, isOpen, onToggle, onSel
           className="absolute top-[55px] left-0 bg-white border border-slate-100 rounded-xl shadow-xl shadow-slate-300 overflow-hidden min-w-[120px]" 
           style={{ elevation: 5 }}
         >
-          <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 180 }}>
+          <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 300 }}>
             {options.map((option, index) => (
               <TouchableOpacity 
                 key={option}
