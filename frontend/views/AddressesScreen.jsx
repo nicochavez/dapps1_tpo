@@ -21,7 +21,7 @@ export default function AddressesScreen({ navigation }) {
           <Feather name="arrow-left" size={24} color="#7C3AED" />
         </TouchableOpacity>
         <Text className="text-xl font-bold text-[#7C3AED]">Addresses</Text>
-        <View className="w-8" /> {/* Espaciador para centrar el título */}
+        <View className="w-8">{/* Espaciador para centrar el título */}</View>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
@@ -62,9 +62,7 @@ export default function AddressesScreen({ navigation }) {
               </View>
 
               <Text className="text-slate-500 text-sm leading-5">
-                {address.street}{'\n'}
-                {address.city}, {address.zipCode}{'\n'}
-                {address.country}
+                {`${address.street}\n${address.city}, ${address.zipCode}\n${address.country}`}
               </Text>
             </View>
           ))}
@@ -112,8 +110,8 @@ export default function AddressesScreen({ navigation }) {
 
           {/* Botones */}
           <View className="flex-row space-x-4 mb-8">
-            <TouchableOpacity className="bg-slate-200 rounded-2xl py-4 flex-1 items-center">
-              <Text className="text-slate-600 font-bold text-sm">Cancel</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} className="bg-slate-200 rounded-2xl py-4 flex-1 items-center">
+              <Text className="text-slate-600 font-bold text-sm">Go Back</Text>
             </TouchableOpacity>
             <TouchableOpacity className="bg-[#a78bfa] rounded-2xl py-4 flex-1 items-center shadow-sm shadow-purple-200">
               <Text className="text-white font-bold text-sm">Save Address</Text>

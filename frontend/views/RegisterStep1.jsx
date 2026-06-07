@@ -52,13 +52,6 @@ export default function RegisterStep1({ navigation }) {
             </View>
             <Text className="text-xs text-slate-400">Photos</Text>
           </View>
-          <View className="flex-1 h-[2px] bg-slate-200 mx-2 -mt-4" />
-          <View className="items-center">
-            <View className="w-8 h-8 rounded-full bg-slate-200 items-center justify-center mb-1">
-              <Text className="text-slate-500 font-bold">3</Text>
-            </View>
-            <Text className="text-xs text-slate-400">Settings</Text>
-          </View>
         </View>
 
         {/* Formulario */}

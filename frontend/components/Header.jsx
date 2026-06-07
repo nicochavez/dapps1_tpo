@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import Logo from './Logo';
 
 export default function Header() {
   const navigation = useNavigation();
@@ -9,7 +10,7 @@ export default function Header() {
     <View className="flex-row justify-between items-center px-6 pb-4 pt-12 bg-[#f8fafc]">
       {/* Logo y Título */}
       <View className="flex-row items-center">
-        <Image source={require('../assets/logo.png')} className="w-6 h-6" />
+        <Logo size={32} />
         <Text className="text-xl font-bold text-[#7C3AED] ml-2">BidFlow</Text>
       </View>
 

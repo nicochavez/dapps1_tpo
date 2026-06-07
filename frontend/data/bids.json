@@ -1,50 +1,22 @@
 [
-  {
-    "id": "b1",
-    "userId": "u1",
-    "itemId": "i1",
-    "amount": 1250,
-    "status": "WINNING",
-    "category": "Active"
-  },
-  {
-    "id": "b2",
-    "userId": "u1",
-    "itemId": "i2",
-    "amount": 780,
-    "status": "OUTBID",
-    "category": "Active"
-  },
-  {
-    "id": "b3",
-    "userId": "u1",
-    "itemId": "i3",
-    "amount": 900,
-    "status": "WINNING",
-    "category": "Active"
-  },
-  {
-    "id": "b4",
-    "userId": "u1",
-    "itemId": "i4",
-    "amount": 1200,
-    "status": "OUTBID",
-    "category": "Active"
-  },
-  {
-    "id": "b5",
-    "userId": "u1",
-    "itemId": "i8",
-    "amount": 9500,
-    "status": "WON",
-    "category": "Won"
-  },
-  {
-    "id": "b6",
-    "userId": "u1",
-    "itemId": "i9",
-    "amount": 450,
-    "status": "WON",
-    "category": "Won"
-  }
+  { "id": "b1",  "itemId": "i8", "userId": "u2", "importe": 8200,  "ganador": false, "fecha": "2026-09-08T14:00:00" },
+  { "id": "b2",  "itemId": "i8", "userId": "u1", "importe": 8500,  "ganador": false, "fecha": "2026-09-08T14:03:00" },
+  { "id": "b3",  "itemId": "i8", "userId": "u2", "importe": 8900,  "ganador": false, "fecha": "2026-09-08T14:07:00" },
+  { "id": "b4",  "itemId": "i8", "userId": "u3", "importe": 9100,  "ganador": false, "fecha": "2026-09-08T14:12:00" },
+  { "id": "b5",  "itemId": "i8", "userId": "u1", "importe": 9500,  "ganador": true,  "fecha": "2026-09-08T14:18:00" },
+
+  { "id": "b6",  "itemId": "i3", "userId": "u1", "importe": 1050,  "ganador": false, "fecha": "2026-10-10T10:00:00" },
+  { "id": "b7",  "itemId": "i3", "userId": "u4", "importe": 1100,  "ganador": false, "fecha": "2026-10-10T10:04:00" },
+  { "id": "b8",  "itemId": "i3", "userId": "u1", "importe": 1150,  "ganador": false, "fecha": "2026-10-10T10:09:00" },
+  { "id": "b9",  "itemId": "i3", "userId": "u4", "importe": 1245,  "ganador": true,  "fecha": "2026-10-10T10:14:00" },
+
+  { "id": "b10", "itemId": "i9", "userId": "u2", "importe": 250,   "ganador": false, "fecha": "2026-12-12T14:00:00" },
+  { "id": "b11", "itemId": "i9", "userId": "u0", "importe": 320,   "ganador": false, "fecha": "2026-12-12T14:05:00" },
+  { "id": "b12", "itemId": "i9", "userId": "u2", "importe": 380,   "ganador": false, "fecha": "2026-12-12T14:10:00" },
+  { "id": "b13", "itemId": "i9", "userId": "u0", "importe": 450,   "ganador": true,  "fecha": "2026-12-12T14:15:00" },
+
+  { "id": "b14", "itemId": "i1", "userId": "u3", "importe": 65500, "ganador": false, "fecha": "2026-10-24T14:00:00" },
+  { "id": "b15", "itemId": "i1", "userId": "u1", "importe": 67000, "ganador": false, "fecha": "2026-10-24T14:06:00" },
+  { "id": "b16", "itemId": "i1", "userId": "u3", "importe": 69000, "ganador": false, "fecha": "2026-10-24T14:11:00" },
+  { "id": "b17", "itemId": "i1", "userId": "u1", "importe": 71500, "ganador": false, "fecha": "2026-10-24T14:15:00" }
 ]

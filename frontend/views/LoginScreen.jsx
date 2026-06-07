@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, P
 import { Feather } from '@expo/vector-icons'; 
 
 import usersData from '../data/users.json';
-// Importamos nuestro contexto
+import Logo from '../components/Logo';
 import { AuthContext } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
@@ -49,11 +49,7 @@ export default function LoginScreen({ navigation }) {
             
             {/* --- CABECERA --- */}
             <View className="flex-row items-center justify-center mb-2">
-              <Image 
-                source={require('../assets/logo.png')} 
-                className="w-8 h-8 mr-2" 
-                resizeMode="contain"
-              />
+              <Logo size={36} />
               <Text className="text-3xl font-bold text-[#7C3AED]">BidFlow</Text>
             </View>
             <Text className="text-center text-slate-400 mb-6">Sign in to start bidding</Text>
@@ -82,7 +78,7 @@ export default function LoginScreen({ navigation }) {
             {/* --- CAMPO CONTRASEÑA --- */}
             <View className="flex-row justify-between items-center mb-2 ml-1">
               <Text className="font-bold text-black text-sm">Password</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
                 <Text className="text-[#a78bfa] text-xs font-medium">Forgot Password?</Text>
               </TouchableOpacity>
             </View>

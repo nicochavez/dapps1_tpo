@@ -40,6 +40,7 @@ export default function ItemDetailScreen({ route, navigation }) {
   // ── Evaluación de acceso ─────────────────────────────────────────────────
   const requiredCategory = parentCatalog?.subasta?.categoria;
   const isLoggedIn       = !!currentUser;
+  const isOwner          = isLoggedIn && currentUser.id === item?.ownerId;
   const categoryOk       = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
   const canAccessPrices  = isLoggedIn && categoryOk;
 
@@ -73,6 +74,7 @@ export default function ItemDetailScreen({ route, navigation }) {
     lockReason,
     requiredLabel,
     currentUser,
+    isOwner,
   };
 
   const renderStateView = () => {

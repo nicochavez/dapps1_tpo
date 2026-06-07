@@ -1,5 +1,4 @@
 import * as React from 'react';
-import * as Linking from 'expo-linking'; // <-- 1. NUEVO IMPORT DE EXPO LINKING
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from './views/SplashScreen';
@@ -7,7 +6,7 @@ import LoginScreen from './views/LoginScreen';
 import RegisterStep1 from './views/RegisterStep1';
 import RegisterStep2 from './views/RegisterStep2';
 import RegisterPending from './views/RegisterPending';
-import RegisterStep3 from './views/RegisterStep3';
+import ChangePasswordScreen from './views/ChangePasswordScreen';
 import ExploreCatalogsScreen from './views/ExploreCatalogsScreen';
 import CatalogItemsScreen from './views/CatalogItemsScreen';
 import NotificationsScreen from './views/NotificationsScreen';
@@ -27,29 +26,17 @@ import AuctionUnderReviewScreen from './views/AuctionUnderReviewScreen';
 import ProfileScreen from './views/ProfileScreen';
 import { AuthProvider } from './context/AuthContext';
 import MyAuctionsScreen from './views/MyAuctionsScreen';
+import PaymentMethodsScreen from './views/PaymentMethodsScreen';
+import ForgotPasswordScreen from './views/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
-// <-- 2. CREAMOS EL PREFIJO PARA EXPO -->
-const prefix = Linking.createURL('/');
-
 export default function App() {
-  
-  // <-- 3. DEFINIMOS LA CONFIGURACIÓN DE RUTAS PROFUNDAS -->
-  const linking = {
-    prefixes: [prefix],
-    config: {
-      screens: {
-        // Mapeamos la vista 'RegisterStep3' al path '/registro/confirmacion'
-        RegisterStep3: 'registro/confirmacion', 
-      },
-    },
-  };
 
   return (
     <AuthProvider>
       {/* <-- 4. PASAMOS LA CONFIGURACIÓN AL NAVIGATION CONTAINER --> */}
-      <NavigationContainer linking={linking}>
+      <NavigationContainer>
         <Stack.Navigator initialRouteName="Splash">
           
           <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
@@ -57,7 +44,7 @@ export default function App() {
           <Stack.Screen name="RegisterStep1" component={RegisterStep1} options={{ headerShown: false }} />
           <Stack.Screen name="RegisterStep2" component={RegisterStep2} options={{ headerShown: false }} />
           <Stack.Screen name="RegisterPending" component={RegisterPending} options={{ headerShown: false }} />
-          <Stack.Screen name="RegisterStep3" component={RegisterStep3} options={{ headerShown: false }} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Home" component={ExploreCatalogsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CatalogItems" component={CatalogItemsScreen} initialParams={{ catalogId: 'c1' }} options={{ headerShown: false }} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
@@ -76,6 +63,8 @@ export default function App() {
           <Stack.Screen name="ManageObject" component={ManageObjectScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AuctionUnderReview" component={AuctionUnderReviewScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
 
         </Stack.Navigator>
       </NavigationContainer>

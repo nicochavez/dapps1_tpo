@@ -14,6 +14,7 @@ import { AuthContext } from '../context/AuthContext';
 // 2. Importamos TODAS las bases de datos necesarias para cruzar la información
 import paymentMethodsData from '../data/paymentMethods.json';
 import bidsData from '../data/bids.json';
+import itemsData from '../data/items.json';
 import catalogsData from '../data/catalogs.json';
 
 export default function ProfileScreen() {
@@ -41,22 +42,29 @@ export default function ProfileScreen() {
   // 3. Buscamos el medio de pago
   const userPaymentMethod = paymentMethodsData.find(pm => pm.userId === currentUser.id);
 
-  // 4. CÁLCULO DINÁMICO DE ESTADÍSTICAS
-  // Filtramos todas las pujas (bids) hechas por el usuario
-  const userBids = bidsData.filter(bid => bid.userId === currentUser.id);
-  
+  // 4. CÁLCULO DINÁMICO DE ESTADÍSTICAS — agrupado por subasta (igual que BidsScreen)
+  const userBids = bidsData.filter(b => b.userId === currentUser.id);
+
+  const auctionMap = {};
+  userBids.forEach(bid => {
+    const item = itemsData.find(i => i.id === bid.itemId);
+    const catalog = item ? catalogsData.find(c => c.id === item.catalogo) : null;
+    if (!item || !catalog) return;
+    if (!auctionMap[catalog.id]) auctionMap[catalog.id] = { won: false, isActive: false };
+    if (bid.ganador) auctionMap[catalog.id].won = true;
+    if (item.estadoLote === 'en_puja') auctionMap[catalog.id].isActive = true;
+  });
+
+  const auctions = Object.values(auctionMap);
+  const attended = auctions.length;
+  const wonCount = auctions.filter(a => a.won).length;
+  const winRate  = attended > 0 ? Math.round((wonCount / attended) * 100) : 0;
+
   const calculatedStats = {
-    // Total de pujas que hizo en su vida (el largo del array)
-    bidsPlaced: userBids.length,
-    
-    // Pujas ganadas
-    won: userBids.filter(bid => bid.status === 'WON').length,
-    
-    // Pujas activas en este momento
-    activeBids: userBids.filter(bid => bid.category === 'Active').length,
-    
-    // Cantidad de catálogos donde él es el dueño
-    myAuctions: catalogsData.filter(catalog => catalog.ownerId === currentUser.id).length
+    attended,
+    won: wonCount,
+    winRate,
+    myAuctions: catalogsData.filter(catalog => catalog.ownerId === currentUser.id).length,
   };
 
   const handleLogout = () => {
@@ -89,7 +97,7 @@ export default function ProfileScreen() {
           
           <Text className="text-2xl font-bold text-slate-800 mt-4 mb-1.5">{currentUser.name}</Text>
           <View className="bg-[#cca038] px-4 py-1.5 rounded-xl shadow-sm">
-            <Text className="text-white text-xs font-bold tracking-widest">{currentUser.badge}</Text>
+            <Text className="text-white text-xs font-bold tracking-widest">{currentUser.category}</Text>
           </View>
         </View>
 
@@ -97,28 +105,27 @@ export default function ProfileScreen() {
         <View className="bg-white rounded-3xl p-5 mb-6 shadow-sm shadow-slate-200 flex-row justify-between items-center">
           
           <View className="items-center flex-1 border-r border-slate-100">
-            <MaterialCommunityIcons name="gavel" size={20} color="#7C3AED" className="mb-2" />
-            {/* Reemplazamos los datos estáticos por los calculados */}
-            <Text className="text-2xl font-bold text-slate-800 mb-0.5">
-              {calculatedStats.bidsPlaced.toString().padStart(2, '0')}
+            <MaterialCommunityIcons name="gavel" size={20} color="#7C3AED" />
+            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
+              {calculatedStats.attended.toString().padStart(2, '0')}
             </Text>
-            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Bids Placed</Text>
+            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Attended</Text>
           </View>
-          
+
           <View className="items-center flex-1 border-r border-slate-100">
-            <MaterialCommunityIcons name="trophy-outline" size={20} color="#10b981" className="mb-2" />
-            <Text className="text-2xl font-bold text-slate-800 mb-0.5">
+            <MaterialCommunityIcons name="trophy-outline" size={20} color="#10b981" />
+            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
               {calculatedStats.won.toString().padStart(2, '0')}
             </Text>
             <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Won</Text>
           </View>
 
           <View className="items-center flex-1">
-            <MaterialCommunityIcons name="rocket-launch-outline" size={20} color="#a855f7" className="mb-2" />
-            <Text className="text-2xl font-bold text-slate-800 mb-0.5">
-              {calculatedStats.activeBids.toString().padStart(2, '0')}
+            <MaterialCommunityIcons name="chart-line" size={20} color="#a855f7" />
+            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
+              {calculatedStats.winRate}%
             </Text>
-            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Active Bids</Text>
+            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Win Rate</Text>
           </View>
 
         </View>
@@ -144,54 +151,65 @@ export default function ProfileScreen() {
         {/* --- DIGITAL WALLET (TARJETA DE CRÉDITO) --- */}
         <View className="flex-row justify-between items-center mb-4 px-1">
           <Text className="text-lg font-bold text-slate-800">Digital Wallet</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AddPaymentMethod')} className="flex-row items-center">
-            <Feather name="plus" size={16} color="#7C3AED" />
-            <Text className="text-sm font-bold text-[#7C3AED] ml-1">Add</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('PaymentMethods')} className="flex-row items-center">
+            <Feather name="settings" size={15} color="#7C3AED" />
+            <Text className="text-sm font-bold text-[#7C3AED] ml-1">Manage</Text>
           </TouchableOpacity>
         </View>
 
-        {userPaymentMethod ? (
-          <LinearGradient
-            colors={['#8b5cf6', '#a855f7', '#d946ef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-3xl p-6 mb-6 shadow-lg shadow-purple-300"
-          >
-            <View className="flex-row justify-between items-center mb-8">
-              <MaterialCommunityIcons name="contactless-payment-circle-outline" size={28} color="white" />
-              <Text className="text-white font-bold tracking-widest text-sm opacity-90">
-                {userPaymentMethod.tier}
-              </Text>
-            </View>
-
-            <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">
-              •••• •••• •••• {userPaymentMethod.lastFour}
-            </Text>
-
-            <View className="flex-row justify-between items-end">
-              <View className="flex-row space-x-12">
-                <View>
-                  <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">CARD HOLDER</Text>
-                  <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.cardHolder}</Text>
-                </View>
-                <View>
-                  <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
-                  <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.expiry}</Text>
-                </View>
+        <TouchableOpacity onPress={() => navigation.navigate('PaymentMethods')} activeOpacity={0.85}>
+          {userPaymentMethod ? (
+            <LinearGradient
+              colors={['#8b5cf6', '#a855f7', '#d946ef']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-3xl p-6 mb-6 shadow-lg shadow-purple-300"
+            >
+              <View className="flex-row justify-between items-center mb-8">
+                <MaterialCommunityIcons name="contactless-payment-circle-outline" size={28} color="white" />
+                <Text className="text-white font-bold tracking-widest text-sm opacity-90">
+                  {userPaymentMethod.tier}
+                </Text>
               </View>
-              
-              <Feather name="credit-card" size={24} color="white" className="opacity-90" />
+
+              <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">
+                {'•••• •••• •••• ' + userPaymentMethod.lastFour}
+              </Text>
+
+              <View className="flex-row justify-between items-end">
+                <View className="flex-row" style={{ gap: 32 }}>
+                  <View>
+                    <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">CARD HOLDER</Text>
+                    <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.cardHolder}</Text>
+                  </View>
+                  <View>
+                    <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
+                    <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.expiry}</Text>
+                  </View>
+                </View>
+                <Feather name="credit-card" size={24} color="white" style={{ opacity: 0.9 }} />
+              </View>
+            </LinearGradient>
+          ) : (
+            <View className="bg-slate-100 rounded-3xl p-6 mb-6 items-center border border-slate-200 border-dashed">
+              <Text className="text-slate-400 font-bold mb-2">No payment methods yet</Text>
+              <Text className="text-slate-300 text-xs">Tap to add one</Text>
             </View>
-          </LinearGradient>
-        ) : (
-          <View className="bg-slate-100 rounded-3xl p-6 mb-6 items-center border border-slate-200 border-dashed">
-            <Text className="text-slate-400 font-bold mb-2">No payment methods yet</Text>
-          </View>
-        )}
+          )}
+        </TouchableOpacity>
+
+        {/* --- CAMBIAR CONTRASEÑA --- */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ChangePassword')}
+          className="bg-white rounded-2xl py-4 items-center justify-center mb-4 border border-slate-200 flex-row"
+        >
+          <Feather name="lock" size={16} color="#7C3AED" />
+          <Text className="text-[#7C3AED] font-bold text-sm ml-2">Change Password</Text>
+        </TouchableOpacity>
 
         {/* --- BOTÓN LOG OUT --- */}
-        <TouchableOpacity 
-          onPress={handleLogout } 
+        <TouchableOpacity
+          onPress={handleLogout}
           className="bg-red-50 rounded-2xl py-4 items-center justify-center mb-10 border border-red-100"
         >
           <Text className="text-red-500 font-bold text-sm">Log Out</Text>

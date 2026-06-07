@@ -25,23 +25,38 @@ export default function CreateObjectStep1({ navigation }) {
   const [subCategory, setSubCategory] = useState('');
   const [condition, setCondition] = useState('New');
   const [description, setDescription] = useState('');
+  // Campos adicionales para obras de arte / objetos de diseñador
+  const [artistName, setArtistName] = useState('');
+  const [itemDate, setItemDate] = useState('');
+  const [itemHistory, setItemHistory] = useState('');
 
   // Estados para manejar si los desplegables están abiertos o cerrados
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false);
 
   // Listas de opciones para los desplegables (simulando los datos de tu plataforma)
-  const categoriesList = ['Luxury Watches', 'Fine Art', 'Classic Cars', 'Jewelry', 'Electronics'];
+  const categoriesList = ['Luxury Watches', 'Fine Art', 'Classic Cars', 'Jewelry', 'Electronics', 'Designer Objects'];
   const subCategoriesList = ['Vintage', 'Modern', 'Contemporary', 'Antique', 'Limited Edition'];
+
+  // Categorías que requieren los campos de artista / diseñador
+  const ART_OR_DESIGNER = new Set(['Fine Art', 'Designer Objects']);
+  const isArtOrDesigner = ART_OR_DESIGNER.has(category);
 
   if (!currentUser) return null;
 
-  // Validación: Todos los campos deben estar completos
-  const isFormValid = title.trim().length > 0 && category.length > 0 && subCategory.length > 0 && description.trim().length > 0;
+  const artFieldsValid = !isArtOrDesigner || (
+    artistName.trim().length > 0 && itemDate.trim().length > 0 && itemHistory.trim().length > 0
+  );
+  const isFormValid =
+    title.trim().length > 0 &&
+    category.length > 0 &&
+    subCategory.length > 0 &&
+    description.trim().length > 0 &&
+    artFieldsValid;
 
   const handleNext = () => {
-    // Empaquetamos los datos sumando la subcategoría
-    const itemData = { title, category, subCategory, condition, description };
+    const itemData = { title, category, subCategory, condition, description,
+      ...(isArtOrDesigner && { artistName, itemDate, itemHistory }) };
     navigation.navigate('CreateObjectStep2', { itemData });
   };
 
@@ -165,6 +180,55 @@ export default function CreateObjectStep1({ navigation }) {
             <Text className={`font-bold text-xs ${condition === 'Used' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>Used</Text>
           </TouchableOpacity>
         </View>
+
+        {/* --- CAMPOS ARTISTA / DISEÑADOR (solo para Fine Art / Designer Objects) --- */}
+        {isArtOrDesigner && (
+          <>
+            <View className="bg-purple-50 border border-purple-200 rounded-2xl p-4 mb-6 flex-row items-start">
+              <View className="bg-[#7C3AED] p-1.5 rounded-full mr-3 mt-0.5">
+                <Feather name="info" size={12} color="white" />
+              </View>
+              <Text className="text-purple-700 text-xs leading-5 flex-1">
+                As this is an artwork or designer object, please provide the creator, date and provenance history.
+              </Text>
+            </View>
+
+            <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Artist / Designer Name</Text>
+            <TextInput
+              className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-6"
+              placeholder="e.g., Pablo Picasso / Louis Vuitton"
+              placeholderTextColor="#94a3b8"
+              value={artistName}
+              onChangeText={setArtistName}
+            />
+
+            <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Date / Period</Text>
+            <TextInput
+              className="bg-slate-200/60 rounded-xl px-4 py-3 text-slate-800 font-medium mb-6"
+              placeholder="e.g., 1923 / ca. 1910–1920"
+              placeholderTextColor="#94a3b8"
+              value={itemDate}
+              onChangeText={setItemDate}
+            />
+
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="font-bold text-[10px] text-slate-800 tracking-widest uppercase">Provenance & History</Text>
+              <View className="bg-purple-100 px-2 py-0.5 rounded">
+                <Text className="text-[#7C3AED] text-[8px] font-bold uppercase tracking-widest">Required</Text>
+              </View>
+            </View>
+            <TextInput
+              className="bg-slate-200/60 rounded-xl px-4 py-4 text-slate-800 font-medium mb-6 min-h-[120px]"
+              placeholder="Describe context, previous owners, exhibition history, curiosities, certificates of authenticity..."
+              placeholderTextColor="#94a3b8"
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              value={itemHistory}
+              onChangeText={setItemHistory}
+            />
+          </>
+        )}
 
         {/* --- DESCRIPCIÓN DETALLADA (Hecha más grande) --- */}
         <View className="flex-row justify-between items-center mb-2">
