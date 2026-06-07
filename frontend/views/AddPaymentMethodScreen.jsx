@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
-// Importamos los 3 componentes que acabamos de crear
+import { AuthContext } from '../context/AuthContext';
 import CardForm from '../components/CardForm';
 import BankForm from '../components/BankForm';
 import CheckForm from '../components/CheckForm';
 
 export default function AddPaymentMethodScreen({ navigation }) {
-  // Estado para controlar qué tab está activa. 
-  // Opciones: 'bank', 'card', 'check'
+  const { user } = useContext(AuthContext);
   const [activeMethod, setActiveMethod] = useState('card');
 
-  // Función que decide qué componente renderizar
+  const onSuccess = () => navigation.goBack();
+
   const renderActiveForm = () => {
+    const props = { clienteId: user?.id, token: user?.token, onSuccess };
     switch (activeMethod) {
-      case 'bank': return <BankForm />;
-      case 'card': return <CardForm />;
-      case 'check': return <CheckForm />;
-      default: return <CardForm />;
+      case 'bank': return <BankForm {...props} />;
+      case 'card': return <CardForm {...props} />;
+      case 'check': return <CheckForm {...props} />;
+      default: return <CardForm {...props} />;
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white"
     >
-      {/* HEADER */}
       <View className="flex-row items-center px-6 pt-14 pb-6 bg-white z-10 border-b border-slate-100">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
           <Feather name="arrow-left" size={24} color="#7C3AED" />
@@ -36,12 +36,10 @@ export default function AddPaymentMethodScreen({ navigation }) {
       </View>
 
       <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-        
-        {/* SELECTOR DE TABS */}
+
         <View className="flex-row justify-between mb-8">
-          
-          {/* Opción 1: Bank Account */}
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={() => setActiveMethod('bank')}
             className={`flex-1 items-center justify-center p-3 rounded-2xl border mr-2 ${
               activeMethod === 'bank' ? 'border-[#7C3AED] bg-purple-50' : 'border-slate-200 bg-white'
@@ -53,8 +51,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* Opción 2: Credit/Debit Card */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setActiveMethod('card')}
             className={`flex-1 items-center justify-center p-3 rounded-2xl border mx-1 ${
               activeMethod === 'card' ? 'border-[#7C3AED] bg-purple-50' : 'border-slate-200 bg-white'
@@ -66,8 +63,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* Opción 3: Certified Check */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setActiveMethod('check')}
             className={`flex-1 items-center justify-center p-3 rounded-2xl border ml-2 ${
               activeMethod === 'check' ? 'border-[#7C3AED] bg-purple-50' : 'border-slate-200 bg-white'
@@ -81,7 +77,6 @@ export default function AddPaymentMethodScreen({ navigation }) {
 
         </View>
 
-        {/* RENDERIZADO DINÁMICO DEL FORMULARIO */}
         <View className="mb-10">
           {renderActiveForm()}
         </View>

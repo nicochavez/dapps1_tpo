@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.OffsetDateTime;
+
 @Entity
 @Table(name = "personas")
 @Data
@@ -24,10 +26,22 @@ public class PersonaEntity {
     @Column(name = "apellido", nullable = false)
     private String apellido;
 
-    /** Estado de registro: pendiente | aprobado | rechazado (columna estado_registro del ERD). */
-    @Column(name = "estado_registro")
-    private String estado;
+    @Column(name = "pais_origen")
+    private Integer paisOrigen;
 
     @Column(name = "foto")
     private byte[] foto;
+
+    @Column(name = "foto_dni_frente")
+    private byte[] fotoDniFrente;
+
+    @Column(name = "foto_dni_dorso")
+    private byte[] fotoDniDorso;
+
+    /** pendiente | aprobado | rechazado */
+    @Column(name = "estado")
+    private String estado;
+
+    @Column(name = "fecha_registro")
+    private OffsetDateTime fechaRegistro;
 }

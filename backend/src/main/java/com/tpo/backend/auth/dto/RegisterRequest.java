@@ -2,10 +2,14 @@ package com.tpo.backend.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class RegisterRequest {
+
+    // --- Datos personales ---
     @NotBlank
     private String nombre;
 
@@ -19,7 +23,33 @@ public class RegisterRequest {
     @NotBlank
     private String email;
 
-    private Integer numeroPais = 32;
+    // --- Fotos DNI (RF-01) ---
+    @NotNull
+    private MultipartFile dniFrente;
 
-    private boolean verificado = false;
+    @NotNull
+    private MultipartFile dniDorso;
+
+    // --- Domicilio legal (RF-01) ---
+    @NotBlank
+    private String calle;
+
+    @NotBlank
+    private String numeroCalle;
+
+    private String piso;
+
+    private String departamento;
+
+    @NotBlank
+    private String ciudad;
+
+    private String provincia;
+
+    @NotBlank
+    private String codigoPostal;
+
+    // --- País de origen (RF-01) ---
+    @NotNull
+    private Integer numeroPais;
 }

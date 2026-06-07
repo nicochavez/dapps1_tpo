@@ -28,6 +28,9 @@ public class DireccionService {
 
     @Transactional
     public DireccionDto crear(Long personaId, DireccionRequest request) {
+        if (request.isFavorito()) {
+            clearFavorito(personaId, null);
+        }
         DireccionEntity dir = new DireccionEntity();
         dir.setPersona(personaId);
         applyRequest(dir, request);
@@ -47,6 +50,9 @@ public class DireccionService {
         DireccionEntity dir = direccionRepository.findById(direccionId)
                 .filter(d -> d.getPersona().equals(personaId))
                 .orElseThrow(() -> new ResourceNotFoundException("Direccion no encontrada: " + direccionId));
+        if (request.isFavorito()) {
+            clearFavorito(personaId, direccionId);
+        }
         applyRequest(dir, request);
         direccionRepository.save(dir);
         return toDto(dir);
@@ -58,6 +64,15 @@ public class DireccionService {
                 .filter(d -> d.getPersona().equals(personaId))
                 .orElseThrow(() -> new ResourceNotFoundException("Direccion no encontrada: " + direccionId));
         direccionRepository.delete(dir);
+    }
+
+    private void clearFavorito(Long personaId, Long excludeId) {
+        direccionRepository.findByPersonaAndFavoritoTrue(personaId).ifPresent(existing -> {
+            if (!existing.getId().equals(excludeId)) {
+                existing.setFavorito(false);
+                direccionRepository.save(existing);
+            }
+        });
     }
 
     private void applyRequest(DireccionEntity dir, DireccionRequest request) {

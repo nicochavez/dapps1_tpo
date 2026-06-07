@@ -4,6 +4,7 @@ import com.tpo.backend.auth.dto.*;
 import com.tpo.backend.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,8 +18,8 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RegisterResponse> register(@Valid @ModelAttribute RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
@@ -27,14 +28,10 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @PostMapping("/set-contrasenia")
+    @PostMapping("/cambiar-contrasenia")
     public ResponseEntity<Void> setContrasenia(@Valid @RequestBody SetContraseniaRequest request) {
         authService.setContrasenia(request);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/documentacion")
-    public ResponseEntity<Boolean> enviarDocumentacion() {
-        return ResponseEntity.ok(true);
-    }
 }

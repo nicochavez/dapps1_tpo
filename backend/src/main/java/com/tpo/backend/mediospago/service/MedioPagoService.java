@@ -1,88 +1,93 @@
 package com.tpo.backend.mediospago.service;
 
-import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
-import com.tpo.backend.mediospago.dto.MedioPagoDto;
-import com.tpo.backend.mediospago.dto.MedioPagoRequest;
-import com.tpo.backend.mediospago.dto.MedioPagoUpdateRequest;
-import com.tpo.backend.mediospago.entity.MedioPagoEntity;
+import com.tpo.backend.mediospago.dto.*;
+import com.tpo.backend.mediospago.entity.*;
 import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class MedioPagoService {
 
     private final MedioPagoRepository medioPagoRepository;
-    private final ClienteService clienteService;
 
-    public MedioPagoService(MedioPagoRepository medioPagoRepository,
-                            ClienteService clienteService) {
+    public MedioPagoService(MedioPagoRepository medioPagoRepository) {
         this.medioPagoRepository = medioPagoRepository;
-        this.clienteService = clienteService;
     }
 
-    @Transactional
-    public List<MedioPagoDto> listar() {
-        Long clienteId = clienteService.currentClienteEntity().getId();
+    @Transactional(readOnly = true)
+    public List<MedioPagoDto> listar(Long clienteId) {
         return medioPagoRepository.findByCliente(clienteId).stream()
                 .map(this::toDto)
                 .toList();
     }
 
-    @Transactional
-    public List<MedioPagoDto> listarByCliente(Long clienteId) {
-        return medioPagoRepository.findByCliente(clienteId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Transactional
-    public MedioPagoDto create(MedioPagoRequest request) {
-        Long clienteId = clienteService.currentClienteEntity().getId();
-        MedioPagoEntity mp = new MedioPagoEntity();
-        mp.setCliente(clienteId);
-        mp.setTipo(request.getTipo());
-        mp.setBanco(request.getBanco());
-        mp.setNumeroCuenta(request.getNumeroCuenta());
-        mp.setNumeroTarjeta(request.getNumeroTarjeta());
-        mp.setPaisBanco(request.getPaisBanco());
-        mp.setMoneda(request.getMoneda());
-        mp.setMontoReservado(request.getMontoReservado() != null ? request.getMontoReservado() : BigDecimal.ZERO);
-        mp.setInternacional(request.isInternacional());
-        mp.setVerificado(false);
-        mp.setDetalle(buildDetalle(request));
-        mp = medioPagoRepository.save(mp);
-        return toDto(mp);
-    }
-
-    @Transactional
-    public MedioPagoDto getById(Long id) {
-        return toDto(findOrThrow(id));
-    }
-
-    @Transactional
-    public MedioPagoDto update(Long id, MedioPagoUpdateRequest request) {
+    @Transactional(readOnly = true)
+    public MedioPagoDto getById(Long clienteId, Long id) {
         MedioPagoEntity mp = findOrThrow(id);
-        if (request.getMontoReservado() != null) {
-            mp.setMontoReservado(request.getMontoReservado());
+        if (!mp.getCliente().equals(clienteId)) {
+            throw new ResourceNotFoundException("Medio de pago no encontrado: " + id);
         }
-        medioPagoRepository.save(mp);
         return toDto(mp);
     }
 
     @Transactional
-    public void delete(Long id) {
+    public CuentaBancariaDto crearCuentaBancaria(Long clienteId, CuentaBancariaRequest req) {
+        CuentaBancariaEntity e = new CuentaBancariaEntity();
+        e.setCliente(clienteId);
+        e.setMoneda(req.getMoneda());
+        e.setInternacional(req.isInternacional());
+        e.setBanco(req.getBanco());
+        e.setNumeroCuenta(req.getNumeroCuenta());
+        e.setTitular(req.getTitular());
+        e.setMontoReservado(req.getMontoReservado());
+        e.setDetalle(req.getBanco() + " - ****" + last4(req.getNumeroCuenta()));
+        return (CuentaBancariaDto) toDto(medioPagoRepository.save(e));
+    }
+
+    @Transactional
+    public TarjetaCreditoDto crearTarjetaCredito(Long clienteId, TarjetaCreditoRequest req) {
+        TarjetaCreditoEntity e = new TarjetaCreditoEntity();
+        e.setCliente(clienteId);
+        e.setMoneda(req.getMoneda());
+        e.setInternacional(req.isInternacional());
+        e.setBancoEmisor(req.getBancoEmisor());
+        e.setUltimosCuatro(req.getUltimosCuatro());
+        e.setTitular(req.getTitular());
+        e.setFechaVencimiento(req.getFechaVencimiento());
+        e.setDetalle("Tarjeta ****" + req.getUltimosCuatro());
+        return (TarjetaCreditoDto) toDto(medioPagoRepository.save(e));
+    }
+
+    @Transactional
+    public ChequeCertificadoDto crearChequeCertificado(Long clienteId, ChequeCertificadoRequest req) {
+        ChequeCertificadoEntity e = new ChequeCertificadoEntity();
+        e.setCliente(clienteId);
+        e.setMoneda(req.getMoneda());
+        e.setInternacional(req.isInternacional());
+        e.setBanco(req.getBanco());
+        e.setNumeroCheque(req.getNumeroCheque());
+        e.setMontoCertificado(req.getMontoCertificado());
+        e.setFechaVencimiento(req.getFechaVencimiento());
+        e.setDetalle("Cheque certificado " + req.getBanco() + " - " + req.getMoneda());
+        return (ChequeCertificadoDto) toDto(medioPagoRepository.save(e));
+    }
+
+    @Transactional
+    public void delete(Long clienteId, Long id) {
         MedioPagoEntity mp = findOrThrow(id);
-        long verified = medioPagoRepository.findByCliente(mp.getCliente()).stream()
+        if (!mp.getCliente().equals(clienteId)) {
+            throw new ResourceNotFoundException("Medio de pago no encontrado: " + id);
+        }
+        long verified = medioPagoRepository.findByCliente(clienteId).stream()
                 .filter(m -> Boolean.TRUE.equals(m.getVerificado()))
                 .count();
         if (Boolean.TRUE.equals(mp.getVerificado()) && verified <= 1) {
-            throw new ConflictException("No se puede eliminar el unico medio de pago verificado.");
+            throw new ConflictException("No se puede eliminar el único medio de pago verificado.");
         }
         medioPagoRepository.delete(mp);
     }
@@ -93,26 +98,54 @@ public class MedioPagoService {
     }
 
     private MedioPagoDto toDto(MedioPagoEntity mp) {
-        return new MedioPagoDto(
-                mp.getId(),
-                mp.getTipo(),
-                mp.getDetalle(),
-                mp.getMoneda(),
-                Boolean.TRUE.equals(mp.getVerificado()),
-                mp.getMontoReservado() != null ? mp.getMontoReservado() : BigDecimal.ZERO
-        );
+        if (mp instanceof CuentaBancariaEntity c) {
+            return CuentaBancariaDto.builder()
+                    .identificador(c.getId())
+                    .tipo("cuenta_bancaria")
+                    .moneda(c.getMoneda())
+                    .internacional(Boolean.TRUE.equals(c.getInternacional()))
+                    .verificado(Boolean.TRUE.equals(c.getVerificado()))
+                    .vigente(Boolean.TRUE.equals(c.getVigente()))
+                    .detalle(c.getDetalle())
+                    .banco(c.getBanco())
+                    .numeroCuenta(c.getNumeroCuenta())
+                    .titular(c.getTitular())
+                    .montoReservado(c.getMontoReservado())
+                    .build();
+        } else if (mp instanceof TarjetaCreditoEntity t) {
+            return TarjetaCreditoDto.builder()
+                    .identificador(t.getId())
+                    .tipo("tarjeta_credito")
+                    .moneda(t.getMoneda())
+                    .internacional(Boolean.TRUE.equals(t.getInternacional()))
+                    .verificado(Boolean.TRUE.equals(t.getVerificado()))
+                    .vigente(Boolean.TRUE.equals(t.getVigente()))
+                    .detalle(t.getDetalle())
+                    .bancoEmisor(t.getBancoEmisor())
+                    .ultimosCuatro(t.getUltimosCuatro())
+                    .titular(t.getTitular())
+                    .fechaVencimiento(t.getFechaVencimiento())
+                    .build();
+        } else if (mp instanceof ChequeCertificadoEntity ch) {
+            return ChequeCertificadoDto.builder()
+                    .identificador(ch.getId())
+                    .tipo("cheque_certificado")
+                    .moneda(ch.getMoneda())
+                    .internacional(Boolean.TRUE.equals(ch.getInternacional()))
+                    .verificado(Boolean.TRUE.equals(ch.getVerificado()))
+                    .vigente(Boolean.TRUE.equals(ch.getVigente()))
+                    .detalle(ch.getDetalle())
+                    .banco(ch.getBanco())
+                    .numeroCheque(ch.getNumeroCheque())
+                    .montoCertificado(ch.getMontoCertificado())
+                    .fechaVencimiento(ch.getFechaVencimiento())
+                    .build();
+        }
+        throw new IllegalStateException("Tipo de medio de pago desconocido: " + mp.getClass());
     }
 
-    private String buildDetalle(MedioPagoRequest req) {
-        return switch (req.getTipo()) {
-            case "cuenta_bancaria" -> (req.getBanco() != null ? req.getBanco() : "Banco") + " - " +
-                    (req.getNumeroCuenta() != null ? "****" + req.getNumeroCuenta().substring(
-                            Math.max(0, req.getNumeroCuenta().length() - 4)) : "****");
-            case "tarjeta_credito" -> "Tarjeta - " +
-                    (req.getNumeroTarjeta() != null ? "****" + req.getNumeroTarjeta().substring(
-                            Math.max(0, req.getNumeroTarjeta().length() - 4)) : "****");
-            case "cheque", "cheque_certificado" -> "Cheque certificado - " + req.getMoneda();
-            default -> req.getTipo();
-        };
+    private String last4(String s) {
+        if (s == null || s.length() < 4) return s != null ? s : "";
+        return s.substring(s.length() - 4);
     }
 }

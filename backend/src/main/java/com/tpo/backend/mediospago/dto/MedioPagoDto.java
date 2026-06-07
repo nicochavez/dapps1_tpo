@@ -3,17 +3,18 @@ package com.tpo.backend.mediospago.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
+import lombok.experimental.SuperBuilder;
 
 @Data
-@AllArgsConstructor
+@SuperBuilder
 @NoArgsConstructor
-public class MedioPagoDto {
+@AllArgsConstructor
+public abstract class MedioPagoDto {
     private Long identificador;
     private String tipo;
-    private String detalle;
     private String moneda;
+    private boolean internacional;
     private boolean verificado;
-    private BigDecimal montoReservado;
+    private boolean vigente;
+    private String detalle;
 }

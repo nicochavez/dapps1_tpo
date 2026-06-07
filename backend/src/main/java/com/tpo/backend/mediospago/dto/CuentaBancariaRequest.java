@@ -1,20 +1,21 @@
 package com.tpo.backend.mediospago.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Data
-public class MedioPagoRequest {
+public class CuentaBancariaRequest {
     @NotBlank
-    private String tipo;
     private String banco;
-    private String numeroCuenta;
-    private String numeroTarjeta;
     @NotBlank
-    private String moneda;
+    private String numeroCuenta;
+    private String titular;
     private BigDecimal montoReservado;
-    private String paisBanco;
+    @NotBlank
+    @Pattern(regexp = "ARS|USD")
+    private String moneda;
     private boolean internacional;
 }

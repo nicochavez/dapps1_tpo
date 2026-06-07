@@ -6,15 +6,19 @@ import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
 import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.email.EmailService;
 import com.tpo.backend.notificacion.entity.NotificacionEntity;
 import com.tpo.backend.notificacion.repository.NotificacionRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
+import com.tpo.backend.usuario.entity.UsuarioEntity;
+import com.tpo.backend.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -22,20 +26,28 @@ import java.util.List;
 public class AdminClienteService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminClienteService.class);
+    private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    private static final SecureRandom RNG = new SecureRandom();
 
     private final ClienteRepository clienteRepository;
     private final PersonaRepository personaRepository;
+    private final UsuarioRepository usuarioRepository;
     private final NotificacionRepository notificacionRepository;
     private final ClienteService clienteService;
+    private final EmailService emailService;
 
     public AdminClienteService(ClienteRepository clienteRepository,
                                PersonaRepository personaRepository,
+                               UsuarioRepository usuarioRepository,
                                NotificacionRepository notificacionRepository,
-                               ClienteService clienteService) {
+                               ClienteService clienteService,
+                               EmailService emailService) {
         this.clienteRepository = clienteRepository;
         this.personaRepository = personaRepository;
+        this.usuarioRepository = usuarioRepository;
         this.notificacionRepository = notificacionRepository;
         this.clienteService = clienteService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -57,27 +69,31 @@ public class AdminClienteService {
 
         PersonaEntity persona = personaRepository.findById(clienteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Persona no encontrada: " + clienteId));
-        persona.setEstado("aprobado"); // estado_registro: pendiente | aprobado | rechazado
+        persona.setEstado("aprobado");
         personaRepository.save(persona);
 
-        // RF-04: invitacion a completar el registro y generar la clave personal.
-        // Sin SMTP en el MVP: se registra en log y como notificacion persistida.
-        notificarAprobacion(cliente, persona);
+        UsuarioEntity usuario = usuarioRepository.findByPersonaId(clienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para persona: " + clienteId));
+
+        String contraseniaTemporal = generarContrasenia(10);
+        usuario.setPasswordHash(contraseniaTemporal);
+        usuario.setActivo(true);
+        usuarioRepository.save(usuario);
+
+        notificarAprobacion(cliente, persona, usuario.getEmail(), contraseniaTemporal);
 
         return clienteService.toDto(cliente);
     }
 
-    /** Mock de envio de mail (RF-04): log + NotificacionEntity. */
-    private void notificarAprobacion(ClienteEntity cliente, PersonaEntity persona) {
-        log.info("[MAIL][MOCK] Cliente {} (documento {}) aprobado en categoria {}. " +
-                        "Invitacion a generar clave personal (POST /api/v1/auth/set-contrasenia).",
-                cliente.getId(), persona.getDocumento(), cliente.getCategoria());
+    private void notificarAprobacion(ClienteEntity cliente, PersonaEntity persona,
+                                     String email, String contraseniaTemporal) {
+        emailService.enviarAprobacion(email, persona.getNombre(), contraseniaTemporal);
 
         NotificacionEntity notificacion = new NotificacionEntity();
         notificacion.setCliente(cliente.getId());
         notificacion.setTitulo("Registro aprobado");
         notificacion.setMensaje("Tu registro fue aprobado en la categoria " + cliente.getCategoria() +
-                ". Genera tu clave personal para comenzar a operar.");
+                ". Revisá tu email para obtener tu contraseña temporal.");
         notificacion.setLeida(false);
         notificacion.setFechaCreacion(OffsetDateTime.now());
         notificacionRepository.save(notificacion);
@@ -89,7 +105,6 @@ public class AdminClienteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado: " + clienteId));
 
         cliente.setAdmitido(false);
-        // categoria solo admite comun|especial|plata|oro|platino; el rechazo se refleja en estado_registro.
         cliente.setCategoria(null);
         cliente = clienteRepository.save(cliente);
 
@@ -99,5 +114,13 @@ public class AdminClienteService {
         personaRepository.save(persona);
 
         return clienteService.toDto(cliente);
+    }
+
+    private String generarContrasenia(int longitud) {
+        StringBuilder sb = new StringBuilder(longitud);
+        for (int i = 0; i < longitud; i++) {
+            sb.append(CHARS.charAt(RNG.nextInt(CHARS.length())));
+        }
+        return sb.toString();
     }
 }

@@ -38,16 +38,13 @@ CREATE TABLE public.personas (
   documento         varchar(20)  NOT NULL UNIQUE,
   nombre            varchar(150) NOT NULL,
   apellido          varchar(150) NOT NULL,                          -- RF-01
-  direccion         varchar(250),                                   -- domicilio legal (RF-01)
   pais_origen       integer,                                        -- RF-01
   foto              bytea,                                          -- foto de perfil
   foto_dni_frente   bytea,                                          -- RF-01 (frente)
   foto_dni_dorso    bytea,                                          -- RF-01 (dorso)
   -- RF-02: pendiente hasta verificación externa; RF-44: bloqueado por incumplimiento
-  estado_registro   varchar(15) DEFAULT 'pendiente'
-                    CHECK (estado_registro IN ('pendiente','aprobado','rechazado')),
-  estado            varchar(15) DEFAULT 'activo'
-                    CHECK (estado IN ('activo','inactivo','bloqueado')),
+  estado  varchar(15) DEFAULT 'pendiente'
+                    CHECK (estado IN ('pendiente','aprobado','rechazado')),
   fecha_registro    timestamptz DEFAULT now(),
   CONSTRAINT fk_personas_paises FOREIGN KEY (pais_origen) REFERENCES public.paises(numero)
 );
@@ -111,29 +108,62 @@ CREATE TABLE public.subastadores (
 -- ---------------------------------------------------------------------------
 -- Medios de pago del postor (RF-07..RF-11, RF-34)
 -- ---------------------------------------------------------------------------
+-- Diseño Table-Per-Type (TPT): campos comunes en medios_pago; cada subtipo
+-- extiende con su propia tabla (1-a-1 obligatorio, PK = FK a medios_pago).
+-- Ventaja: NOT NULL real en campos específicos de cada tipo, sin columnas sparse.
+-- ---------------------------------------------------------------------------
+
+-- Tabla base: campos compartidos por los tres tipos (RF-07, RF-09, RF-10)
 CREATE TABLE public.medios_pago (
-  identificador     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente           bigint NOT NULL,
-  tipo              varchar(20) NOT NULL
-                    CHECK (tipo IN ('cuenta_bancaria','tarjeta_credito','cheque_certificado')),
-  banco             varchar(150),
-  numero_cuenta     varchar(50),
-  numero_tarjeta    varchar(30),
-  pais_banco        varchar(150),
-  internacional     boolean DEFAULT false,                          -- nacional / extranjero (RF-08)
-  moneda            varchar(3) NOT NULL CHECK (moneda IN ('ARS','USD')),
-  monto_reservado   numeric(18,2),                                  -- RF-11/RF-34: tope del cheque certificado
-  fecha_vencimiento date,                                           -- RF-11: vigencia del cheque
-  vigente           boolean DEFAULT true,
-  detalle           varchar(250),
-  verificado        boolean DEFAULT false,                          -- RF-10
+  identificador  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  cliente        bigint NOT NULL,
+  tipo           varchar(25) NOT NULL
+                 CHECK (tipo IN ('cuenta_bancaria','tarjeta_credito','cheque_certificado')),
+  moneda         varchar(3) NOT NULL CHECK (moneda IN ('ARS','USD')),
+  internacional  boolean DEFAULT false,                              -- nacional / extranjero (RF-08)
+  verificado     boolean DEFAULT false,                              -- RF-10
+  vigente        boolean DEFAULT true,
+  detalle        varchar(250),
   CONSTRAINT fk_medios_pago_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador)
+);
+
+-- Cuenta bancaria: nacional o extranjera con fondos reservados (RF-08)
+-- monto_reservado: fondos bloqueados disponibles para pujas (RF-34)
+CREATE TABLE public.medios_cuenta_bancaria (
+  medio_pago       bigint NOT NULL PRIMARY KEY,
+  banco            varchar(150) NOT NULL,
+  numero_cuenta    varchar(50)  NOT NULL,
+  titular          varchar(250),
+  monto_reservado  numeric(18,2) CHECK (monto_reservado > 0),
+  CONSTRAINT fk_mcb_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
+);
+
+-- Tarjeta de crédito: nacional o extranjera (RF-08, RF-40)
+-- Se almacenan solo los últimos 4 dígitos por seguridad
+CREATE TABLE public.medios_tarjeta_credito (
+  medio_pago        bigint NOT NULL PRIMARY KEY,
+  banco_emisor      varchar(150),
+  ultimos_cuatro    char(4)      NOT NULL,
+  titular           varchar(250) NOT NULL,
+  fecha_vencimiento date         NOT NULL,
+  CONSTRAINT fk_mtc_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
+);
+
+-- Cheque certificado: monto fijo entregado, con fecha de vigencia (RF-11)
+-- El saldo disponible se calcula como monto_certificado − SUM(compras adjudicadas) (RF-34)
+CREATE TABLE public.medios_cheque_certificado (
+  medio_pago         bigint        NOT NULL PRIMARY KEY,
+  banco              varchar(150)  NOT NULL,
+  numero_cheque      varchar(50),
+  monto_certificado  numeric(18,2) NOT NULL CHECK (monto_certificado > 0),
+  fecha_vencimiento  date          NOT NULL,                        -- RF-11: vigencia del cheque
+  CONSTRAINT fk_mcc_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
 );
 
 -- Direcciones de envío del postor (RF-37/RF-38)
 CREATE TABLE public.direcciones (
   identificador  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente        bigint NOT NULL,
+  persona        bigint NOT NULL,
   nombre         varchar(150),
   calle          varchar(250),
   numero         varchar(20),
@@ -144,7 +174,7 @@ CREATE TABLE public.direcciones (
   codigo_postal  varchar(20),
   pais           integer,
   favorito       boolean DEFAULT false,
-  CONSTRAINT fk_direcciones_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador),
+  CONSTRAINT fk_direcciones_personas FOREIGN KEY (persona) REFERENCES public.personas(identificador),
   CONSTRAINT fk_direcciones_paises   FOREIGN KEY (pais)    REFERENCES public.paises(numero)
 );
 

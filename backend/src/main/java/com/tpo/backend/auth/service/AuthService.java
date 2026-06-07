@@ -5,12 +5,15 @@ import com.tpo.backend.auth.dto.LoginResponse;
 import com.tpo.backend.auth.dto.RegisterRequest;
 import com.tpo.backend.auth.dto.RegisterResponse;
 import com.tpo.backend.auth.dto.SetContraseniaRequest;
+import com.tpo.backend.email.EmailService;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
 import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnauthorizedException;
+import com.tpo.backend.direccion.entity.DireccionEntity;
+import com.tpo.backend.direccion.repository.DireccionRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.usuario.entity.UsuarioEntity;
@@ -18,6 +21,7 @@ import com.tpo.backend.usuario.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
@@ -25,18 +29,23 @@ import java.util.Optional;
 public class AuthService {
 
     private static final Long VERIFICADOR_SISTEMA_ID = 2L;
-    private static final Integer PAIS_ARGENTINA = 32;
 
     private final UsuarioRepository usuarioRepository;
     private final PersonaRepository personaRepository;
     private final ClienteRepository clienteRepository;
+    private final DireccionRepository direccionRepository;
+    private final EmailService emailService;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PersonaRepository personaRepository,
-                       ClienteRepository clienteRepository) {
+                       ClienteRepository clienteRepository,
+                       DireccionRepository direccionRepository,
+                       EmailService emailService) {
         this.usuarioRepository = usuarioRepository;
         this.personaRepository = personaRepository;
         this.clienteRepository = clienteRepository;
+        this.direccionRepository = direccionRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -56,25 +65,47 @@ public class AuthService {
         persona.setNombre(request.getNombre().trim());
         persona.setApellido(request.getApellido().trim());
         persona.setDocumento(documento);
-        persona.setEstado("pendiente"); // estado_registro: pendiente | aprobado | rechazado
+        persona.setEstado("pendiente");
+        persona.setPaisOrigen(request.getNumeroPais());
+
+        try {
+            persona.setFotoDniFrente(request.getDniFrente().getBytes());
+            persona.setFotoDniDorso(request.getDniDorso().getBytes());
+        } catch (IOException e) {
+            throw new BadRequestException("Error al procesar las fotos del DNI.");
+        }
+
         persona = personaRepository.save(persona);
 
+        
         UsuarioEntity usuario = new UsuarioEntity();
         usuario.setEmail(email);
-        // usuario.setPasswordHash(request.getContrasenia());
         usuario.setPersonaId(persona.getId());
-        usuario.setActivo(true);
+        usuario.setActivo(false);
         usuario.setUltimoAcceso(OffsetDateTime.now());
         usuario = usuarioRepository.save(usuario);
-
+        
         ClienteEntity cliente = new ClienteEntity();
         cliente.setId(persona.getId());
-        cliente.setNumeroPais(request.getNumeroPais() != null ? request.getNumeroPais() : PAIS_ARGENTINA);
+        cliente.setNumeroPais(request.getNumeroPais());
         cliente.setAdmitido(false);
-        // categoria queda null hasta la aprobacion (CHECK del ERD: comun|especial|plata|oro|platino).
         cliente.setCategoria(null);
         cliente.setVerificador(VERIFICADOR_SISTEMA_ID);
         clienteRepository.save(cliente);
+        
+        DireccionEntity domicilio = new DireccionEntity();
+        domicilio.setPersona(persona.getId());
+        domicilio.setNombre("Domicilio legal");
+        domicilio.setCalle(request.getCalle());
+        domicilio.setNumero(request.getNumeroCalle());
+        domicilio.setPiso(request.getPiso());
+        domicilio.setDepartamento(request.getDepartamento());
+        domicilio.setCiudad(request.getCiudad());
+        domicilio.setProvincia(request.getProvincia());
+        domicilio.setCodigoPostal(request.getCodigoPostal());
+        domicilio.setPais(request.getNumeroPais());
+        domicilio.setFavorito(true);
+        direccionRepository.save(domicilio);
 
         System.out.println(
                 "Nuevo cliente pendiente de validacion: " +
@@ -122,10 +153,21 @@ public class AuthService {
             throw new BadRequestException("La contrasenia no puede estar vacia.");
         }
 
-        UsuarioEntity usuario = usuarioRepository.findById(request.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + request.getId()));
+        UsuarioEntity usuario = usuarioRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + request.getEmail()));
+
+        if (usuario.getPasswordHash() != null) {
+            if (request.getContraseniaActual() == null || request.getContraseniaActual().isBlank()) {
+                throw new BadRequestException("Debe ingresar la contrasenia actual.");
+            }
+            if (!usuario.getPasswordHash().equals(request.getContraseniaActual())) {
+                throw new UnauthorizedException("La contrasenia actual es incorrecta.");
+            }
+        }
 
         usuario.setPasswordHash(request.getContrasenia());
         usuarioRepository.save(usuario);
+
+        emailService.enviarCambioClave(usuario.getEmail());
     }
 }

@@ -11,6 +11,7 @@ export default function RegisterStep1({ navigation }) {
     email: '',
     addressFullName: '',
     streetAddress: '',
+    streetNumber: '',
     city: '',
     zipCode: '',
     country: 'Argentina'
@@ -19,7 +20,7 @@ export default function RegisterStep1({ navigation }) {
   // 2. Función para validar y pasar al Paso 2
   const handleNext = () => {
     // Validamos que los campos principales no estén vacíos
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.streetAddress || !formData.city) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.streetAddress || !formData.streetNumber || !formData.city) {
       alert('Por favor completa todos los campos para continuar.');
       return;
     }
@@ -100,14 +101,29 @@ export default function RegisterStep1({ navigation }) {
           onChangeText={(text) => setFormData({...formData, addressFullName: text})}
         />
 
-        <Text className="font-bold text-black mb-2 text-sm">Street Address</Text>
-        <TextInput 
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4" 
-          placeholder="street 1234" 
-          placeholderTextColor="#94a3b8" 
-          value={formData.streetAddress}
-          onChangeText={(text) => setFormData({...formData, streetAddress: text})}
-        />
+        <View className="flex-row justify-between mb-4">
+          <View className="flex-[3] mr-2">
+            <Text className="font-bold text-black mb-2 text-sm">Street Address</Text>
+            <TextInput
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black"
+              placeholder="Av. Corrientes"
+              placeholderTextColor="#94a3b8"
+              value={formData.streetAddress}
+              onChangeText={(text) => setFormData({...formData, streetAddress: text})}
+            />
+          </View>
+          <View className="flex-1 ml-2">
+            <Text className="font-bold text-black mb-2 text-sm">Number</Text>
+            <TextInput
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black"
+              placeholder="1234"
+              placeholderTextColor="#94a3b8"
+              keyboardType="numeric"
+              value={formData.streetNumber}
+              onChangeText={(text) => setFormData({...formData, streetNumber: text})}
+            />
+          </View>
+        </View>
 
         <View className="flex-row justify-between mb-4">
           <View className="flex-1 mr-2">

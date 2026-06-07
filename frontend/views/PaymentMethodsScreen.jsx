@@ -1,41 +1,83 @@
-import React, { useState, useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { AuthContext } from '../context/AuthContext';
-import allPaymentMethods from '../data/paymentMethods.json';
+import { getMediosPago, deleteMedioPago } from '../services/api';
 
-const CARD_GRADIENTS = {
-  Credit: ['#8b5cf6', '#a855f7', '#d946ef'],
-  Debit:  ['#3b82f6', '#6366f1', '#8b5cf6'],
-  Bank:   ['#10b981', '#059669', '#0d9488'],
-  Check:  ['#f59e0b', '#f97316', '#ef4444'],
+const TIPO_GRADIENTS = {
+  tarjeta_credito:  ['#8b5cf6', '#a855f7', '#d946ef'],
+  cuenta_bancaria:  ['#10b981', '#059669', '#0d9488'],
+  cheque_certificado: ['#f59e0b', '#f97316', '#ef4444'],
 };
 
-const CARD_ICONS = {
-  Credit: 'credit-card',
-  Debit:  'credit-card',
-  Bank:   'bank',
-  Check:  'file-certificate-outline',
+const TIPO_ICONS = {
+  tarjeta_credito:  'credit-card',
+  cuenta_bancaria:  'bank',
+  cheque_certificado: 'file-certificate-outline',
 };
+
+const TIPO_LABELS = {
+  tarjeta_credito:  'Credit Card',
+  cuenta_bancaria:  'Bank Account',
+  cheque_certificado: 'Certified Check',
+};
+
+function subtitleFor(pm) {
+  if (pm.tipo === 'tarjeta_credito') return `•••• ${pm.ultimosCuatro || '????'}`;
+  if (pm.tipo === 'cuenta_bancaria') return pm.banco || 'Bank';
+  if (pm.tipo === 'cheque_certificado') return pm.banco || 'Check';
+  return pm.detalle || '';
+}
+
+function holderFor(pm) {
+  return pm.titular || pm.detalle || '—';
+}
+
+function expiryFor(pm) {
+  if (pm.fechaVencimiento) return pm.fechaVencimiento.substring(0, 7);
+  return '—';
+}
 
 export default function PaymentMethodsScreen({ navigation }) {
-  const { user: currentUser } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const [methods, setMethods] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const initial = allPaymentMethods.filter(pm => pm.userId === currentUser?.id);
-  const [methods, setMethods] = useState(initial);
+  const fetchMethods = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const data = await getMediosPago(user.id, user.token);
+      setMethods(data);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(useCallback(() => { fetchMethods(); }, [fetchMethods]));
 
   const handleDelete = (pm) => {
     Alert.alert(
       'Remove payment method',
-      `Remove the ${pm.type} card ending in ${pm.lastFour}?`,
+      `Remove ${TIPO_LABELS[pm.tipo] || pm.tipo}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => setMethods(prev => prev.filter(m => m.id !== pm.id)),
+          onPress: async () => {
+            try {
+              await deleteMedioPago(user.id, pm.identificador, user.token);
+              setMethods(prev => prev.filter(m => m.identificador !== pm.identificador));
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          },
         },
       ]
     );
@@ -54,7 +96,9 @@ export default function PaymentMethodsScreen({ navigation }) {
 
       <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
 
-        {methods.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator color="#7C3AED" className="mt-10" />
+        ) : methods.length === 0 ? (
           <View className="bg-white rounded-3xl p-10 items-center border border-slate-200 border-dashed mt-4">
             <Feather name="credit-card" size={36} color="#cbd5e1" />
             <Text className="text-slate-400 font-bold mt-4 mb-1">No payment methods</Text>
@@ -62,10 +106,10 @@ export default function PaymentMethodsScreen({ navigation }) {
           </View>
         ) : (
           methods.map(pm => {
-            const gradient = CARD_GRADIENTS[pm.type] ?? CARD_GRADIENTS.Credit;
-            const icon = CARD_ICONS[pm.type] ?? 'credit-card';
+            const gradient = TIPO_GRADIENTS[pm.tipo] ?? TIPO_GRADIENTS.tarjeta_credito;
+            const icon = TIPO_ICONS[pm.tipo] ?? 'credit-card';
             return (
-              <View key={pm.id} className="mb-4">
+              <View key={pm.identificador} className="mb-4">
                 <LinearGradient
                   colors={gradient}
                   start={{ x: 0, y: 0 }}
@@ -75,10 +119,10 @@ export default function PaymentMethodsScreen({ navigation }) {
                   <View className="flex-row justify-between items-start mb-6">
                     <View>
                       <Text className="text-white text-[10px] font-bold tracking-widest opacity-70 mb-1">
-                        {pm.type.toUpperCase()} · {pm.currency}
+                        {(TIPO_LABELS[pm.tipo] || pm.tipo).toUpperCase()} · {pm.moneda}
                       </Text>
                       <Text className="text-white font-bold tracking-widest text-sm opacity-90">
-                        {pm.tier}
+                        {pm.verificado ? 'VERIFIED' : 'PENDING'}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -90,19 +134,21 @@ export default function PaymentMethodsScreen({ navigation }) {
                   </View>
 
                   <Text className="text-white text-xl font-medium tracking-widest mb-6 opacity-90">
-                    {'•••• •••• •••• ' + pm.lastFour}
+                    {subtitleFor(pm)}
                   </Text>
 
                   <View className="flex-row justify-between items-end">
                     <View className="flex-row" style={{ gap: 32 }}>
                       <View>
-                        <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">CARD HOLDER</Text>
-                        <Text className="text-white font-bold text-xs tracking-wider">{pm.cardHolder}</Text>
+                        <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">HOLDER</Text>
+                        <Text className="text-white font-bold text-xs tracking-wider">{holderFor(pm)}</Text>
                       </View>
-                      <View>
-                        <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
-                        <Text className="text-white font-bold text-xs tracking-wider">{pm.expiry}</Text>
-                      </View>
+                      {pm.fechaVencimiento && (
+                        <View>
+                          <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
+                          <Text className="text-white font-bold text-xs tracking-wider">{expiryFor(pm)}</Text>
+                        </View>
+                      )}
                     </View>
                     <MaterialCommunityIcons name={icon} size={24} color="white" style={{ opacity: 0.9 }} />
                   </View>

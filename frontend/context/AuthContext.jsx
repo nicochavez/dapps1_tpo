@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext } from 'react';
-import { loginRequest } from '../services/api';
+import { loginRequest, getClienteMe } from '../services/api';
 
 export const AuthContext = createContext();
 
@@ -11,30 +11,24 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
 
-  const login = async (credentialsOrUser) => {
-    if (credentialsOrUser?.id && credentialsOrUser?.email) {
-      setToken(credentialsOrUser.token || 'mock-token');
-      setUser(credentialsOrUser);
-      return credentialsOrUser.token || 'mock-token';
-    }
-
-    const { documento, contrasenia } = credentialsOrUser || {};
+  const login = async ({ documento, contrasenia }) => {
     const data = await loginRequest(documento, contrasenia);
-
     const receivedToken = data?.token || data?.accessToken || data;
 
-    setToken(receivedToken);
-    setUser({
-      id: credentialsOrUser?.id,
-      email: credentialsOrUser?.email,
-      name: credentialsOrUser?.name,
-      avatar: credentialsOrUser?.avatar,
-      category: credentialsOrUser?.category,  // campo correcto para la regla de categorias
-      badge: credentialsOrUser?.badge,
-      documento,
-      token: receivedToken,
-    });
+    const clienteData = await getClienteMe(receivedToken);
 
+    const resolvedUser = {
+      id: clienteData.identificador,
+      documento,
+      nombre: clienteData.nombre,
+      category: clienteData.categoria,
+      estado: clienteData.estado,
+      admitido: clienteData.admitido,
+      token: receivedToken,
+    };
+
+    setToken(receivedToken);
+    setUser(resolvedUser);
     return receivedToken;
   };
 
