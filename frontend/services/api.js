@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://192.168.0.165:8080/api/v1'; // cambiar por la IP local del backend
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1';
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, ...fetchOptions } = options;

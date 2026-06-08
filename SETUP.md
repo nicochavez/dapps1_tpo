@@ -51,10 +51,10 @@ El frontend necesita conocer la IP local de la PC donde corre el backend.
 - Windows → `ipconfig` → "Dirección IPv4"
 - Mac/Linux → `ifconfig` → valor de `inet`
 
-**Editar la línea 1 de `frontend/services/api.js`:**
+**Editar la línea 1 de `frontend/.env`:**
 
 ```js
-export const API_BASE_URL = 'http://<IP_LOCAL>:8080/api/v1';
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1;
 ```
 
 ---
