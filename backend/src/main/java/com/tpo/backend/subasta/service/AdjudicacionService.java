@@ -43,7 +43,6 @@ public class AdjudicacionService {
     public static final long VENTANA_PUJA_SEGUNDOS = 60;
 
     private final SubastaRepository subastaRepository;
-    private final CatalogoRepository catalogoRepository;
     private final ItemCatalogoRepository itemRepository;
     private final ProductoRepository productoRepository;
     private final PujaRepository pujaRepository;
@@ -53,7 +52,6 @@ public class AdjudicacionService {
     private final SubastaEventPublisher eventPublisher;
 
     public AdjudicacionService(SubastaRepository subastaRepository,
-                               CatalogoRepository catalogoRepository,
                                ItemCatalogoRepository itemRepository,
                                ProductoRepository productoRepository,
                                PujaRepository pujaRepository,
@@ -62,7 +60,6 @@ public class AdjudicacionService {
                                RegistroDeSubastaRepository registroRepository,
                                SubastaEventPublisher eventPublisher) {
         this.subastaRepository = subastaRepository;
-        this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
         this.pujaRepository = pujaRepository;
@@ -109,8 +106,11 @@ public class AdjudicacionService {
     /** Primer item no subastado de la subasta (item en curso). */
     @Transactional
     public Optional<ItemCatalogoEntity> currentItem(Long subastaId) {
-        return catalogoRepository.findBySubasta(subastaId).stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
+        Long catalogoId = subastaRepository.findById(subastaId)
+                .map(SubastaEntity::getCatalogo)
+                .orElse(null);
+        if (catalogoId == null) return Optional.empty();
+        return itemRepository.findByCatalogo(catalogoId).stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
                 .min(Comparator.comparing(ItemCatalogoEntity::getId));
     }
@@ -202,9 +202,9 @@ public class AdjudicacionService {
     }
 
     private void finalizarSiCorresponde(SubastaEntity subasta) {
-        boolean quedanItems = catalogoRepository.findBySubasta(subasta.getId()).stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
-                .anyMatch(i -> !Boolean.TRUE.equals(i.getSubastado()));
+        boolean quedanItems = subasta.getCatalogo() != null &&
+                itemRepository.findByCatalogo(subasta.getCatalogo()).stream()
+                        .anyMatch(i -> !Boolean.TRUE.equals(i.getSubastado()));
         if (!quedanItems) {
             subasta.setEstado("finalizada");
             subastaRepository.save(subasta);

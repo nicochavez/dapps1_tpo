@@ -5,6 +5,7 @@ import com.tpo.backend.auth.dto.LoginResponse;
 import com.tpo.backend.auth.dto.RegisterRequest;
 import com.tpo.backend.auth.dto.RegisterResponse;
 import com.tpo.backend.auth.dto.SetContraseniaRequest;
+import com.tpo.backend.auth.security.JwtService;
 import com.tpo.backend.email.EmailService;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
@@ -14,16 +15,21 @@ import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnauthorizedException;
 import com.tpo.backend.direccion.entity.DireccionEntity;
 import com.tpo.backend.direccion.repository.DireccionRepository;
+import com.tpo.backend.duenio.repository.DuenioRepository;
+import com.tpo.backend.empleado.repository.EmpleadoRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
+import com.tpo.backend.subasta.repository.SubastadorRepository;
 import com.tpo.backend.usuario.entity.UsuarioEntity;
 import com.tpo.backend.usuario.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -33,19 +39,34 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PersonaRepository personaRepository;
     private final ClienteRepository clienteRepository;
+    private final DuenioRepository duenioRepository;
+    private final EmpleadoRepository empleadoRepository;
+    private final SubastadorRepository subastadorRepository;
     private final DireccionRepository direccionRepository;
     private final EmailService emailService;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PersonaRepository personaRepository,
                        ClienteRepository clienteRepository,
+                       DuenioRepository duenioRepository,
+                       EmpleadoRepository empleadoRepository,
+                       SubastadorRepository subastadorRepository,
                        DireccionRepository direccionRepository,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       JwtService jwtService,
+                       PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.personaRepository = personaRepository;
         this.clienteRepository = clienteRepository;
+        this.duenioRepository = duenioRepository;
+        this.empleadoRepository = empleadoRepository;
+        this.subastadorRepository = subastadorRepository;
         this.direccionRepository = direccionRepository;
         this.emailService = emailService;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -120,20 +141,16 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        String documento = request.getDocumento();
-        Optional<PersonaEntity> personaOpt = personaRepository.findAll().stream()
-                .filter(p -> documento.equals(p.getDocumento()))
-                .findFirst();
+        String documento = request.getDocumento().trim();
 
-        if (personaOpt.isEmpty()) {
-            throw new UnauthorizedException("Credenciales invalidas.");
-        }
+        PersonaEntity persona = personaRepository.findByDocumento(documento)
+                .orElseThrow(() -> new UnauthorizedException("Credenciales invalidas."));
 
-        UsuarioEntity usuario = usuarioRepository.findByPersonaId(personaOpt.get().getId())
+        UsuarioEntity usuario = usuarioRepository.findByPersonaId(persona.getId())
                 .orElseThrow(() -> new UnauthorizedException("Credenciales invalidas."));
 
         if (usuario.getPasswordHash() == null
-                || !usuario.getPasswordHash().equals(request.getContrasenia())) {
+                || !passwordEncoder.matches(request.getContrasenia(), usuario.getPasswordHash())) {
             throw new UnauthorizedException("Credenciales invalidas.");
         }
 
@@ -144,7 +161,19 @@ public class AuthService {
         usuario.setUltimoAcceso(OffsetDateTime.now());
         usuarioRepository.save(usuario);
 
-        return new LoginResponse("mock-jwt-token-for-" + documento);
+        List<String> roles = computeRoles(persona.getId());
+        String token = jwtService.generateToken(persona.getId(), documento, usuario.getEmail(), roles);
+        return new LoginResponse(token);
+    }
+
+    /** Roles del usuario segun las tablas de subtipo a las que pertenece su persona. */
+    private List<String> computeRoles(Long personaId) {
+        List<String> roles = new ArrayList<>();
+        if (clienteRepository.existsById(personaId)) roles.add("CLIENTE");
+        if (duenioRepository.existsById(personaId)) roles.add("DUENIO");
+        if (empleadoRepository.existsById(personaId)) roles.add("EMPLEADO");
+        if (subastadorRepository.existsById(personaId)) roles.add("SUBASTADOR");
+        return roles;
     }
 
     @Transactional
@@ -160,12 +189,12 @@ public class AuthService {
             if (request.getContraseniaActual() == null || request.getContraseniaActual().isBlank()) {
                 throw new BadRequestException("Debe ingresar la contrasenia actual.");
             }
-            if (!usuario.getPasswordHash().equals(request.getContraseniaActual())) {
+            if (!passwordEncoder.matches(request.getContraseniaActual(), usuario.getPasswordHash())) {
                 throw new UnauthorizedException("La contrasenia actual es incorrecta.");
             }
         }
 
-        usuario.setPasswordHash(request.getContrasenia());
+        usuario.setPasswordHash(passwordEncoder.encode(request.getContrasenia()));
         usuarioRepository.save(usuario);
 
         emailService.enviarCambioClave(usuario.getEmail());

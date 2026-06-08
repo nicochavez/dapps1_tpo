@@ -47,4 +47,7 @@ public class SubastaEntity {
 
     @Column(name = "moneda")
     private String moneda;
+
+    @Column(name = "catalogo")
+    private Long catalogo;
 }

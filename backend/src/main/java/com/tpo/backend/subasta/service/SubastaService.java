@@ -106,7 +106,7 @@ public class SubastaService {
     @Transactional
     public SubastaDetailDto getById(Long id) {
         SubastaEntity s = findOrThrow(id);
-        CatalogoDto catalogo = buildCatalogoDto(s.getId());
+        CatalogoDto catalogo = buildCatalogoDto(s);
         return new SubastaDetailDto(
                 s.getId(),
                 s.getFecha() != null ? s.getFecha().toString() : null,
@@ -136,6 +136,7 @@ public class SubastaService {
         s.setCategoria(request.getCategoria());
         s.setMoneda(request.getMoneda() != null ? request.getMoneda() : "ARS");
         s.setSubastador(request.getSubastador());
+        s.setCatalogo(request.getCatalogo());
         s = subastaRepository.save(s);
         return getById(s.getId());
     }
@@ -217,11 +218,11 @@ public class SubastaService {
 
     @Transactional
     public ItemActualDto getItemActual(Long subastaId) {
-        findOrThrow(subastaId);
-
-        List<CatalogoEntity> catalogos = catalogoRepository.findBySubasta(subastaId);
-        ItemCatalogoEntity item = catalogos.stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
+        SubastaEntity subasta = findOrThrow(subastaId);
+        if (subasta.getCatalogo() == null) {
+            throw new ResourceNotFoundException("No hay item activo en esta subasta.");
+        }
+        ItemCatalogoEntity item = itemRepository.findByCatalogo(subasta.getCatalogo()).stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("No hay item activo en esta subasta."));
@@ -294,9 +295,9 @@ public class SubastaService {
         List<Long> productosDuenio = productoRepository.findByDuenio(userId).stream()
                 .map(ProductoEntity::getId).toList();
         return subastaRepository.findAll().stream()
-                .filter(s -> catalogoRepository.findBySubasta(s.getId()).stream()
-                        .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
-                        .anyMatch(i -> productosDuenio.contains(i.getProducto())))
+                .filter(s -> s.getCatalogo() != null &&
+                        itemRepository.findByCatalogo(s.getCatalogo()).stream()
+                                .anyMatch(i -> productosDuenio.contains(i.getProducto())))
                 .map(this::toListItemDto)
                 .toList();
     }
@@ -342,15 +343,15 @@ public class SubastaService {
         return new SubastadorDto(entity.getId(), nombre, entity.getMatricula());
     }
 
-    private CatalogoDto buildCatalogoDto(Long subastaId) {
-        List<CatalogoEntity> catalogos = catalogoRepository.findBySubasta(subastaId);
-        if (catalogos.isEmpty()) return null;
-        CatalogoEntity first = catalogos.get(0);
-        List<ItemCatalogoDto> items = itemRepository.findByCatalogo(first.getId()).stream()
+    private CatalogoDto buildCatalogoDto(SubastaEntity subasta) {
+        if (subasta.getCatalogo() == null) return null;
+        CatalogoEntity cat = catalogoRepository.findById(subasta.getCatalogo()).orElse(null);
+        if (cat == null) return null;
+        List<ItemCatalogoDto> items = itemRepository.findByCatalogo(cat.getId()).stream()
                 .sorted(Comparator.comparing(ItemCatalogoEntity::getId))
                 .map(this::toItemDto)
                 .toList();
-        return new CatalogoDto(first.getId(), first.getDescripcion(), items);
+        return new CatalogoDto(cat.getId(), cat.getDescripcion(), items);
     }
 
     private ItemCatalogoDto toItemDto(ItemCatalogoEntity item) {

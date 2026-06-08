@@ -1,6 +1,7 @@
 package com.tpo.backend.catalogo.service;
 
 import com.tpo.backend.catalogo.dto.CatalogoListDto;
+import com.tpo.backend.catalogo.dto.CatalogoNewRequest;
 import com.tpo.backend.catalogo.dto.ItemCatalogoDetailDto;
 import com.tpo.backend.catalogo.dto.ItemCatalogoNewRequest;
 import com.tpo.backend.catalogo.entity.CatalogoEntity;
@@ -13,6 +14,9 @@ import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
+import com.tpo.backend.empleado.repository.EmpleadoRepository;
+import com.tpo.backend.subasta.entity.SubastaEntity;
+import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,17 +33,23 @@ public class CatalogoService {
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
     private final ClienteService clienteService;
+    private final EmpleadoRepository empleadoRepository;
+    private final SubastaRepository subastaRepository;
 
     public CatalogoService(CatalogoRepository catalogoRepository,
                            ItemCatalogoRepository itemRepository,
                            ProductoRepository productoRepository,
                            FotoRepository fotoRepository,
-                           ClienteService clienteService) {
+                           ClienteService clienteService,
+                           EmpleadoRepository empleadoRepository,
+                           SubastaRepository subastaRepository) {
         this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
         this.clienteService = clienteService;
+        this.empleadoRepository = empleadoRepository;
+        this.subastaRepository = subastaRepository;
     }
 
     @Transactional
@@ -51,9 +61,22 @@ public class CatalogoService {
 
     @Transactional
     public List<CatalogoListDto> getCatalogosForSubasta(Long subastaId) {
-        return catalogoRepository.findBySubasta(subastaId).stream()
-                .map(this::toListDto)
-                .toList();
+        return subastaRepository.findById(subastaId)
+                .filter(s -> s.getCatalogo() != null)
+                .flatMap(s -> catalogoRepository.findById(s.getCatalogo()))
+                .map(c -> List.of(toListDto(c)))
+                .orElse(List.of());
+    }
+
+    @Transactional
+    public CatalogoListDto crearCatalogo(CatalogoNewRequest request) {
+        empleadoRepository.findById(request.getResponsable())
+                .orElseThrow(() -> new ResourceNotFoundException("Empleado no encontrado: " + request.getResponsable()));
+        CatalogoEntity entity = new CatalogoEntity();
+        entity.setDescripcion(request.getDescripcion());
+        entity.setResponsable(request.getResponsable());
+        entity = catalogoRepository.save(entity);
+        return toListDto(entity);
     }
 
     @Transactional
@@ -68,9 +91,11 @@ public class CatalogoService {
 
     @Transactional
     public List<CatalogoListDto.ItemDto> getItemsByCatalogo(Long subastaId, Long catalogoId) {
-        CatalogoEntity cat = catalogoRepository.findById(catalogoId)
+        catalogoRepository.findById(catalogoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + catalogoId));
-        if (cat.getSubasta() == null || !cat.getSubasta().equals(subastaId)) {
+        SubastaEntity subasta = subastaRepository.findById(subastaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
+        if (subasta.getCatalogo() == null || !subasta.getCatalogo().equals(catalogoId)) {
             throw new ResourceNotFoundException("Catalogo no pertenece a subasta: " + subastaId);
         }
         return itemRepository.findByCatalogo(catalogoId).stream()

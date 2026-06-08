@@ -1,6 +1,8 @@
 package com.tpo.backend.producto.service;
 
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.duenio.entity.DuenioEntity;
+import com.tpo.backend.duenio.repository.DuenioRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.producto.dto.ProductoDto;
@@ -22,19 +24,25 @@ import java.util.List;
 @Service
 public class ProductoService {
 
+    /** Empleado del sistema que actua como verificador por defecto (ver AuthService). */
+    private static final Long VERIFICADOR_SISTEMA_ID = 2L;
+
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
     private final PersonaRepository personaRepository;
     private final SeguroRepository seguroRepository;
+    private final DuenioRepository duenioRepository;
 
     public ProductoService(ProductoRepository productoRepository,
                            FotoRepository fotoRepository,
                            PersonaRepository personaRepository,
-                           SeguroRepository seguroRepository) {
+                           SeguroRepository seguroRepository,
+                           DuenioRepository duenioRepository) {
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
         this.personaRepository = personaRepository;
         this.seguroRepository = seguroRepository;
+        this.duenioRepository = duenioRepository;
     }
 
     @Transactional
@@ -73,6 +81,7 @@ public class ProductoService {
 
     @Transactional
     public ProductoDto crear(Long duenioId, ProductoNewRequest request) {
+        ensureDuenio(duenioId);
         ProductoEntity prod = new ProductoEntity();
         prod.setFecha(LocalDate.parse(request.getFecha()));
         prod.setDisponible(request.getDisponible());
@@ -88,6 +97,24 @@ public class ProductoService {
         prod.setDuenio(duenioId);
         prod = productoRepository.save(prod);
         return toDto(prod);
+    }
+
+    /**
+     * Garantiza que la persona tenga rol DUENIO. {@code productos.duenio} referencia a
+     * {@code duenios}, y el registro solo crea {@code clientes}; al enviar su primer bien
+     * (RF-45) la persona adquiere el rol de dueño de forma diferida.
+     */
+    private void ensureDuenio(Long personaId) {
+        if (!duenioRepository.existsById(personaId)) {
+            DuenioEntity duenio = new DuenioEntity();
+            duenio.setId(personaId);
+            duenio.setVerificador(VERIFICADOR_SISTEMA_ID);
+            PersonaEntity persona = personaRepository.findById(personaId).orElse(null);
+            if (persona != null) {
+                duenio.setNumeroPais(persona.getPaisOrigen());
+            }
+            duenioRepository.save(duenio);
+        }
     }
 
     @Transactional

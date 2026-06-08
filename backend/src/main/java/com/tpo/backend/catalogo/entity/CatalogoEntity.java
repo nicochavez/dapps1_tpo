@@ -18,9 +18,6 @@ public class CatalogoEntity {
     @Column(name = "descripcion", nullable = false)
     private String descripcion;
 
-    @Column(name = "subasta")
-    private Long subasta;
-
     @Column(name = "responsable", nullable = false)
     private Long responsable;
 }
