@@ -6,23 +6,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
-
-const BASE_URL = 'http://10.0.2.2:8080'; // Android emulator → localhost; change for device/prod
-
-const changePassword = async (token, currentPassword, newPassword) => {
-  const response = await fetch(`${BASE_URL}/api/v1/clientes/me/password`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ passwordActual: currentPassword, passwordNueva: newPassword }),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.mensaje ?? 'Could not update password.');
-  }
-};
+import { cambiarContrasenia } from '../services/api';
 
 const PasswordField = ({ label, value, onChange, show, onToggle }) => (
   <>
@@ -70,9 +54,14 @@ export default function ChangePasswordScreen() {
       return;
     }
 
+    if (!currentUser?.email) {
+      Alert.alert('Error', 'Session expired. Please log out and log in again.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await changePassword(currentUser?.token, currentPassword, newPassword);
+      await cambiarContrasenia({ email: currentUser.email, contrasenia: newPassword, contraseniaActual: currentPassword });
       Alert.alert('Success', 'Your password has been updated.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);

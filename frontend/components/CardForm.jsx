@@ -12,6 +12,12 @@ function expiryToDate(mmyy) {
   return `20${yy}-${mm.padStart(2, '0')}-01`;
 }
 
+function formatExpiry(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
 export default function CardForm({ clienteId, token, onSuccess }) {
   const [form, setForm] = useState({
     titular: '',
@@ -120,8 +126,10 @@ export default function CardForm({ clienteId, token, onSuccess }) {
             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black text-center"
             placeholder="MM/YY"
             placeholderTextColor="#94a3b8"
+            keyboardType="numeric"
+            maxLength={5}
             value={form.expiry}
-            onChangeText={(t) => setForm({ ...form, expiry: t })}
+            onChangeText={(t) => setForm({ ...form, expiry: formatExpiry(t) })}
           />
         </View>
         <View className="flex-1 ml-2">

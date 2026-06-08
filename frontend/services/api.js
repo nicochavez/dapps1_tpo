@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://10.0.2.2:8080/api/v1';
+export const API_BASE_URL = 'http://192.168.0.164:8080/api/v1'; // cambiar por la IP local del backend
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, ...fetchOptions } = options;
@@ -73,8 +73,8 @@ export function registerRequest({
   if (provincia) form.append('provincia', provincia);
   form.append('codigoPostal', codigoPostal);
   form.append('numeroPais', String(numeroPais));
-  form.append('dniFrente', { uri: dniFrente.uri, name: dniFrente.name || 'dni_frente.jpg', type: dniFrente.type || 'image/jpeg' });
-  form.append('dniDorso', { uri: dniDorso.uri, name: dniDorso.name || 'dni_dorso.jpg', type: dniDorso.type || 'image/jpeg' });
+  form.append('dniFrente', { uri: dniFrente.uri, name: dniFrente.fileName || 'dni_frente.jpg', type: dniFrente.mimeType || 'image/jpeg' });
+  form.append('dniDorso', { uri: dniDorso.uri, name: dniDorso.fileName || 'dni_dorso.jpg', type: dniDorso.mimeType || 'image/jpeg' });
   return apiRequest('/auth/register', { method: 'POST', body: form });
 }
 
@@ -93,6 +93,14 @@ export function cambiarContrasenia({ email, contrasenia, contraseniaActual }) {
 
 export function getClienteMe(token) {
   return apiRequest('/clientes/me', { token });
+}
+
+export function getMetricasMe(token) {
+  return apiRequest('/clientes/me/metricas', { token });
+}
+
+export function getSubastasByDuenio(userId) {
+  return apiRequest(`/subastas/duenios/${userId}`);
 }
 
 // ── Direcciones ───────────────────────────────────────────────────────────────

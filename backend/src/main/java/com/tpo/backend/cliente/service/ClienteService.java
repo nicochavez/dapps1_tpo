@@ -9,6 +9,8 @@ import com.tpo.backend.common.dto.PaisDto;
 import com.tpo.backend.common.entity.PaisEntity;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnauthorizedException;
+import com.tpo.backend.usuario.entity.UsuarioEntity;
+import com.tpo.backend.usuario.repository.UsuarioRepository;
 import com.tpo.backend.common.repository.PaisRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
@@ -32,17 +34,20 @@ public class ClienteService {
     private final PaisRepository paisRepository;
     private final AsistenteRepository asistenteRepository;
     private final RegistroDeSubastaRepository registroRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public ClienteService(ClienteRepository clienteRepository,
                           PersonaRepository personaRepository,
                           PaisRepository paisRepository,
                           AsistenteRepository asistenteRepository,
-                          RegistroDeSubastaRepository registroRepository) {
+                          RegistroDeSubastaRepository registroRepository,
+                          UsuarioRepository usuarioRepository) {
         this.clienteRepository = clienteRepository;
         this.personaRepository = personaRepository;
         this.paisRepository = paisRepository;
         this.asistenteRepository = asistenteRepository;
         this.registroRepository = registroRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional
@@ -133,6 +138,10 @@ public class ClienteService {
         PersonaEntity persona = personaRepository.findById(cliente.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Persona no encontrada: " + cliente.getId()));
 
+        String email = usuarioRepository.findByPersonaId(cliente.getId())
+                .map(u -> u.getEmail())
+                .orElse(null);
+
         PaisDto paisDto = null;
         if (cliente.getNumeroPais() != null) {
             PaisEntity pais = paisRepository.findById(cliente.getNumeroPais()).orElse(null);
@@ -145,6 +154,7 @@ public class ClienteService {
                 cliente.getId(),
                 persona.getDocumento(),
                 persona.getNombre(),
+                email,
                 persona.getEstado(),
                 cliente.getCategoria(),
                 Boolean.TRUE.equals(cliente.getAdmitido()),

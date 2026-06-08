@@ -53,7 +53,7 @@ export default function MyAuctionsScreen() {
 
   if (!currentUser) return null;
 
-  const myItems = itemsData.filter(item => item.ownerId === currentUser.id);
+  const myItems = itemsData.filter(item => String(item.ownerId) === String(currentUser.id));
 
   const handlePress = (item) => {
     if (item.estadoLote === 'verificacion_pendiente') {

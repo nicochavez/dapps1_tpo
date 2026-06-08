@@ -40,7 +40,7 @@ export default function ItemDetailScreen({ route, navigation }) {
   // ── Evaluación de acceso ─────────────────────────────────────────────────
   const requiredCategory = parentCatalog?.subasta?.categoria;
   const isLoggedIn       = !!currentUser;
-  const isOwner          = isLoggedIn && currentUser.id === item?.ownerId;
+  const isOwner          = isLoggedIn && String(currentUser.id) === String(item?.ownerId);
   const categoryOk       = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
   const canAccessPrices  = isLoggedIn && categoryOk;
 
@@ -53,10 +53,9 @@ export default function ItemDetailScreen({ route, navigation }) {
     : '—';
   // ────────────────────────────────────────────────────────────────────────
 
-  // Enmascaramos los precios en el item antes de pasarlo a los sub-componentes.
-  // Asi no importa como los rendericen: nunca tendran el valor real.
+  // El dueño del item siempre puede ver los precios de su propio item
   const MASKED = '$ —,—';
-  const maskedItem = canAccessPrices
+  const maskedItem = (canAccessPrices || isOwner)
     ? item
     : {
         ...item,
@@ -71,7 +70,7 @@ export default function ItemDetailScreen({ route, navigation }) {
     parentCatalog,
     navigation,
     canAccessPrices,
-    lockReason,
+    lockReason: isOwner ? null : lockReason,
     requiredLabel,
     currentUser,
     isOwner,

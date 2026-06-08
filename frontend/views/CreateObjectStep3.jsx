@@ -89,11 +89,17 @@ export default function CreateObjectStep3({ route, navigation }) {
 
           {/* Foto principal + contador */}
           <View className="relative mb-4">
-            <Image
-              source={photos?.main ? { uri: photos.main } : require('../assets/logo.png')}
-              className="w-full h-44 rounded-2xl bg-slate-100"
-              resizeMode="cover"
-            />
+            {photos?.main ? (
+              <Image
+                source={{ uri: photos.main }}
+                className="w-full h-44 rounded-2xl bg-slate-100"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="w-full h-44 rounded-2xl bg-slate-100 items-center justify-center">
+                <MaterialCommunityIcons name="gavel" size={64} color="#7C3AED" />
+              </View>
+            )}
             <View className="absolute bottom-2 right-2 bg-black/50 px-2.5 py-1 rounded-full flex-row items-center">
               <Feather name="image" size={11} color="white" />
               <Text className="text-white text-[10px] font-bold ml-1">{photoCount} photos</Text>

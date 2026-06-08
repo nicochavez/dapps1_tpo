@@ -37,7 +37,7 @@ function EmptyState({ message, icon }) {
 }
 
 function BidRow({ bid, currentUserId }) {
-  const isMe = bid.userId === currentUserId;
+  const isMe = String(bid.userId) === String(currentUserId);
   const user = usersData.find(u => u.id === bid.userId);
   const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2) ?? '?';
 
@@ -195,7 +195,7 @@ export default function BidsScreen({ navigation }) {
   if (!currentUser) return null;
 
   // ── Build enriched auction map ───────────────────────────────────────────
-  const userBids = bidsData.filter(b => b.userId === currentUser.id);
+  const userBids = bidsData.filter(b => String(b.userId) === String(currentUser.id));
 
   const auctionMap = {};
   userBids.forEach(bid => {

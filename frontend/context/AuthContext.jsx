@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
     const resolvedUser = {
       id: clienteData.identificador,
       documento,
+      email: clienteData.email,
       nombre: clienteData.nombre,
       category: clienteData.categoria,
       estado: clienteData.estado,

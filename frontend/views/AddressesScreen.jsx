@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import { getDirecciones, createDireccion, deleteDireccion } from '../services/api';
 
@@ -24,7 +25,7 @@ export default function AddressesScreen({ navigation }) {
     }
   };
 
-  useEffect(() => { fetchAddresses(); }, []);
+  useFocusEffect(useCallback(() => { fetchAddresses(); }, []));
 
   const handleSave = async () => {
     if (!form.calle || !form.ciudad || !form.codigoPostal) {

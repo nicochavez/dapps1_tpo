@@ -12,6 +12,7 @@ public class ClienteDto {
     private Long identificador;
     private String documento;
     private String nombre;
+    private String email;
     private String estado;
     private String categoria;
     private boolean admitido;

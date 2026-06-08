@@ -4,6 +4,7 @@ import com.tpo.backend.cliente.dto.ClienteDto;
 import com.tpo.backend.cliente.dto.ClienteUpdateRequest;
 import com.tpo.backend.cliente.dto.MetricasDto;
 import com.tpo.backend.cliente.service.ClienteService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

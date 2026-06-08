@@ -25,7 +25,8 @@ export default function AddPaymentMethodScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
       className="flex-1 bg-white"
     >
       <View className="flex-row items-center px-6 pt-14 pb-6 bg-white z-10 border-b border-slate-100">
@@ -35,7 +36,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
         <Text className="text-xl font-bold text-slate-800">Add Payment Method</Text>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         <View className="flex-row justify-between mb-8">
 

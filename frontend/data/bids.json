@@ -15,8 +15,21 @@
   { "id": "b12", "itemId": "i9", "userId": "u2", "importe": 380,   "ganador": false, "fecha": "2026-12-12T14:10:00" },
   { "id": "b13", "itemId": "i9", "userId": "u0", "importe": 450,   "ganador": true,  "fecha": "2026-12-12T14:15:00" },
 
-  { "id": "b14", "itemId": "i1", "userId": "u3", "importe": 65500, "ganador": false, "fecha": "2026-10-24T14:00:00" },
-  { "id": "b15", "itemId": "i1", "userId": "u1", "importe": 67000, "ganador": false, "fecha": "2026-10-24T14:06:00" },
-  { "id": "b16", "itemId": "i1", "userId": "u3", "importe": 69000, "ganador": false, "fecha": "2026-10-24T14:11:00" },
-  { "id": "b17", "itemId": "i1", "userId": "u1", "importe": 71500, "ganador": false, "fecha": "2026-10-24T14:15:00" }
+  { "id": "b14", "itemId": "i1", "userId": "u3",   "importe": 65500, "ganador": false, "fecha": "2026-10-24T14:00:00" },
+  { "id": "b15", "itemId": "i1", "userId": "1001",  "importe": 66000, "ganador": false, "fecha": "2026-10-24T14:03:00" },
+  { "id": "b16", "itemId": "i1", "userId": "u3",   "importe": 67000, "ganador": false, "fecha": "2026-10-24T14:06:00" },
+  { "id": "b17", "itemId": "i1", "userId": "u1",   "importe": 69000, "ganador": false, "fecha": "2026-10-24T14:11:00" },
+  { "id": "b18", "itemId": "i1", "userId": "1001",  "importe": 71500, "ganador": false, "fecha": "2026-10-24T14:15:00" },
+
+  { "id": "b19", "itemId": "i14", "userId": "u3",  "importe": 3300, "ganador": false, "fecha": "2026-04-20T15:04:00" },
+  { "id": "b20", "itemId": "i14", "userId": "1001", "importe": 3500, "ganador": false, "fecha": "2026-04-20T15:09:00" },
+  { "id": "b21", "itemId": "i14", "userId": "u3",  "importe": 3650, "ganador": false, "fecha": "2026-04-20T15:14:00" },
+  { "id": "b22", "itemId": "i14", "userId": "1001", "importe": 3800, "ganador": true,  "fecha": "2026-04-20T15:20:00" },
+
+  { "id": "b23", "itemId": "i11", "userId": "u2",  "importe": 1850, "ganador": false, "fecha": "2026-04-20T15:02:00" },
+  { "id": "b24", "itemId": "i11", "userId": "1002", "importe": 1950, "ganador": false, "fecha": "2026-04-20T15:06:00" },
+  { "id": "b25", "itemId": "i11", "userId": "u2",  "importe": 1980, "ganador": false, "fecha": "2026-04-20T15:11:00" },
+  { "id": "b26", "itemId": "i11", "userId": "1002", "importe": 2000, "ganador": true,  "fecha": "2026-04-20T15:17:00" },
+
+  { "id": "b27", "itemId": "i9", "userId": "1002", "importe": 260,  "ganador": false, "fecha": "2026-12-12T14:02:00" }
 ]

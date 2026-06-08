@@ -1,29 +1,73 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Alert } from 'react-native';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-
-// 1. Importamos el Contexto
 import { AuthContext } from '../context/AuthContext';
-
-// 2. Importamos TODAS las bases de datos necesarias para cruzar la información
-import paymentMethodsData from '../data/paymentMethods.json';
-import bidsData from '../data/bids.json';
+import { getMediosPago } from '../services/api';
 import itemsData from '../data/items.json';
-import catalogsData from '../data/catalogs.json';
+import bidsData from '../data/bids.json';
+
+const TIPO_GRADIENTS = {
+  tarjeta_credito:    ['#8b5cf6', '#a855f7', '#d946ef'],
+  cuenta_bancaria:    ['#10b981', '#059669', '#0d9488'],
+  cheque_certificado: ['#f59e0b', '#f97316', '#ef4444'],
+};
+
+function WalletCard({ pm }) {
+  const gradient = TIPO_GRADIENTS[pm.tipo] ?? TIPO_GRADIENTS.tarjeta_credito;
+  const subtitle =
+    pm.tipo === 'tarjeta_credito'  ? `•••• •••• •••• ${pm.ultimosCuatro || '????'}` :
+    pm.tipo === 'cuenta_bancaria'  ? (pm.banco || 'Bank Account') :
+    pm.tipo === 'cheque_certificado' ? (pm.banco || 'Certified Check') : '';
+
+  return (
+    <LinearGradient
+      colors={gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="rounded-3xl p-6 mb-6 shadow-lg shadow-purple-300"
+    >
+      <View className="flex-row justify-between items-center mb-8">
+        <MaterialCommunityIcons name="contactless-payment-circle-outline" size={28} color="white" />
+        <Text className="text-white font-bold tracking-widest text-sm opacity-90">
+          {pm.verificado ? 'VERIFIED' : 'PENDING'}
+        </Text>
+      </View>
+      <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">{subtitle}</Text>
+      <View className="flex-row justify-between items-end">
+        <View className="flex-row" style={{ gap: 32 }}>
+          {pm.titular ? (
+            <View>
+              <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">HOLDER</Text>
+              <Text className="text-white font-bold text-xs tracking-wider uppercase">{pm.titular}</Text>
+            </View>
+          ) : null}
+          {pm.fechaVencimiento ? (
+            <View>
+              <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
+              <Text className="text-white font-bold text-xs tracking-wider">{pm.fechaVencimiento.substring(0, 7)}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Feather name="credit-card" size={24} color="white" style={{ opacity: 0.9 }} />
+      </View>
+    </LinearGradient>
+  );
+}
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-
   const { user: currentUser, logout } = useContext(AuthContext);
 
-  // Redirige a Login si no hay usuario logueado (ya sea que nunca se logueó
-  // o que acaba de hacer logout). useEffect evita el render parcial.
+  const [firstPm, setFirstPm]   = useState(null);
+  const [loading, setLoading]   = useState(true);
+
   useEffect(() => {
     if (!currentUser) {
       Alert.alert(
@@ -31,48 +75,51 @@ export default function ProfileScreen() {
         'You need to be logged in to view your profile.',
         [
           { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
-          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
-        ]     
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
+        ]
       );
     }
   }, [currentUser]);
 
+  const fetchData = useCallback(async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    try {
+      const medios = await getMediosPago(currentUser.id, currentUser.token);
+      setFirstPm(Array.isArray(medios) && medios.length > 0 ? medios[0] : null);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser]);
+
+  useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+
   if (!currentUser) return null;
 
-  // 3. Buscamos el medio de pago
-  const userPaymentMethod = paymentMethodsData.find(pm => pm.userId === currentUser.id);
+  const uid = String(currentUser.id);
+  const myAuctionsCount = itemsData.filter(i => String(i.ownerId) === uid).length;
+  const userBids = bidsData.filter(b => String(b.userId) === uid);
+  const attendedCatalogs = new Set(
+    userBids.map(b => {
+      const item = itemsData.find(i => i.id === b.itemId);
+      return item?.catalogo;
+    }).filter(Boolean)
+  );
+  const subastasAsistidas = attendedCatalogs.size;
+  const subastasGanadas   = userBids.filter(b => b.ganador).length;
+  const winRate = subastasAsistidas > 0
+    ? Math.round((subastasGanadas / subastasAsistidas) * 100)
+    : 0;
 
-  // 4. CÁLCULO DINÁMICO DE ESTADÍSTICAS — agrupado por subasta (igual que BidsScreen)
-  const userBids = bidsData.filter(b => b.userId === currentUser.id);
-
-  const auctionMap = {};
-  userBids.forEach(bid => {
-    const item = itemsData.find(i => i.id === bid.itemId);
-    const catalog = item ? catalogsData.find(c => c.id === item.catalogo) : null;
-    if (!item || !catalog) return;
-    if (!auctionMap[catalog.id]) auctionMap[catalog.id] = { won: false, isActive: false };
-    if (bid.ganador) auctionMap[catalog.id].won = true;
-    if (item.estadoLote === 'en_puja') auctionMap[catalog.id].isActive = true;
-  });
-
-  const auctions = Object.values(auctionMap);
-  const attended = auctions.length;
-  const wonCount = auctions.filter(a => a.won).length;
-  const winRate  = attended > 0 ? Math.round((wonCount / attended) * 100) : 0;
-
-  const calculatedStats = {
-    attended,
-    won: wonCount,
-    winRate,
-    myAuctions: catalogsData.filter(catalog => catalog.ownerId === currentUser.id).length,
-  };
+  const initials = currentUser.nombre
+    ? currentUser.nombre.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
 
   const handleLogout = () => {
-    // Limpiamos el contexto (setUser(null) y setToken(null) en AuthContext).
-    // El useEffect de arriba detecta el cambio de currentUser a null
-    // y hace el reset de navegación automáticamente.
     logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (
@@ -80,62 +127,55 @@ export default function ProfileScreen() {
       <Header />
 
       <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-        
-        {/* --- INFO DEL USUARIO --- */}
+
+        {/* USER INFO */}
         <View className="items-center mb-8">
-          <View className="relative">
-            <View className="p-1 border-2 border-slate-100 rounded-full border-dashed">
-              <Image 
-                source={{ uri: currentUser.avatar }} 
-                className="w-24 h-24 rounded-full bg-purple-100" 
-              />
-            </View>
-            <View className="absolute bottom-1 right-1 bg-[#7C3AED] rounded-full p-1 border-2 border-white">
-              <Feather name="settings" size={12} color="white" />
-            </View>
+          <View className="w-24 h-24 rounded-full bg-purple-100 items-center justify-center border-2 border-dashed border-slate-200">
+            <Text className="text-3xl font-bold text-[#7C3AED]">{initials}</Text>
           </View>
-          
-          <Text className="text-2xl font-bold text-slate-800 mt-4 mb-1.5">{currentUser.name}</Text>
-          <View className="bg-[#cca038] px-4 py-1.5 rounded-xl shadow-sm">
-            <Text className="text-white text-xs font-bold tracking-widest">{currentUser.category}</Text>
-          </View>
+          <Text className="text-2xl font-bold text-slate-800 mt-4 mb-1.5">{currentUser.nombre}</Text>
+          {currentUser.category ? (
+            <View className="bg-[#cca038] px-4 py-1.5 rounded-xl shadow-sm">
+              <Text className="text-white text-xs font-bold tracking-widest uppercase">{currentUser.category}</Text>
+            </View>
+          ) : null}
+          {currentUser.email ? (
+            <Text className="text-slate-400 text-xs mt-2">{currentUser.email}</Text>
+          ) : null}
         </View>
 
-        {/* --- ESTADÍSTICAS DINÁMICAS --- */}
+        {/* STATS */}
         <View className="bg-white rounded-3xl p-5 mb-6 shadow-sm shadow-slate-200 flex-row justify-between items-center">
-          
-          <View className="items-center flex-1 border-r border-slate-100">
-            <MaterialCommunityIcons name="gavel" size={20} color="#7C3AED" />
-            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
-              {calculatedStats.attended.toString().padStart(2, '0')}
-            </Text>
-            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Attended</Text>
+            <View className="items-center flex-1 border-r border-slate-100">
+              <MaterialCommunityIcons name="gavel" size={20} color="#7C3AED" />
+              <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
+                {String(subastasAsistidas).padStart(2, '0')}
+              </Text>
+              <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Attended</Text>
+            </View>
+            <View className="items-center flex-1 border-r border-slate-100">
+              <MaterialCommunityIcons name="trophy-outline" size={20} color="#10b981" />
+              <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
+                {String(subastasGanadas).padStart(2, '0')}
+              </Text>
+              <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Won</Text>
+            </View>
+            <View className="items-center flex-1">
+              <MaterialCommunityIcons name="chart-line" size={20} color="#a855f7" />
+              <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">{winRate}%</Text>
+              <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Win Rate</Text>
+            </View>
           </View>
 
-          <View className="items-center flex-1 border-r border-slate-100">
-            <MaterialCommunityIcons name="trophy-outline" size={20} color="#10b981" />
-            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
-              {calculatedStats.won.toString().padStart(2, '0')}
-            </Text>
-            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Won</Text>
-          </View>
-
-          <View className="items-center flex-1">
-            <MaterialCommunityIcons name="chart-line" size={20} color="#a855f7" />
-            <Text className="text-2xl font-bold text-slate-800 mt-1 mb-0.5">
-              {calculatedStats.winRate}%
-            </Text>
-            <Text className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Win Rate</Text>
-          </View>
-
-        </View>
-
-        {/* --- MY AUCTIONS --- */}
-        <TouchableOpacity onPress={() => navigation.navigate('MyAuctions')} className="bg-white rounded-3xl p-5 mb-6 shadow-sm shadow-slate-200 flex-row justify-between items-center">
+        {/* MY AUCTIONS */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('MyAuctions')}
+          className="bg-white rounded-3xl p-5 mb-6 shadow-sm shadow-slate-200 flex-row justify-between items-center"
+        >
           <View>
             <Text className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-1">My Auctions</Text>
             <Text className="text-3xl font-bold text-slate-800">
-              {calculatedStats.myAuctions.toString().padStart(2, '0')}
+              {String(myAuctionsCount).padStart(2, '0')}
             </Text>
           </View>
           <View className="bg-orange-100 w-12 h-12 rounded-2xl items-center justify-center">
@@ -143,12 +183,15 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* --- MANAGE ADDRESSES BOTÓN --- */}
-        <TouchableOpacity onPress={() => navigation.navigate('Addresses')} className="bg-[#7C3AED] rounded-2xl py-4 items-center justify-center mb-8 shadow-md shadow-purple-200">
+        {/* MANAGE ADDRESSES */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Addresses')}
+          className="bg-[#7C3AED] rounded-2xl py-4 items-center justify-center mb-8 shadow-md shadow-purple-200"
+        >
           <Text className="text-white font-bold text-sm">Manage Addresses</Text>
         </TouchableOpacity>
 
-        {/* --- DIGITAL WALLET (TARJETA DE CRÉDITO) --- */}
+        {/* DIGITAL WALLET */}
         <View className="flex-row justify-between items-center mb-4 px-1">
           <Text className="text-lg font-bold text-slate-800">Digital Wallet</Text>
           <TouchableOpacity onPress={() => navigation.navigate('PaymentMethods')} className="flex-row items-center">
@@ -158,38 +201,10 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('PaymentMethods')} activeOpacity={0.85}>
-          {userPaymentMethod ? (
-            <LinearGradient
-              colors={['#8b5cf6', '#a855f7', '#d946ef']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="rounded-3xl p-6 mb-6 shadow-lg shadow-purple-300"
-            >
-              <View className="flex-row justify-between items-center mb-8">
-                <MaterialCommunityIcons name="contactless-payment-circle-outline" size={28} color="white" />
-                <Text className="text-white font-bold tracking-widest text-sm opacity-90">
-                  {userPaymentMethod.tier}
-                </Text>
-              </View>
-
-              <Text className="text-white text-xl font-medium tracking-widest mb-8 opacity-90">
-                {'•••• •••• •••• ' + userPaymentMethod.lastFour}
-              </Text>
-
-              <View className="flex-row justify-between items-end">
-                <View className="flex-row" style={{ gap: 32 }}>
-                  <View>
-                    <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">CARD HOLDER</Text>
-                    <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.cardHolder}</Text>
-                  </View>
-                  <View>
-                    <Text className="text-white text-[9px] font-bold tracking-wider opacity-70 mb-1">EXPIRY</Text>
-                    <Text className="text-white font-bold text-xs tracking-wider">{userPaymentMethod.expiry}</Text>
-                  </View>
-                </View>
-                <Feather name="credit-card" size={24} color="white" style={{ opacity: 0.9 }} />
-              </View>
-            </LinearGradient>
+          {loading ? (
+            <ActivityIndicator color="#7C3AED" className="mb-6" />
+          ) : firstPm ? (
+            <WalletCard pm={firstPm} />
           ) : (
             <View className="bg-slate-100 rounded-3xl p-6 mb-6 items-center border border-slate-200 border-dashed">
               <Text className="text-slate-400 font-bold mb-2">No payment methods yet</Text>
@@ -198,7 +213,7 @@ export default function ProfileScreen() {
           )}
         </TouchableOpacity>
 
-        {/* --- CAMBIAR CONTRASEÑA --- */}
+        {/* CHANGE PASSWORD */}
         <TouchableOpacity
           onPress={() => navigation.navigate('ChangePassword')}
           className="bg-white rounded-2xl py-4 items-center justify-center mb-4 border border-slate-200 flex-row"
@@ -207,7 +222,7 @@ export default function ProfileScreen() {
           <Text className="text-[#7C3AED] font-bold text-sm ml-2">Change Password</Text>
         </TouchableOpacity>
 
-        {/* --- BOTÓN LOG OUT --- */}
+        {/* LOG OUT */}
         <TouchableOpacity
           onPress={handleLogout}
           className="bg-red-50 rounded-2xl py-4 items-center justify-center mb-10 border border-red-100"

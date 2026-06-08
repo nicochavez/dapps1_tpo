@@ -1,4 +1,11 @@
 import React, { useState } from 'react';
+
+function formatDate(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { createChequeCertificado } from '../services/api';
@@ -104,13 +111,15 @@ export default function CheckForm({ clienteId, token, onSuccess }) {
         onChangeText={(t) => setForm({ ...form, numeroCheque: t })}
       />
 
-      <Text className="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wider">Expiry Date (yyyy-MM-dd)</Text>
+      <Text className="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wider">Expiry Date</Text>
       <TextInput
         className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-black mb-4"
-        placeholder="2026-12-31"
+        placeholder="YYYY-MM-DD"
         placeholderTextColor="#94a3b8"
+        keyboardType="numeric"
+        maxLength={10}
         value={form.fechaVencimiento}
-        onChangeText={(t) => setForm({ ...form, fechaVencimiento: t })}
+        onChangeText={(t) => setForm({ ...form, fechaVencimiento: formatDate(t) })}
       />
 
       <TouchableOpacity
