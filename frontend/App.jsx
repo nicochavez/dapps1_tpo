@@ -1,6 +1,8 @@
 import * as React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import NetInfo from '@react-native-community/netinfo';
 import SplashScreen from './views/SplashScreen';
 import LoginScreen from './views/LoginScreen';
 import RegisterStep1 from './views/RegisterStep1';
@@ -27,16 +29,31 @@ import ProfileScreen from './views/ProfileScreen';
 import { AuthProvider } from './context/AuthContext';
 import MyAuctionsScreen from './views/MyAuctionsScreen';
 import PaymentMethodsScreen from './views/PaymentMethodsScreen';
+import LostConnectionScreen from './views/LostConnectionScreen';
 import ForgotPasswordScreen from './views/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef();
 
 export default function App() {
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (!navigationRef.isReady()) return;
+      const current = navigationRef.getCurrentRoute()?.name;
+      if (!state.isConnected && current !== 'LostConnection') {
+        navigationRef.navigate('LostConnection');
+      } else if (state.isConnected && current === 'LostConnection') {
+        navigationRef.goBack();
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <AuthProvider>
       {/* <-- 4. PASAMOS LA CONFIGURACIÓN AL NAVIGATION CONTAINER --> */}
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName="Splash">
           
           <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
@@ -65,6 +82,7 @@ export default function App() {
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="LostConnection" component={LostConnectionScreen} options={{ headerShown: false, gestureEnabled: false }} />
 
         </Stack.Navigator>
       </NavigationContainer>

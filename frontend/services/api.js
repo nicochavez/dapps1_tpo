@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://192.168.0.164:8080/api/v1'; // cambiar por la IP local del backend
+export const API_BASE_URL = 'http://192.168.0.202:8080/api/v1'; // cambiar por la IP local del backend
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, ...fetchOptions } = options;
