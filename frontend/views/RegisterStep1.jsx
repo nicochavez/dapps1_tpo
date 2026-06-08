@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Header1 from '../components/Header1';
+
+const COUNTRIES = [
+  { label: 'Argentina',  numeroPais: 32  },
+  { label: 'Brasil',     numeroPais: 76  },
+  { label: 'Chile',      numeroPais: 152 },
+  { label: 'Uruguay',    numeroPais: 858 },
+  { label: 'España',     numeroPais: 724 },
+  { label: 'México',     numeroPais: 484 },
+];
 
 export default function RegisterStep1({ navigation }) {
   // 1. Agregamos el estado para guardar todos los datos del formulario
@@ -14,8 +23,10 @@ export default function RegisterStep1({ navigation }) {
     streetNumber: '',
     city: '',
     zipCode: '',
-    country: 'Argentina'
+    country: 'Argentina',
+    numeroPais: 32,
   });
+  const [countryOpen, setCountryOpen] = useState(false);
 
   // 2. Función para validar y pasar al Paso 2
   const handleNext = () => {
@@ -150,10 +161,34 @@ export default function RegisterStep1({ navigation }) {
         </View>
 
         <Text className="font-bold text-black mb-2 text-sm">Country</Text>
-        <View className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-8 flex-row justify-between items-center">
+        <TouchableOpacity
+          onPress={() => setCountryOpen(v => !v)}
+          className={`bg-slate-50 border rounded-xl px-4 py-3 flex-row justify-between items-center ${countryOpen ? 'border-[#7C3AED]' : 'border-slate-200'} ${countryOpen ? '' : 'mb-8'}`}
+        >
           <Text className="text-black">{formData.country}</Text>
-          <Feather name="chevron-down" size={20} color="#94a3b8" />
-        </View>
+          <Feather name={countryOpen ? 'chevron-up' : 'chevron-down'} size={20} color={countryOpen ? '#7C3AED' : '#94a3b8'} />
+        </TouchableOpacity>
+        {countryOpen && (
+          <View className="bg-white border border-slate-200 rounded-xl mb-8 mt-1 overflow-hidden shadow-sm shadow-slate-200">
+            {COUNTRIES.map((c, idx) => (
+              <TouchableOpacity
+                key={c.numeroPais}
+                onPress={() => {
+                  setFormData({ ...formData, country: c.label, numeroPais: c.numeroPais });
+                  setCountryOpen(false);
+                }}
+                className={`px-4 py-3 flex-row justify-between items-center ${idx < COUNTRIES.length - 1 ? 'border-b border-slate-100' : ''}`}
+              >
+                <Text className={`text-sm ${formData.numeroPais === c.numeroPais ? 'text-[#7C3AED] font-bold' : 'text-slate-700'}`}>
+                  {c.label}
+                </Text>
+                {formData.numeroPais === c.numeroPais && (
+                  <Feather name="check" size={16} color="#7C3AED" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Footer y Botón */}
         <Text className="text-center text-xs text-slate-400 mb-4 px-4">

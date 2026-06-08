@@ -10,6 +10,7 @@ export default function RegisterStep2({ route, navigation }) {
 
   const [selectedImages, setSelectedImages] = useState({});
   const [idCardNumber, setIdCardNumber] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const pickImage = async (imageKey) => {
@@ -37,6 +38,10 @@ export default function RegisterStep2({ route, navigation }) {
       alert('Please upload both front and back photos of your ID.');
       return;
     }
+    if (!termsAccepted) {
+      alert('You must accept the Terms and Conditions to register.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -49,7 +54,7 @@ export default function RegisterStep2({ route, navigation }) {
         numeroCalle: step1Data.streetNumber || '0',
         ciudad: step1Data.city,
         codigoPostal: step1Data.zipCode,
-        numeroPais: 32,
+        numeroPais: step1Data.numeroPais ?? 32,
         dniFrente: selectedImages['id-front'],
         dniDorso: selectedImages['id-back'],
       });
@@ -66,7 +71,7 @@ export default function RegisterStep2({ route, navigation }) {
   return (
   <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} className="flex-1 bg-slate-50">
     <View className="flex-1 bg-white">
-      <ScrollView className="flex-1 px-6 pt-12" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-12" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
         <Header1 navigation={navigation} />
 
         {/* Stepper */}
@@ -132,12 +137,22 @@ export default function RegisterStep2({ route, navigation }) {
           )}
         </TouchableOpacity>
 
-        <View className="bg-slate-50 rounded-xl p-4 flex-row mb-8">
-          <Feather name="info" size={16} color="#7C3AED" className="mt-1 mr-2" />
+        <TouchableOpacity
+          onPress={() => setTermsAccepted(v => !v)}
+          className="flex-row items-start mb-8"
+          activeOpacity={0.7}
+        >
+          <View className={`w-5 h-5 rounded border-2 mt-0.5 mr-3 items-center justify-center flex-shrink-0 ${termsAccepted ? 'bg-[#7C3AED] border-[#7C3AED]' : 'border-slate-300 bg-white'}`}>
+            {termsAccepted && <Feather name="check" size={12} color="white" />}
+          </View>
           <Text className="text-slate-500 text-xs flex-1 leading-5">
-            Your data is encrypted and processed by an external secure verification provider. BidFlow does not store your raw ID images on our primary servers. Verification usually takes 2-5 minutes.
+            I have read and accept the{' '}
+            <Text className="text-[#7C3AED] font-bold">Terms and Conditions</Text>
+            {' '}and{' '}
+            <Text className="text-[#7C3AED] font-bold">Privacy Policy</Text>
+            {' '}of BidFlow. I understand that my identity documents will be reviewed for verification purposes.
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           className="bg-[#7C3AED] rounded-2xl py-4 items-center flex-row justify-center mb-6"
