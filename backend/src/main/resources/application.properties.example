@@ -1,7 +1,14 @@
+# Copy to application.properties. Holds COMMON config only;
+# datasource lives in application-{dev,prod}.properties.
 spring.application.name=backend
-spring.datasource.url=jdbc:postgresql://<supabase-host>:5432/postgres
-spring.datasource.username=postgres
-spring.datasource.password=<your-password>
 
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+# Environment switch. dev (default) = local Docker DB, prod = Supabase.
+spring.profiles.active=${APP_ENV:dev}
+
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# JWT secret (>= 32 bytes). Override in prod via APP_JWT_SECRET env var.
+app.jwt.secret=${APP_JWT_SECRET:dev-only-bidflow-jwt-secret-change-me-please-32b}
+app.jwt.expiration-ms=86400000

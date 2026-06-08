@@ -32,6 +32,24 @@ BEGIN
   END IF;
 END $$;
 
+-- ----------------------------------------------------------------------------
+-- Login del administrador (rol EMPLEADO) para los endpoints /api/v1/admin/**.
+-- ----------------------------------------------------------------------------
+-- El empleado verificador (identificador = 2) ya otorga ROLE_EMPLEADO; solo le
+-- falta una fila en `usuarios` con credenciales para poder loguearse.
+--
+-- IMPORTANTE: `password_hash` DEBE ser un hash BCrypt (empieza con $2a/$2b/$2y),
+-- porque el backend valida con BCryptPasswordEncoder.matches(). NO sirve la clave
+-- en texto plano ni un token JWT. Para generar el tuyo:
+--   python3 -c "import bcrypt;print(bcrypt.hashpw(b'TU_CLAVE',bcrypt.gensalt(10)).decode())"
+--   # o:  htpasswd -bnBC 10 '' 'TU_CLAVE'   (usar la parte después de los ':')
+--
+-- El hash de abajo corresponde a la clave  'admin1234'.
+-- Login:  POST /api/v1/auth/login  { "documento": "00000002", "contrasenia": "admin1234" }
+INSERT INTO public.usuarios (persona, email, password_hash, activo)
+VALUES (2, 'admin@bidflow.com', '$2b$10$OsMvisp.W7uQZ7pBWf7Nj.RWKYnWyHy38/l05YTLVK9cUGxp1oWTi', true)
+ON CONFLICT (persona) DO NOTHING;
+
 -- ============================================================================
 -- (OPCIONAL) Demo para probar el flujo de subasta/puja/adjudicación.
 -- Crea: subastador, dueño, catálogo, producto con 6 fotos, subasta abierta e ítem.
