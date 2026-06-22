@@ -1,5 +1,7 @@
 package com.tpo.backend.cliente.entity;
 
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
+import com.tpo.backend.persona.PersonaEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +16,11 @@ public class ClienteEntity {
     @Column(name = "identificador")
     private Long id;
 
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "identificador")
+    private PersonaEntity persona;
+
     @Column(name = "numeropais")
     private Integer numeroPais;
 
@@ -23,6 +30,7 @@ public class ClienteEntity {
     @Column(name = "categoria")
     private String categoria;
 
-    @Column(name = "verificador", nullable = false)
-    private Long verificador;
+    @ManyToOne
+    @JoinColumn(name = "verificador", nullable = false)
+    private EmpleadoEntity verificador;
 }

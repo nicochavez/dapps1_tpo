@@ -1,5 +1,7 @@
 package com.tpo.backend.duenio.entity;
 
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
+import com.tpo.backend.persona.PersonaEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +16,11 @@ public class DuenioEntity {
     @Column(name = "identificador")
     private Long id;
 
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "identificador")
+    private PersonaEntity persona;
+
     @Column(name = "numeropais")
     private Integer numeroPais;
 
@@ -26,6 +33,7 @@ public class DuenioEntity {
     @Column(name = "calificacionriesgo")
     private Integer calificacionRiesgo;
 
-    @Column(name = "verificador", nullable = false)
-    private Long verificador;
+    @ManyToOne
+    @JoinColumn(name = "verificador", nullable = false)
+    private EmpleadoEntity verificador;
 }

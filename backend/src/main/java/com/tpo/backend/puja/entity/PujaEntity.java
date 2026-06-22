@@ -1,5 +1,7 @@
 package com.tpo.backend.puja.entity;
 
+import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
+import com.tpo.backend.subasta.entity.AsistenteEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,11 +20,13 @@ public class PujaEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "asistente", nullable = false)
-    private Long asistente;
+    @ManyToOne
+    @JoinColumn(name = "asistente", nullable = false)
+    private AsistenteEntity asistente;
 
-    @Column(name = "item", nullable = false)
-    private Long item;
+    @ManyToOne
+    @JoinColumn(name = "item", nullable = false)
+    private ItemCatalogoEntity item;
 
     @Column(name = "importe", nullable = false, precision = 18, scale = 2)
     private BigDecimal importe;

@@ -1,5 +1,7 @@
 package com.tpo.backend.multa.entity;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
+import com.tpo.backend.compra.entity.CompraEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,11 +20,13 @@ public class MultaEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente", nullable = false)
+    private ClienteEntity cliente;
 
-    @Column(name = "compra")
-    private Long compra;
+    @ManyToOne
+    @JoinColumn(name = "compra")
+    private CompraEntity compra;
 
     @Column(name = "importe_original", nullable = false, precision = 18, scale = 2)
     private BigDecimal importeOriginal;

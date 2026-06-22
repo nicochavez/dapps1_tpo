@@ -59,9 +59,9 @@ public class ClienteService {
     public MetricasDto getMetricas() {
         ClienteEntity cliente = currentClienteEntity();
 
-        int subastasAsistidas = asistenteRepository.findByCliente(cliente.getId()).size();
+        int subastasAsistidas = asistenteRepository.findByClienteId(cliente.getId()).size();
 
-        var registros = registroRepository.findByCliente(cliente.getId());
+        var registros = registroRepository.findByClienteId(cliente.getId());
         int subastasGanadas = registros.size();
 
         BigDecimal totalPagado = registros.stream()

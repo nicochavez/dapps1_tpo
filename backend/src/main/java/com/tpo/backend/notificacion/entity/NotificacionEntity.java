@@ -1,5 +1,6 @@
 package com.tpo.backend.notificacion.entity;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,8 +18,9 @@ public class NotificacionEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente", nullable = false)
+    private ClienteEntity cliente;
 
     @Column(name = "titulo", nullable = false)
     private String titulo;

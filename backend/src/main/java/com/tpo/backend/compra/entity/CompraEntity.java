@@ -1,5 +1,10 @@
 package com.tpo.backend.compra.entity;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
+import com.tpo.backend.direccion.entity.DireccionEntity;
+import com.tpo.backend.mediospago.entity.MedioPagoEntity;
+import com.tpo.backend.producto.entity.ProductoEntity;
+import com.tpo.backend.subasta.entity.SubastaEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,14 +23,25 @@ public class CompraEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente", nullable = false)
+    private ClienteEntity cliente;
 
-    @Column(name = "subasta", nullable = false)
-    private Long subasta;
+    @ManyToOne
+    @JoinColumn(name = "subasta", nullable = false)
+    private SubastaEntity subasta;
 
-    @Column(name = "producto", nullable = false)
-    private Long producto;
+    @ManyToOne
+    @JoinColumn(name = "producto", nullable = false)
+    private ProductoEntity producto;
+
+    @ManyToOne
+    @JoinColumn(name = "medio_pago")
+    private MedioPagoEntity medioPago;
+
+    @ManyToOne
+    @JoinColumn(name = "direccion_envio")
+    private DireccionEntity direccionEnvio;
 
     @Column(name = "importe", nullable = false, precision = 18, scale = 2)
     private BigDecimal importe;

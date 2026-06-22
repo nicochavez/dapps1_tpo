@@ -72,7 +72,7 @@ public class PujaService {
         }
 
         Long clienteId = clienteService.currentClienteEntity().getId();
-        AsistenteEntity asistente = asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
+        AsistenteEntity asistente = asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId)
                 .orElseThrow(() -> new ConflictException("Debe conectarse a la subasta antes de pujar."));
 
         // RF-21: los espectadores no pueden pujar.
@@ -80,7 +80,7 @@ public class PujaService {
             throw new ForbiddenException("Esta conectado como espectador y no puede pujar.");
         }
 
-        BigDecimal mejorOferta = pujaRepository.findFirstByItemOrderByImporteDesc(itemId)
+        BigDecimal mejorOferta = pujaRepository.findFirstByItemIdOrderByImporteDesc(itemId)
                 .map(PujaEntity::getImporte)
                 .orElse(item.getPrecioBase());
 
@@ -101,8 +101,8 @@ public class PujaService {
         }
 
         PujaEntity nueva = new PujaEntity();
-        nueva.setAsistente(asistente.getId());
-        nueva.setItem(itemId);
+        nueva.setAsistente(asistente);
+        nueva.setItem(item);
         nueva.setImporte(request.getImporte());
         nueva.setFecha(OffsetDateTime.now());
         nueva.setGanador(false);
@@ -127,7 +127,7 @@ public class PujaService {
         subastaRepository.findById(subastaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
         // RF-33: historial ordenado temporalmente.
-        return pujaRepository.findByItemOrderByFechaAsc(itemId).stream()
+        return pujaRepository.findByItemIdOrderByFechaAsc(itemId).stream()
                 .map(this::toHistorialDto)
                 .toList();
     }
@@ -137,8 +137,8 @@ public class PujaService {
         subastaRepository.findById(subastaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
         Long clienteId = clienteService.currentClienteEntity().getId();
-        return asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
-                .map(a -> pujaRepository.findByAsistente(a.getId()).stream()
+        return asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId)
+                .map(a -> pujaRepository.findByAsistenteId(a.getId()).stream()
                         .map(this::toMiPujaDto)
                         .toList())
                 .orElse(List.of());
@@ -146,16 +146,15 @@ public class PujaService {
 
     @Transactional
     public List<PujaHistorialDto> getPujasPorProducto(Long productoId) {
-        return itemRepository.findByProducto(productoId)
-                .map(item -> pujaRepository.findByItemOrderByImporteDesc(item.getId()).stream()
+        return itemRepository.findByProductoId(productoId)
+                .map(item -> pujaRepository.findByItemIdOrderByImporteDesc(item.getId()).stream()
                         .map(this::toHistorialDto)
                         .toList())
                 .orElse(List.of());
     }
 
     private PujaHistorialDto toHistorialDto(PujaEntity p) {
-        Integer numeroPostor = asistenteRepository.findById(p.getAsistente())
-                .map(AsistenteEntity::getNumeroPostor).orElse(null);
+        Integer numeroPostor = p.getAsistente().getNumeroPostor();
         return new PujaHistorialDto(
                 p.getId(),
                 numeroPostor,
@@ -166,14 +165,14 @@ public class PujaService {
     }
 
     private MiPujaDto toMiPujaDto(PujaEntity p) {
-        ItemCatalogoEntity item = itemRepository.findById(p.getItem()).orElse(null);
+        ItemCatalogoEntity item = p.getItem();
         String desc = "";
         if (item != null) {
-            ProductoEntity prod = productoRepository.findById(item.getProducto()).orElse(null);
+            ProductoEntity prod = item.getProducto();
             desc = prod != null ? prod.getDescripcionCatalogo() : "";
         }
         return new MiPujaDto(
-                new MiPujaDto.ItemRefDto(p.getItem(), desc),
+                new MiPujaDto.ItemRefDto(item != null ? item.getId() : null, desc),
                 p.getImporte(),
                 Boolean.TRUE.equals(p.getGanador()) ? "si" : "no"
         );

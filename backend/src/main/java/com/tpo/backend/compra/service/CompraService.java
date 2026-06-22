@@ -8,10 +8,8 @@ import com.tpo.backend.compra.entity.CompraEntity;
 import com.tpo.backend.compra.repository.CompraRepository;
 import com.tpo.backend.historial.dto.HistorialSubastaDto;
 import com.tpo.backend.producto.entity.ProductoEntity;
-import com.tpo.backend.producto.repository.ProductoRepository;
 import com.tpo.backend.subasta.entity.SubastaEntity;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
-import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -24,19 +22,13 @@ import java.util.List;
 public class CompraService {
 
     private final CompraRepository compraRepository;
-    private final ProductoRepository productoRepository;
-    private final SubastaRepository subastaRepository;
     private final RegistroDeSubastaRepository registroRepository;
     private final ClienteService clienteService;
 
     public CompraService(CompraRepository compraRepository,
-                         ProductoRepository productoRepository,
-                         SubastaRepository subastaRepository,
                          RegistroDeSubastaRepository registroRepository,
                          ClienteService clienteService) {
         this.compraRepository = compraRepository;
-        this.productoRepository = productoRepository;
-        this.subastaRepository = subastaRepository;
         this.registroRepository = registroRepository;
         this.clienteService = clienteService;
     }
@@ -44,7 +36,7 @@ public class CompraService {
     @Transactional
     public PagedResponse<CompraDto> listar(int page, int size) {
         Long clienteId = clienteService.currentClienteEntity().getId();
-        Page<CompraEntity> p = compraRepository.findByCliente(clienteId, PageRequest.of(page, size));
+        Page<CompraEntity> p = compraRepository.findByClienteId(clienteId, PageRequest.of(page, size));
         List<CompraDto> content = p.stream().map(this::toDto).toList();
         return new PagedResponse<>(content, p.getTotalPages(), (int) p.getTotalElements(), page, size);
     }
@@ -64,14 +56,14 @@ public class CompraService {
     @Transactional
     public PagedResponse<HistorialSubastaDto> getHistorial(int page, int size) {
         Long clienteId = clienteService.currentClienteEntity().getId();
-        List<HistorialSubastaDto> all = registroRepository.findByCliente(clienteId).stream()
+        List<HistorialSubastaDto> all = registroRepository.findByClienteId(clienteId).stream()
                 .map(r -> {
-                    SubastaEntity s = subastaRepository.findById(r.getSubasta()).orElse(null);
+                    SubastaEntity s = r.getSubasta();
                     return new HistorialSubastaDto(
-                            r.getSubasta(),
-                            s != null && s.getFecha() != null ? s.getFecha().toString() : null,
-                            s != null ? s.getCategoria() : null,
-                            s != null ? s.getEstado() : null,
+                            s.getId(),
+                            s.getFecha() != null ? s.getFecha().toString() : null,
+                            s.getCategoria(),
+                            s.getEstado(),
                             1,
                             r.getImporte()
                     );
@@ -90,14 +82,13 @@ public class CompraService {
     }
 
     private CompraDto toDto(CompraEntity compra) {
-        SubastaEntity s = subastaRepository.findById(compra.getSubasta()).orElse(null);
-        ProductoEntity p = productoRepository.findById(compra.getProducto()).orElse(null);
+        SubastaEntity s = compra.getSubasta();
+        ProductoEntity p = compra.getProducto();
         return new CompraDto(
                 compra.getId(),
-                new CompraDto.SubastaRefDto(compra.getSubasta(),
-                        s != null && s.getFecha() != null ? s.getFecha().toString() : null),
-                new CompraDto.ProductoRefDto(compra.getProducto(),
-                        p != null ? p.getDescripcionCatalogo() : "Producto " + compra.getProducto()),
+                new CompraDto.SubastaRefDto(s.getId(),
+                        s.getFecha() != null ? s.getFecha().toString() : null),
+                new CompraDto.ProductoRefDto(p.getId(), p.getDescripcionCatalogo()),
                 compra.getImporte(),
                 compra.getComision(),
                 compra.getCostoEnvio() != null ? compra.getCostoEnvio() : BigDecimal.ZERO,

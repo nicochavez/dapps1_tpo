@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface ItemCatalogoRepository extends JpaRepository<ItemCatalogoEntity, Long> {
 
-    List<ItemCatalogoEntity> findByCatalogo(Long catalogo);
+    List<ItemCatalogoEntity> findByCatalogoId(Long catalogoId);
 
-    Optional<ItemCatalogoEntity> findByProducto(Long producto);
+    Optional<ItemCatalogoEntity> findByProductoId(Long productoId);
 }

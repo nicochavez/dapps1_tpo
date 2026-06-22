@@ -1,5 +1,6 @@
 package com.tpo.backend.catalogo.entity;
 
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,6 +19,7 @@ public class CatalogoEntity {
     @Column(name = "descripcion", nullable = false)
     private String descripcion;
 
-    @Column(name = "responsable", nullable = false)
-    private Long responsable;
+    @ManyToOne
+    @JoinColumn(name = "responsable", nullable = false)
+    private EmpleadoEntity responsable;
 }

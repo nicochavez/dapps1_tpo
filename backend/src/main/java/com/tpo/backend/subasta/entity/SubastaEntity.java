@@ -1,5 +1,6 @@
 package com.tpo.backend.subasta.entity;
 
+import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,8 +28,9 @@ public class SubastaEntity {
     @Column(name = "estado")
     private String estado;
 
-    @Column(name = "subastador")
-    private Long subastador;
+    @ManyToOne
+    @JoinColumn(name = "subastador")
+    private SubastadorEntity subastador;
 
     @Column(name = "ubicacion")
     private String ubicacion;
@@ -48,6 +50,7 @@ public class SubastaEntity {
     @Column(name = "moneda")
     private String moneda;
 
-    @Column(name = "catalogo")
-    private Long catalogo;
+    @ManyToOne
+    @JoinColumn(name = "catalogo")
+    private CatalogoEntity catalogo;
 }

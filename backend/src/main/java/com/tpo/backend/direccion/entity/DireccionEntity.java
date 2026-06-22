@@ -1,5 +1,7 @@
 package com.tpo.backend.direccion.entity;
 
+import com.tpo.backend.common.entity.PaisEntity;
+import com.tpo.backend.persona.PersonaEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,8 +17,9 @@ public class DireccionEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "persona", nullable = false)
-    private Long persona;
+    @ManyToOne
+    @JoinColumn(name = "persona", nullable = false)
+    private PersonaEntity persona;
 
     @Column(name = "nombre")
     private String nombre;
@@ -42,8 +45,9 @@ public class DireccionEntity {
     @Column(name = "codigo_postal")
     private String codigoPostal;
 
-    @Column(name = "pais")
-    private Integer pais;
+    @ManyToOne
+    @JoinColumn(name = "pais")
+    private PaisEntity pais;
 
     @Column(name = "favorito")
     private Boolean favorito;

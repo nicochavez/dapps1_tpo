@@ -9,9 +9,9 @@ import java.util.List;
 @Repository
 public interface RegistroDeSubastaRepository extends JpaRepository<RegistroDeSubastaEntity, Long> {
 
-    List<RegistroDeSubastaEntity> findByCliente(Long cliente);
+    List<RegistroDeSubastaEntity> findByClienteId(Long clienteId);
 
-    List<RegistroDeSubastaEntity> findByDuenio(Long duenio);
+    List<RegistroDeSubastaEntity> findByDuenioId(Long duenioId);
 
-    List<RegistroDeSubastaEntity> findBySubasta(Long subasta);
+    List<RegistroDeSubastaEntity> findBySubastaId(Long subastaId);
 }

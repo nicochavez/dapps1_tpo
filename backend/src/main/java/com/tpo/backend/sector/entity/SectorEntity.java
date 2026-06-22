@@ -1,5 +1,6 @@
 package com.tpo.backend.sector.entity;
 
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +22,7 @@ public class SectorEntity {
     @Column(name = "codigosector")
     private String codigoSector;
 
-    @Column(name = "responsablesector")
-    private Long responsableSector;
+    @ManyToOne
+    @JoinColumn(name = "responsablesector")
+    private EmpleadoEntity responsableSector;
 }

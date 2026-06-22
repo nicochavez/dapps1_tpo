@@ -1,5 +1,6 @@
 package com.tpo.backend.mediospago.entity;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,8 +18,9 @@ public abstract class MedioPagoEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "cliente", nullable = false)
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente", nullable = false)
+    private ClienteEntity cliente;
 
     @Column(name = "moneda", nullable = false)
     private String moneda;

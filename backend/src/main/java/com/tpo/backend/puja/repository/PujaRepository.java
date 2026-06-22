@@ -10,11 +10,11 @@ import java.util.Optional;
 @Repository
 public interface PujaRepository extends JpaRepository<PujaEntity, Long> {
 
-    List<PujaEntity> findByItemOrderByImporteDesc(Long item);
+    List<PujaEntity> findByItemIdOrderByImporteDesc(Long itemId);
 
-    List<PujaEntity> findByItemOrderByFechaAsc(Long item);
+    List<PujaEntity> findByItemIdOrderByFechaAsc(Long itemId);
 
-    List<PujaEntity> findByAsistente(Long asistente);
+    List<PujaEntity> findByAsistenteId(Long asistenteId);
 
-    Optional<PujaEntity> findFirstByItemOrderByImporteDesc(Long item);
+    Optional<PujaEntity> findFirstByItemIdOrderByImporteDesc(Long itemId);
 }

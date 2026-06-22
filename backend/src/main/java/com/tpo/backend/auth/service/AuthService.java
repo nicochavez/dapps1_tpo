@@ -9,10 +9,12 @@ import com.tpo.backend.auth.security.JwtService;
 import com.tpo.backend.email.EmailService;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
+import com.tpo.backend.common.entity.PaisEntity;
 import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnauthorizedException;
+import com.tpo.backend.common.repository.PaisRepository;
 import com.tpo.backend.direccion.entity.DireccionEntity;
 import com.tpo.backend.direccion.repository.DireccionRepository;
 import com.tpo.backend.duenio.repository.DuenioRepository;
@@ -43,6 +45,7 @@ public class AuthService {
     private final EmpleadoRepository empleadoRepository;
     private final SubastadorRepository subastadorRepository;
     private final DireccionRepository direccionRepository;
+    private final PaisRepository paisRepository;
     private final EmailService emailService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
@@ -54,6 +57,7 @@ public class AuthService {
                        EmpleadoRepository empleadoRepository,
                        SubastadorRepository subastadorRepository,
                        DireccionRepository direccionRepository,
+                       PaisRepository paisRepository,
                        EmailService emailService,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder) {
@@ -64,6 +68,7 @@ public class AuthService {
         this.empleadoRepository = empleadoRepository;
         this.subastadorRepository = subastadorRepository;
         this.direccionRepository = direccionRepository;
+        this.paisRepository = paisRepository;
         this.emailService = emailService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
@@ -87,7 +92,9 @@ public class AuthService {
         persona.setApellido(request.getApellido().trim());
         persona.setDocumento(documento);
         persona.setEstado("pendiente");
-        persona.setPaisOrigen(request.getNumeroPais());
+        PaisEntity paisOrigen = paisRepository.findById(request.getNumeroPais())
+                .orElseThrow(() -> new BadRequestException("Pais no encontrado: " + request.getNumeroPais()));
+        persona.setPaisOrigen(paisOrigen);
 
         try {
             persona.setFotoDniFrente(request.getDniFrente().getBytes());
@@ -101,21 +108,22 @@ public class AuthService {
         
         UsuarioEntity usuario = new UsuarioEntity();
         usuario.setEmail(email);
-        usuario.setPersonaId(persona.getId());
+        usuario.setPersona(persona);
         usuario.setActivo(false);
         usuario.setUltimoAcceso(OffsetDateTime.now());
         usuario = usuarioRepository.save(usuario);
         
         ClienteEntity cliente = new ClienteEntity();
-        cliente.setId(persona.getId());
+        cliente.setPersona(persona);
         cliente.setNumeroPais(request.getNumeroPais());
         cliente.setAdmitido(false);
         cliente.setCategoria(null);
-        cliente.setVerificador(VERIFICADOR_SISTEMA_ID);
+        cliente.setVerificador(empleadoRepository.findById(VERIFICADOR_SISTEMA_ID)
+                .orElseThrow(() -> new ResourceNotFoundException("Empleado verificador no encontrado: " + VERIFICADOR_SISTEMA_ID)));
         clienteRepository.save(cliente);
         
         DireccionEntity domicilio = new DireccionEntity();
-        domicilio.setPersona(persona.getId());
+        domicilio.setPersona(persona);
         domicilio.setNombre("Domicilio legal");
         domicilio.setCalle(request.getCalle());
         domicilio.setNumero(request.getNumeroCalle());
@@ -124,7 +132,7 @@ public class AuthService {
         domicilio.setCiudad(request.getCiudad());
         domicilio.setProvincia(request.getProvincia());
         domicilio.setCodigoPostal(request.getCodigoPostal());
-        domicilio.setPais(request.getNumeroPais());
+        domicilio.setPais(paisOrigen);
         domicilio.setFavorito(true);
         direccionRepository.save(domicilio);
 

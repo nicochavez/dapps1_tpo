@@ -15,8 +15,9 @@ public class FotoEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "producto", nullable = false)
-    private Long producto;
+    @ManyToOne
+    @JoinColumn(name = "producto", nullable = false)
+    private ProductoEntity producto;
 
     // byte[] sin @Lob mapea a bytea (coincide con el ERD); con @Lob Hibernate usaria oid.
     @Column(name = "foto", nullable = false)

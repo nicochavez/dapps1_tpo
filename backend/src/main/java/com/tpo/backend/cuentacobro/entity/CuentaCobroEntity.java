@@ -1,5 +1,6 @@
 package com.tpo.backend.cuentacobro.entity;
 
+import com.tpo.backend.duenio.entity.DuenioEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,9 +16,9 @@ public class CuentaCobroEntity {
     @Column(name = "identificador")
     private Long id;
 
-    // En el ERD la columna es 'duenio' (FK a duenios); se conserva el nombre Java por compatibilidad.
-    @Column(name = "duenio", nullable = false)
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "duenio", nullable = false)
+    private DuenioEntity duenio;
 
     @Column(name = "banco", nullable = false)
     private String banco;

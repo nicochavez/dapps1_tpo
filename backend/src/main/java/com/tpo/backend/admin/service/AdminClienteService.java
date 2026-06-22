@@ -94,7 +94,7 @@ public class AdminClienteService {
         emailService.enviarAprobacion(email, persona.getNombre(), contraseniaTemporal);
 
         NotificacionEntity notificacion = new NotificacionEntity();
-        notificacion.setCliente(cliente.getId());
+        notificacion.setCliente(cliente);
         notificacion.setTitulo("Registro aprobado");
         notificacion.setMensaje("Tu registro fue aprobado en la categoria " + cliente.getCategoria() +
                 ". Revisá tu email para obtener tu contraseña temporal.");

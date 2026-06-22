@@ -1,5 +1,6 @@
 package com.tpo.backend.persona;
 
+import com.tpo.backend.common.entity.PaisEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,8 +27,9 @@ public class PersonaEntity {
     @Column(name = "apellido", nullable = false)
     private String apellido;
 
-    @Column(name = "pais_origen")
-    private Integer paisOrigen;
+    @ManyToOne
+    @JoinColumn(name = "pais_origen")
+    private PaisEntity paisOrigen;
 
     @Column(name = "foto")
     private byte[] foto;
