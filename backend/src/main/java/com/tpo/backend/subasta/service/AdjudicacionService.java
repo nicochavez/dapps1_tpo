@@ -4,17 +4,17 @@ import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
 import com.tpo.backend.catalogo.repository.CatalogoRepository;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
+import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.common.ws.SubastaEventPublisher;
 import com.tpo.backend.compra.entity.CompraEntity;
 import com.tpo.backend.compra.repository.CompraRepository;
+import com.tpo.backend.duenio.entity.DuenioEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
-import com.tpo.backend.producto.repository.ProductoRepository;
 import com.tpo.backend.puja.entity.PujaEntity;
 import com.tpo.backend.puja.repository.PujaRepository;
 import com.tpo.backend.subasta.entity.AsistenteEntity;
 import com.tpo.backend.subasta.entity.RegistroDeSubastaEntity;
 import com.tpo.backend.subasta.entity.SubastaEntity;
-import com.tpo.backend.subasta.repository.AsistenteRepository;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
 import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.slf4j.Logger;
@@ -43,30 +43,21 @@ public class AdjudicacionService {
     public static final long VENTANA_PUJA_SEGUNDOS = 60;
 
     private final SubastaRepository subastaRepository;
-    private final CatalogoRepository catalogoRepository;
     private final ItemCatalogoRepository itemRepository;
-    private final ProductoRepository productoRepository;
     private final PujaRepository pujaRepository;
-    private final AsistenteRepository asistenteRepository;
     private final CompraRepository compraRepository;
     private final RegistroDeSubastaRepository registroRepository;
     private final SubastaEventPublisher eventPublisher;
 
     public AdjudicacionService(SubastaRepository subastaRepository,
-                               CatalogoRepository catalogoRepository,
                                ItemCatalogoRepository itemRepository,
-                               ProductoRepository productoRepository,
                                PujaRepository pujaRepository,
-                               AsistenteRepository asistenteRepository,
                                CompraRepository compraRepository,
                                RegistroDeSubastaRepository registroRepository,
                                SubastaEventPublisher eventPublisher) {
         this.subastaRepository = subastaRepository;
-        this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
-        this.productoRepository = productoRepository;
         this.pujaRepository = pujaRepository;
-        this.asistenteRepository = asistenteRepository;
         this.compraRepository = compraRepository;
         this.registroRepository = registroRepository;
         this.eventPublisher = eventPublisher;
@@ -109,8 +100,11 @@ public class AdjudicacionService {
     /** Primer item no subastado de la subasta (item en curso). */
     @Transactional
     public Optional<ItemCatalogoEntity> currentItem(Long subastaId) {
-        return catalogoRepository.findBySubasta(subastaId).stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
+        CatalogoEntity catalogo = subastaRepository.findById(subastaId)
+                .map(SubastaEntity::getCatalogo)
+                .orElse(null);
+        if (catalogo == null) return Optional.empty();
+        return itemRepository.findByCatalogoId(catalogo.getId()).stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
                 .min(Comparator.comparing(ItemCatalogoEntity::getId));
     }
@@ -121,11 +115,11 @@ public class AdjudicacionService {
      */
     @Transactional
     public void cerrarItem(SubastaEntity subasta, ItemCatalogoEntity item) {
-        ProductoEntity producto = productoRepository.findById(item.getProducto()).orElse(null);
-        Long duenioActual = producto != null ? producto.getDuenio() : null;
+        ProductoEntity producto = item.getProducto();
+        DuenioEntity duenioActual = producto != null ? producto.getDuenio() : null;
         BigDecimal comision = item.getComision();
 
-        Optional<PujaEntity> topPuja = pujaRepository.findFirstByItemOrderByImporteDesc(item.getId());
+        Optional<PujaEntity> topPuja = pujaRepository.findFirstByItemIdOrderByImporteDesc(item.getId());
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("itemId", item.getId());
@@ -133,29 +127,29 @@ public class AdjudicacionService {
         if (topPuja.isPresent()) {
             // RF-35 / RF-36: hay ganador.
             PujaEntity puja = topPuja.get();
-            AsistenteEntity asistente = asistenteRepository.findById(puja.getAsistente()).orElse(null);
-            Long ganadorClienteId = asistente != null ? asistente.getCliente() : null;
+            AsistenteEntity asistente = puja.getAsistente();
+            ClienteEntity ganadorCliente = asistente != null ? asistente.getCliente() : null;
             BigDecimal importe = puja.getImporte();
 
             puja.setGanador(true);
             pujaRepository.save(puja);
 
-            crearCompra(ganadorClienteId, subasta.getId(), item.getProducto(), importe, comision);
+            crearCompra(ganadorCliente, subasta, item.getProducto(), importe, comision);
             // RF-35/36: el ganador queda registrado como adjudicatario en registrodesubasta.
             // No se reasigna productos.duenio porque esa FK apunta a 'duenios' (rol consignante),
             // no a 'clientes'; el nuevo titular se desprende del registro de adjudicacion.
-            crearRegistro(subasta.getId(), duenioActual, item.getProducto(), ganadorClienteId, importe, comision, false);
+            crearRegistro(subasta, duenioActual, item.getProducto(), ganadorCliente, importe, comision, false);
 
             payload.put("resultado", "vendido");
-            payload.put("ganadorCliente", ganadorClienteId);
+            payload.put("ganadorCliente", ganadorCliente != null ? ganadorCliente.getId() : null);
             payload.put("numeroPostor", asistente != null ? asistente.getNumeroPostor() : null);
             payload.put("importe", importe);
             log.info("[ADJUDICACION] Item {} adjudicado a cliente {} por {}.",
-                    item.getId(), ganadorClienteId, importe);
+                    item.getId(), ganadorCliente != null ? ganadorCliente.getId() : null, importe);
         } else {
             // RF-39: nadie pujo -> compra la empresa al precio base (cliente NULL + compradorEmpresa).
             BigDecimal importe = item.getPrecioBase();
-            crearRegistro(subasta.getId(), duenioActual, item.getProducto(),
+            crearRegistro(subasta, duenioActual, item.getProducto(),
                     null, importe, comision, true);
 
             payload.put("resultado", "empresa");
@@ -173,12 +167,12 @@ public class AdjudicacionService {
         finalizarSiCorresponde(subasta);
     }
 
-    private void crearCompra(Long clienteId, Long subastaId, Long productoId,
+    private void crearCompra(ClienteEntity cliente, SubastaEntity subasta, ProductoEntity producto,
                              BigDecimal importe, BigDecimal comision) {
         CompraEntity compra = new CompraEntity();
-        compra.setCliente(clienteId);
-        compra.setSubasta(subastaId);
-        compra.setProducto(productoId);
+        compra.setCliente(cliente);
+        compra.setSubasta(subasta);
+        compra.setProducto(producto);
         compra.setImporte(importe);
         compra.setComision(comision);
         compra.setCostoEnvio(null);
@@ -188,13 +182,13 @@ public class AdjudicacionService {
         compraRepository.save(compra);
     }
 
-    private void crearRegistro(Long subastaId, Long duenioId, Long productoId, Long clienteId,
+    private void crearRegistro(SubastaEntity subasta, DuenioEntity duenio, ProductoEntity producto, ClienteEntity cliente,
                                BigDecimal importe, BigDecimal comision, boolean compradorEmpresa) {
         RegistroDeSubastaEntity registro = new RegistroDeSubastaEntity();
-        registro.setSubasta(subastaId);
-        registro.setDuenio(duenioId); // FK a duenios; el producto siempre tiene dueno
-        registro.setProducto(productoId);
-        registro.setCliente(clienteId);
+        registro.setSubasta(subasta);
+        registro.setDuenio(duenio); // FK a duenios; el producto siempre tiene dueno
+        registro.setProducto(producto);
+        registro.setCliente(cliente);
         registro.setImporte(importe);
         registro.setComision(comision);
         registro.setCompradorEmpresa(compradorEmpresa);
@@ -202,9 +196,9 @@ public class AdjudicacionService {
     }
 
     private void finalizarSiCorresponde(SubastaEntity subasta) {
-        boolean quedanItems = catalogoRepository.findBySubasta(subasta.getId()).stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
-                .anyMatch(i -> !Boolean.TRUE.equals(i.getSubastado()));
+        boolean quedanItems = subasta.getCatalogo() != null &&
+                itemRepository.findByCatalogoId(subasta.getCatalogo().getId()).stream()
+                        .anyMatch(i -> !Boolean.TRUE.equals(i.getSubastado()));
         if (!quedanItems) {
             subasta.setEstado("finalizada");
             subastaRepository.save(subasta);

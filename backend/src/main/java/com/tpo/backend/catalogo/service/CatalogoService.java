@@ -1,6 +1,7 @@
 package com.tpo.backend.catalogo.service;
 
 import com.tpo.backend.catalogo.dto.CatalogoListDto;
+import com.tpo.backend.catalogo.dto.CatalogoNewRequest;
 import com.tpo.backend.catalogo.dto.ItemCatalogoDetailDto;
 import com.tpo.backend.catalogo.dto.ItemCatalogoNewRequest;
 import com.tpo.backend.catalogo.entity.CatalogoEntity;
@@ -13,6 +14,10 @@ import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
+import com.tpo.backend.empleado.repository.EmpleadoRepository;
+import com.tpo.backend.subasta.entity.SubastaEntity;
+import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,17 +34,23 @@ public class CatalogoService {
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
     private final ClienteService clienteService;
+    private final EmpleadoRepository empleadoRepository;
+    private final SubastaRepository subastaRepository;
 
     public CatalogoService(CatalogoRepository catalogoRepository,
                            ItemCatalogoRepository itemRepository,
                            ProductoRepository productoRepository,
                            FotoRepository fotoRepository,
-                           ClienteService clienteService) {
+                           ClienteService clienteService,
+                           EmpleadoRepository empleadoRepository,
+                           SubastaRepository subastaRepository) {
         this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
         this.clienteService = clienteService;
+        this.empleadoRepository = empleadoRepository;
+        this.subastaRepository = subastaRepository;
     }
 
     @Transactional
@@ -51,9 +62,21 @@ public class CatalogoService {
 
     @Transactional
     public List<CatalogoListDto> getCatalogosForSubasta(Long subastaId) {
-        return catalogoRepository.findBySubasta(subastaId).stream()
-                .map(this::toListDto)
-                .toList();
+        return subastaRepository.findById(subastaId)
+                .filter(s -> s.getCatalogo() != null)
+                .map(s -> List.of(toListDto(s.getCatalogo())))
+                .orElse(List.of());
+    }
+
+    @Transactional
+    public CatalogoListDto crearCatalogo(CatalogoNewRequest request) {
+        EmpleadoEntity responsable = empleadoRepository.findById(request.getResponsable())
+                .orElseThrow(() -> new ResourceNotFoundException("Empleado no encontrado: " + request.getResponsable()));
+        CatalogoEntity entity = new CatalogoEntity();
+        entity.setDescripcion(request.getDescripcion());
+        entity.setResponsable(responsable);
+        entity = catalogoRepository.save(entity);
+        return toListDto(entity);
     }
 
     @Transactional
@@ -61,19 +84,21 @@ public class CatalogoService {
         catalogoRepository.findById(catalogoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + catalogoId));
         ItemCatalogoEntity item = itemRepository.findById(itemId)
-                .filter(i -> i.getCatalogo().equals(catalogoId))
+                .filter(i -> i.getCatalogo().getId().equals(catalogoId))
                 .orElseThrow(() -> new ResourceNotFoundException("Item no encontrado: " + itemId));
         return toDetailDto(item);
     }
 
     @Transactional
     public List<CatalogoListDto.ItemDto> getItemsByCatalogo(Long subastaId, Long catalogoId) {
-        CatalogoEntity cat = catalogoRepository.findById(catalogoId)
+        catalogoRepository.findById(catalogoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + catalogoId));
-        if (cat.getSubasta() == null || !cat.getSubasta().equals(subastaId)) {
+        SubastaEntity subasta = subastaRepository.findById(subastaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
+        if (subasta.getCatalogo() == null || !subasta.getCatalogo().getId().equals(catalogoId)) {
             throw new ResourceNotFoundException("Catalogo no pertenece a subasta: " + subastaId);
         }
-        return itemRepository.findByCatalogo(catalogoId).stream()
+        return itemRepository.findByCatalogoId(catalogoId).stream()
                 .map(this::toListItemDto)
                 .toList();
     }
@@ -88,8 +113,8 @@ public class CatalogoService {
         validarMinimoFotos(producto.getId());
 
         ItemCatalogoEntity item = new ItemCatalogoEntity();
-        item.setCatalogo(catalogo.getId());
-        item.setProducto(producto.getId());
+        item.setCatalogo(catalogo);
+        item.setProducto(producto);
         item.setPrecioBase(request.getPrecioBase());
         item.setComision(request.getComision());
         item.setSubastado(false);
@@ -100,7 +125,7 @@ public class CatalogoService {
 
     /** RF-14: cada item debe tener al menos 6 imagenes. */
     private void validarMinimoFotos(Long productoId) {
-        int cantidad = fotoRepository.findByProducto(productoId).size();
+        int cantidad = fotoRepository.findByProductoId(productoId).size();
         if (cantidad < MIN_FOTOS) {
             throw new UnprocessableEntityException(
                     "El producto debe tener al menos " + MIN_FOTOS + " imagenes (tiene " + cantidad + ").");
@@ -109,27 +134,27 @@ public class CatalogoService {
 
     @Transactional
     public List<ItemCatalogoDetailDto> getItemsByDuenio(Long userId) {
-        List<Long> productosDelDuenio = productoRepository.findByDuenio(userId).stream()
+        List<Long> productosDelDuenio = productoRepository.findByDuenioId(userId).stream()
                 .map(ProductoEntity::getId).toList();
         return itemRepository.findAll().stream()
-                .filter(i -> productosDelDuenio.contains(i.getProducto()))
+                .filter(i -> productosDelDuenio.contains(i.getProducto().getId()))
                 .map(this::toDetailDto)
                 .toList();
     }
 
     private CatalogoListDto toListDto(CatalogoEntity cat) {
-        List<CatalogoListDto.ItemDto> items = itemRepository.findByCatalogo(cat.getId()).stream()
+        List<CatalogoListDto.ItemDto> items = itemRepository.findByCatalogoId(cat.getId()).stream()
                 .map(this::toListItemDto)
                 .toList();
         return new CatalogoListDto(cat.getId(), cat.getDescripcion(), items.size(), items);
     }
 
     private CatalogoListDto.ItemDto toListItemDto(ItemCatalogoEntity item) {
-        ProductoEntity prod = productoRepository.findById(item.getProducto()).orElse(null);
+        ProductoEntity prod = item.getProducto();
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
-        var fotos = fotoRepository.findByProducto(item.getProducto());
+        var fotos = fotoRepository.findByProductoId(item.getProducto().getId());
         String imagenPrincipal = fotos.isEmpty() ? null
-                : "/api/v1/productos/" + item.getProducto() + "/fotos/" + fotos.get(0).getId();
+                : "/api/v1/productos/" + item.getProducto().getId() + "/fotos/" + fotos.get(0).getId();
         return new CatalogoListDto.ItemDto(
                 item.getId(),
                 descripcion,
@@ -140,9 +165,8 @@ public class CatalogoService {
     }
 
     private ItemCatalogoDetailDto toDetailDto(ItemCatalogoEntity item) {
-        ProductoEntity producto = productoRepository.findById(item.getProducto())
-                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + item.getProducto()));
-        List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProducto(producto.getId()).stream()
+        ProductoEntity producto = item.getProducto();
+        List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProductoId(producto.getId()).stream()
                 .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
                         "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
                 .toList();

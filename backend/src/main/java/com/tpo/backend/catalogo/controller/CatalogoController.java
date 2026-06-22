@@ -1,6 +1,7 @@
 package com.tpo.backend.catalogo.controller;
 
 import com.tpo.backend.catalogo.dto.CatalogoListDto;
+import com.tpo.backend.catalogo.dto.CatalogoNewRequest;
 import com.tpo.backend.catalogo.dto.ItemCatalogoDetailDto;
 import com.tpo.backend.catalogo.dto.ItemCatalogoNewRequest;
 import com.tpo.backend.catalogo.service.CatalogoService;
@@ -24,6 +25,11 @@ public class CatalogoController {
     @GetMapping("/catalogos")
     public ResponseEntity<List<CatalogoListDto>> listar() {
         return ResponseEntity.ok(catalogoService.listarTodos());
+    }
+
+    @PostMapping("/catalogos")
+    public ResponseEntity<CatalogoListDto> crearCatalogo(@Valid @RequestBody CatalogoNewRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalogoService.crearCatalogo(request));
     }
 
     @GetMapping("/catalogos/{catalogoId}/items/{itemId}")

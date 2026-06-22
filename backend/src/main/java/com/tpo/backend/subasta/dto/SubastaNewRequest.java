@@ -20,4 +20,5 @@ public class SubastaNewRequest {
     private String moneda;
     @NotNull
     private Long subastador;
+    private Long catalogo;
 }

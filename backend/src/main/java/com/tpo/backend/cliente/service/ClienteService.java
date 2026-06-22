@@ -14,13 +14,11 @@ import com.tpo.backend.usuario.repository.UsuarioRepository;
 import com.tpo.backend.common.repository.PaisRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
+import com.tpo.backend.auth.security.SecurityUtils;
 import com.tpo.backend.subasta.repository.AsistenteRepository;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -66,9 +64,9 @@ public class ClienteService {
     public MetricasDto getMetricas() {
         ClienteEntity cliente = currentClienteEntity();
 
-        int subastasAsistidas = asistenteRepository.findByCliente(cliente.getId()).size();
+        int subastasAsistidas = asistenteRepository.findByClienteId(cliente.getId()).size();
 
-        var registros = registroRepository.findByCliente(cliente.getId());
+        var registros = registroRepository.findByClienteId(cliente.getId());
         int subastasGanadas = registros.size();
 
         BigDecimal totalPagado = registros.stream()
@@ -86,52 +84,24 @@ public class ClienteService {
     }
 
     public ClienteEntity currentClienteEntity() {
-        String documento = getDocumentoFromToken();
+        Long personaId = SecurityUtils.currentPersonaId();
 
-        PersonaEntity persona = personaRepository.findByDocumento(documento)
-                .orElseThrow(() -> new UnauthorizedException("No existe persona asociada al token."));
-
-        return clienteRepository.findById(persona.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado para la persona: " + persona.getId()));
+        return clienteRepository.findById(personaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado para la persona: " + personaId));
     }
 
     /** Cliente autenticado o {@code null} si no hay token valido (para endpoints publicos). */
     public ClienteEntity currentClienteOrNull() {
-        try {
-            return currentClienteEntity();
-        } catch (RuntimeException e) {
+        var user = SecurityUtils.currentUserOrNull();
+        if (user == null) {
             return null;
         }
+        return clienteRepository.findById(user.personaId()).orElse(null);
     }
 
     /** true si el request trae un token que mapea a un cliente registrado (RF-13). */
     public boolean isAuthenticated() {
         return currentClienteOrNull() != null;
-    }
-
-    private String getDocumentoFromToken() {
-        ServletRequestAttributes attrs =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
-        if (attrs == null) {
-            throw new UnauthorizedException("No hay request activo.");
-        }
-
-        HttpServletRequest request = attrs.getRequest();
-        String authorization = request.getHeader("Authorization");
-
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new UnauthorizedException("Falta token.");
-        }
-
-        String token = authorization.substring("Bearer ".length());
-
-        String prefix = "mock-jwt-token-for-";
-        if (!token.startsWith(prefix)) {
-            throw new UnauthorizedException("Token invalido.");
-        }
-
-        return token.substring(prefix.length());
     }
 
     public ClienteDto toDto(ClienteEntity cliente) {

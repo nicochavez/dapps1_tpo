@@ -1,0 +1,26 @@
+# Local development database.
+# Start:   docker compose up -d
+# Stop:    docker compose down
+# Reset:   docker compose down -v   (deletes all data)
+#
+# Matches the defaults in application-dev.properties.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bidflow-dev-db
+    environment:
+      POSTGRES_DB: bidflow_dev
+      POSTGRES_USER: bidflow
+      POSTGRES_PASSWORD: bidflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - bidflow_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bidflow -d bidflow_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  bidflow_dev_data:

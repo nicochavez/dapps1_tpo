@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface CuentaCobroRepository extends JpaRepository<CuentaCobroEntity, Long> {
 
-    List<CuentaCobroEntity> findByCliente(Long cliente);
+    List<CuentaCobroEntity> findByDuenioId(Long duenioId);
 }

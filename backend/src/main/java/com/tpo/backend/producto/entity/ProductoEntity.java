@@ -1,5 +1,8 @@
 package com.tpo.backend.producto.entity;
 
+import com.tpo.backend.duenio.entity.DuenioEntity;
+import com.tpo.backend.empleado.entity.EmpleadoEntity;
+import com.tpo.backend.seguro.entity.SeguroEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -35,14 +38,17 @@ public class ProductoEntity {
     @Column(name = "subcategoria")
     private String subcategoria;
 
-    @Column(name = "revisor", nullable = false)
-    private Long revisor;
+    @ManyToOne
+    @JoinColumn(name = "revisor", nullable = false)
+    private EmpleadoEntity revisor;
 
-    @Column(name = "duenio", nullable = false)
-    private Long duenio;
+    @ManyToOne
+    @JoinColumn(name = "duenio", nullable = false)
+    private DuenioEntity duenio;
 
-    @Column(name = "seguro")
-    private String seguro;
+    @ManyToOne
+    @JoinColumn(name = "seguro")
+    private SeguroEntity seguro;
 
     /** Metadatos de arte/diseno (RF-15). */
     @Column(name = "artista")

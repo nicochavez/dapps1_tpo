@@ -21,7 +21,7 @@ public class NotificacionController {
     @GetMapping
     public ResponseEntity<List<NotificacionDto>> listar(@PathVariable Long userId) {
         List<NotificacionDto> notificaciones = notificacionRepository
-                .findByClienteOrderByFechaCreacionDesc(userId).stream()
+                .findByClienteIdOrderByFechaCreacionDesc(userId).stream()
                 .map(this::toDto)
                 .toList();
         return ResponseEntity.ok(notificaciones);

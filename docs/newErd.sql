@@ -1,417 +1,334 @@
--- ============================================================================
--- BidFlow / Sistema de Subastas — Modelo de datos (PostgreSQL / Supabase)
--- ----------------------------------------------------------------------------
--- Derivado de docs/intitialErd.sql (SQL Server) + docs/RequerimientosYFeatures.md
--- Convertido a dialecto PostgreSQL.
---
--- Arquitectura de identidad (preservada del diseño original):
---   personas  = entidad raíz (toda persona física del sistema)
---     ├─ usuarios      → credenciales de acceso (1:1 con persona)
---     ├─ clientes      → rol POSTOR (puja / compra)
---     ├─ duenios       → rol DUEÑO (envía bienes a subastar)
---     ├─ subastadores  → rematador
---     └─ empleados     → personal interno (verificadores, revisores, etc.)
---   Una misma persona puede ser cliente Y dueño a la vez.
---
--- Orden: se crean primero las tablas referenciadas. Las referencias
--- circulares (empleados <-> sectores) se resuelven con ALTER al final.
--- ============================================================================
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- ---------------------------------------------------------------------------
--- Catálogos base
--- ---------------------------------------------------------------------------
 CREATE TABLE public.paises (
-  numero        integer NOT NULL,
-  nombre        varchar(250) NOT NULL,
-  nombrecorto   varchar(250),
-  capital       varchar(250) NOT NULL,
-  nacionalidad  varchar(250) NOT NULL,
-  idiomas       varchar(150) NOT NULL,
+  numero integer NOT NULL,
+  nombre character varying NOT NULL,
+  nombrecorto character varying,
+  capital character varying NOT NULL,
+  nacionalidad character varying NOT NULL,
+  idiomas character varying NOT NULL,
   CONSTRAINT paises_pkey PRIMARY KEY (numero)
 );
-
--- ---------------------------------------------------------------------------
--- Personas y subtipos (RF-01..RF-06, RF-44)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.personas (
-  identificador     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  documento         varchar(20)  NOT NULL UNIQUE,
-  nombre            varchar(150) NOT NULL,
-  apellido          varchar(150) NOT NULL,                          -- RF-01
-  pais_origen       integer,                                        -- RF-01
-  foto              bytea,                                          -- foto de perfil
-  foto_dni_frente   bytea,                                          -- RF-01 (frente)
-  foto_dni_dorso    bytea,                                          -- RF-01 (dorso)
-  -- RF-02: pendiente hasta verificación externa; RF-44: bloqueado por incumplimiento
-  estado  varchar(15) DEFAULT 'pendiente'
-                    CHECK (estado IN ('pendiente','aprobado','rechazado')),
-  fecha_registro    timestamptz DEFAULT now(),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  documento character varying NOT NULL UNIQUE,
+  nombre character varying NOT NULL,
+  apellido character varying NOT NULL,
+  pais_origen integer,
+  foto bytea,
+  foto_dni_frente bytea,
+  foto_dni_dorso bytea,
+  estado character varying DEFAULT 'pendiente'::character varying CHECK (estado::text = ANY (ARRAY['pendiente'::character varying::text, 'aprobado'::character varying::text, 'rechazado'::character varying::text])),
+  fecha_registro timestamp with time zone DEFAULT now(),
+  estado_registro character varying,
+  CONSTRAINT personas_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_personas_paises FOREIGN KEY (pais_origen) REFERENCES public.paises(numero)
 );
-
--- Credenciales de acceso (RF-04 generación de clave, RF-05 login)
 CREATE TABLE public.usuarios (
-  identificador     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  persona           bigint NOT NULL UNIQUE,
-  email             varchar(250) NOT NULL UNIQUE,
-  password_hash     varchar(250),                                   -- null hasta que el usuario genera su clave (RF-04)
-  token_activacion  varchar(250),                                   -- enlace enviado por mail (RF-04)
-  activo            boolean DEFAULT true,
-  ultimo_acceso     timestamptz DEFAULT now(),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  persona bigint NOT NULL UNIQUE,
+  email character varying NOT NULL UNIQUE,
+  password_hash character varying,
+  token_activacion character varying,
+  activo boolean DEFAULT true,
+  ultimo_acceso timestamp with time zone DEFAULT now(),
+  CONSTRAINT usuarios_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_usuarios_personas FOREIGN KEY (persona) REFERENCES public.personas(identificador)
 );
-
 CREATE TABLE public.empleados (
-  identificador bigint NOT NULL PRIMARY KEY,
-  cargo         varchar(100),
-  sector        bigint,
-  CONSTRAINT fk_empleados_personas FOREIGN KEY (identificador) REFERENCES public.personas(identificador)
+  identificador bigint NOT NULL,
+  cargo character varying,
+  sector bigint,
+  CONSTRAINT empleados_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_empleados_personas FOREIGN KEY (identificador) REFERENCES public.personas(identificador),
+  CONSTRAINT fk_empleados_sectores FOREIGN KEY (sector) REFERENCES public.sectores(identificador)
 );
-
 CREATE TABLE public.sectores (
-  identificador      bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombresector       varchar(150) NOT NULL,
-  codigosector       varchar(10),
-  responsablesector  bigint,
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  nombresector character varying NOT NULL,
+  codigosector character varying,
+  responsablesector bigint,
+  CONSTRAINT sectores_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_sectores_empleados FOREIGN KEY (responsablesector) REFERENCES public.empleados(identificador)
 );
-
--- Rol POSTOR (RF-03 categoría, RF-20 nivel de acceso)
 CREATE TABLE public.clientes (
-  identificador bigint NOT NULL PRIMARY KEY,
-  admitido      boolean DEFAULT false,                             -- RF-02/RF-03
-  categoria     varchar(10)
-                CHECK (categoria IN ('comun','especial','plata','oro','platino')),
-  verificador   bigint NOT NULL,
-  CONSTRAINT fk_clientes_personas  FOREIGN KEY (identificador) REFERENCES public.personas(identificador),
-  CONSTRAINT fk_clientes_empleados FOREIGN KEY (verificador)   REFERENCES public.empleados(identificador)
+  identificador bigint NOT NULL,
+  admitido boolean DEFAULT false,
+  categoria character varying CHECK (categoria::text = ANY (ARRAY['comun'::character varying::text, 'especial'::character varying::text, 'plata'::character varying::text, 'oro'::character varying::text, 'platino'::character varying::text])),
+  verificador bigint NOT NULL,
+  numeropais integer,
+  CONSTRAINT clientes_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_clientes_personas FOREIGN KEY (identificador) REFERENCES public.personas(identificador),
+  CONSTRAINT fk_clientes_empleados FOREIGN KEY (verificador) REFERENCES public.empleados(identificador)
 );
-
--- Rol DUEÑO (RF-45..RF-53)
 CREATE TABLE public.duenios (
-  identificador           bigint NOT NULL PRIMARY KEY,
-  verificacionfinanciera  boolean,
-  verificacionjudicial    boolean,
-  calificacionriesgo      integer CHECK (calificacionriesgo BETWEEN 1 AND 6),
-  verificador             bigint NOT NULL,
-  CONSTRAINT fk_duenios_personas  FOREIGN KEY (identificador) REFERENCES public.personas(identificador),
-  CONSTRAINT fk_duenios_empleados FOREIGN KEY (verificador)   REFERENCES public.empleados(identificador)
+  identificador bigint NOT NULL,
+  verificacionfinanciera boolean,
+  verificacionjudicial boolean,
+  calificacionriesgo integer CHECK (calificacionriesgo >= 1 AND calificacionriesgo <= 6),
+  verificador bigint NOT NULL,
+  numeropais integer,
+  CONSTRAINT duenios_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_duenios_personas FOREIGN KEY (identificador) REFERENCES public.personas(identificador),
+  CONSTRAINT fk_duenios_empleados FOREIGN KEY (verificador) REFERENCES public.empleados(identificador)
 );
-
 CREATE TABLE public.subastadores (
-  identificador bigint NOT NULL PRIMARY KEY,
-  matricula     varchar(15),
-  region        varchar(50),
+  identificador bigint NOT NULL,
+  matricula character varying,
+  region character varying,
+  CONSTRAINT subastadores_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_subastadores_personas FOREIGN KEY (identificador) REFERENCES public.personas(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Medios de pago del postor (RF-07..RF-11, RF-34)
--- ---------------------------------------------------------------------------
--- Diseño Table-Per-Type (TPT): campos comunes en medios_pago; cada subtipo
--- extiende con su propia tabla (1-a-1 obligatorio, PK = FK a medios_pago).
--- Ventaja: NOT NULL real en campos específicos de cada tipo, sin columnas sparse.
--- ---------------------------------------------------------------------------
-
--- Tabla base: campos compartidos por los tres tipos (RF-07, RF-09, RF-10)
 CREATE TABLE public.medios_pago (
-  identificador  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente        bigint NOT NULL,
-  tipo           varchar(25) NOT NULL
-                 CHECK (tipo IN ('cuenta_bancaria','tarjeta_credito','cheque_certificado')),
-  moneda         varchar(3) NOT NULL CHECK (moneda IN ('ARS','USD')),
-  internacional  boolean DEFAULT false,                              -- nacional / extranjero (RF-08)
-  verificado     boolean DEFAULT false,                              -- RF-10
-  vigente        boolean DEFAULT true,
-  detalle        varchar(250),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  cliente bigint NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['cuenta_bancaria'::character varying::text, 'tarjeta_credito'::character varying::text, 'cheque_certificado'::character varying::text])),
+  moneda character varying NOT NULL CHECK (moneda::text = ANY (ARRAY['ARS'::character varying::text, 'USD'::character varying::text])),
+  internacional boolean DEFAULT false,
+  verificado boolean DEFAULT false,
+  vigente boolean DEFAULT true,
+  detalle character varying,
+  banco character varying,
+  monto_reservado numeric,
+  numero_cuenta character varying,
+  numero_tarjeta character varying,
+  pais_banco character varying,
+  CONSTRAINT medios_pago_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_medios_pago_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador)
 );
-
--- Cuenta bancaria: nacional o extranjera con fondos reservados (RF-08)
--- monto_reservado: fondos bloqueados disponibles para pujas (RF-34)
 CREATE TABLE public.medios_cuenta_bancaria (
-  medio_pago       bigint NOT NULL PRIMARY KEY,
-  banco            varchar(150) NOT NULL,
-  numero_cuenta    varchar(50)  NOT NULL,
-  titular          varchar(250),
-  monto_reservado  numeric(18,2) CHECK (monto_reservado > 0),
+  medio_pago bigint NOT NULL,
+  banco character varying NOT NULL,
+  numero_cuenta character varying NOT NULL,
+  titular character varying,
+  monto_reservado numeric CHECK (monto_reservado > 0::numeric),
+  CONSTRAINT medios_cuenta_bancaria_pkey PRIMARY KEY (medio_pago),
   CONSTRAINT fk_mcb_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
 );
-
--- Tarjeta de crédito: nacional o extranjera (RF-08, RF-40)
--- Se almacenan solo los últimos 4 dígitos por seguridad
 CREATE TABLE public.medios_tarjeta_credito (
-  medio_pago        bigint NOT NULL PRIMARY KEY,
-  banco_emisor      varchar(150),
-  ultimos_cuatro    char(4)      NOT NULL,
-  titular           varchar(250) NOT NULL,
-  fecha_vencimiento date         NOT NULL,
+  medio_pago bigint NOT NULL,
+  banco_emisor character varying,
+  ultimos_cuatro character varying NOT NULL,
+  titular character varying NOT NULL,
+  fecha_vencimiento date NOT NULL,
+  CONSTRAINT medios_tarjeta_credito_pkey PRIMARY KEY (medio_pago),
   CONSTRAINT fk_mtc_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
 );
-
--- Cheque certificado: monto fijo entregado, con fecha de vigencia (RF-11)
--- El saldo disponible se calcula como monto_certificado − SUM(compras adjudicadas) (RF-34)
 CREATE TABLE public.medios_cheque_certificado (
-  medio_pago         bigint        NOT NULL PRIMARY KEY,
-  banco              varchar(150)  NOT NULL,
-  numero_cheque      varchar(50),
-  monto_certificado  numeric(18,2) NOT NULL CHECK (monto_certificado > 0),
-  fecha_vencimiento  date          NOT NULL,                        -- RF-11: vigencia del cheque
+  medio_pago bigint NOT NULL,
+  banco character varying NOT NULL,
+  numero_cheque character varying,
+  monto_certificado numeric NOT NULL CHECK (monto_certificado > 0::numeric),
+  fecha_vencimiento date NOT NULL,
+  CONSTRAINT medios_cheque_certificado_pkey PRIMARY KEY (medio_pago),
   CONSTRAINT fk_mcc_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador)
 );
-
--- Direcciones de envío del postor (RF-37/RF-38)
 CREATE TABLE public.direcciones (
-  identificador  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  persona        bigint NOT NULL,
-  nombre         varchar(150),
-  calle          varchar(250),
-  numero         varchar(20),
-  piso           varchar(20),
-  departamento   varchar(20),
-  ciudad         varchar(150),
-  provincia      varchar(150),
-  codigo_postal  varchar(20),
-  pais           integer,
-  favorito       boolean DEFAULT false,
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  persona bigint NOT NULL,
+  nombre character varying,
+  calle character varying,
+  numero character varying,
+  piso character varying,
+  departamento character varying,
+  ciudad character varying,
+  provincia character varying,
+  codigo_postal character varying,
+  pais integer,
+  favorito boolean DEFAULT false,
+  CONSTRAINT direcciones_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_direcciones_personas FOREIGN KEY (persona) REFERENCES public.personas(identificador),
-  CONSTRAINT fk_direcciones_paises   FOREIGN KEY (pais)    REFERENCES public.paises(numero)
+  CONSTRAINT fk_direcciones_paises FOREIGN KEY (pais) REFERENCES public.paises(numero)
 );
-
--- Cuenta donde el DUEÑO recibe el resultado de sus ventas (RF-53)
 CREATE TABLE public.cuentas_cobro (
-  identificador  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  duenio         bigint NOT NULL,
-  banco          varchar(150) NOT NULL,
-  numero_cuenta  varchar(50)  NOT NULL,
-  moneda         varchar(3)   NOT NULL CHECK (moneda IN ('ARS','USD')),
-  pais           varchar(150),                                      -- puede ser del exterior (RF-53)
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  duenio bigint NOT NULL,
+  banco character varying NOT NULL,
+  numero_cuenta character varying NOT NULL,
+  moneda character varying NOT NULL CHECK (moneda::text = ANY (ARRAY['ARS'::character varying::text, 'USD'::character varying::text])),
+  pais character varying,
+  CONSTRAINT cuentas_cobro_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_cuentas_cobro_duenios FOREIGN KEY (duenio) REFERENCES public.duenios(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Seguros y logística (RF-54..RF-57)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.seguros (
-  nropoliza        varchar(30) NOT NULL PRIMARY KEY,
-  compania         varchar(150) NOT NULL,
-  contacto         varchar(250),                                    -- RF-57: datos de contacto de la aseguradora
-  telefono         varchar(50),                                     -- RF-57
-  polizacombinada  boolean,                                         -- RF-55: cubre varias piezas del mismo dueño
-  importe          numeric(18,2) NOT NULL CHECK (importe > 0)
+  nropoliza character varying NOT NULL,
+  compania character varying NOT NULL,
+  contacto character varying,
+  telefono character varying,
+  polizacombinada boolean,
+  importe numeric NOT NULL CHECK (importe > 0::numeric),
+  CONSTRAINT seguros_pkey PRIMARY KEY (nropoliza)
 );
-
--- ---------------------------------------------------------------------------
--- Bienes / productos (RF-14..RF-16, RF-45..RF-52, RF-56)
--- ---------------------------------------------------------------------------
--- Agrupación de bienes de un mismo dueño como "Colección de <nombre>" (RF-52)
 CREATE TABLE public.colecciones (
-  identificador bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre        varchar(250) NOT NULL,
-  duenio        bigint NOT NULL,
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  nombre character varying NOT NULL,
+  duenio bigint NOT NULL,
+  CONSTRAINT colecciones_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_colecciones_duenios FOREIGN KEY (duenio) REFERENCES public.duenios(identificador)
 );
-
 CREATE TABLE public.productos (
-  identificador         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  duenio                bigint NOT NULL,
-  revisor               bigint NOT NULL,
-  fecha                 date,
-  disponible            boolean DEFAULT false,
-  descripcioncompleta   varchar(500) NOT NULL,                      -- url a PDF firmado
-  descripcioncatalogo   varchar(500) DEFAULT 'No Posee',           -- se completa tras la revisión
-  categoria             varchar(100),
-  subcategoria          varchar(100),
-  -- RF-15: datos para ítems de arte/diseño
-  artista               varchar(250),
-  fecha_obra            varchar(100),
-  resena_historica      varchar(1000),
-  -- RF-16: ítem compuesto (p. ej. juego de té de 18 piezas)
-  cantidad_piezas       integer DEFAULT 1 CHECK (cantidad_piezas >= 1),
-  -- RF-46/47/48/49: submisión por el dueño
-  declaracion_propiedad boolean DEFAULT false,                      -- RF-46 (checkbox obligatorio)
-  doc_origen_licito     varchar(300),                               -- RF-47 (url acreditación)
-  estado_revision       varchar(15) DEFAULT 'en_revision'
-                        CHECK (estado_revision IN ('en_revision','aceptado','rechazado')),
-  motivo_rechazo        varchar(500),                               -- RF-49
-  -- RF-52 / RF-56
-  coleccion             bigint,
-  ubicacion_deposito    varchar(250),                               -- RF-56
-  seguro                varchar(30),                                -- RF-54/RF-55
-  CONSTRAINT fk_productos_duenios     FOREIGN KEY (duenio)    REFERENCES public.duenios(identificador),
-  CONSTRAINT fk_productos_empleados   FOREIGN KEY (revisor)   REFERENCES public.empleados(identificador),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  duenio bigint NOT NULL,
+  revisor bigint NOT NULL,
+  fecha date,
+  disponible boolean DEFAULT false,
+  descripcioncompleta character varying NOT NULL,
+  descripcioncatalogo character varying DEFAULT 'No Posee'::character varying,
+  categoria character varying,
+  subcategoria character varying,
+  artista character varying,
+  fecha_obra character varying,
+  resena_historica character varying,
+  cantidad_piezas integer DEFAULT 1 CHECK (cantidad_piezas >= 1),
+  declaracion_propiedad boolean DEFAULT false,
+  doc_origen_licito character varying,
+  estado_revision character varying DEFAULT 'en_revision'::character varying CHECK (estado_revision::text = ANY (ARRAY['en_revision'::character varying, 'aceptado'::character varying, 'rechazado'::character varying]::text[])),
+  motivo_rechazo character varying,
+  coleccion bigint,
+  ubicacion_deposito character varying,
+  seguro character varying,
+  CONSTRAINT productos_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_productos_duenios FOREIGN KEY (duenio) REFERENCES public.duenios(identificador),
+  CONSTRAINT fk_productos_empleados FOREIGN KEY (revisor) REFERENCES public.empleados(identificador),
   CONSTRAINT fk_productos_colecciones FOREIGN KEY (coleccion) REFERENCES public.colecciones(identificador),
-  CONSTRAINT fk_productos_seguros     FOREIGN KEY (seguro)    REFERENCES public.seguros(nropoliza)
+  CONSTRAINT fk_productos_seguros FOREIGN KEY (seguro) REFERENCES public.seguros(nropoliza)
 );
-
--- Detalle de los elementos que componen un ítem compuesto (RF-16)
 CREATE TABLE public.componentes_producto (
-  identificador bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  producto      bigint NOT NULL,
-  descripcion   varchar(250) NOT NULL,
-  cantidad      integer DEFAULT 1 CHECK (cantidad >= 1),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  producto bigint NOT NULL,
+  descripcion character varying NOT NULL,
+  cantidad integer DEFAULT 1 CHECK (cantidad >= 1),
+  CONSTRAINT componentes_producto_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_componentes_productos FOREIGN KEY (producto) REFERENCES public.productos(identificador)
 );
-
--- RF-14: al menos 6 imágenes por ítem (la cantidad mínima se valida en la app)
 CREATE TABLE public.fotos (
-  identificador bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  producto      bigint NOT NULL,
-  foto          bytea NOT NULL,
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  producto bigint NOT NULL,
+  foto bytea NOT NULL,
+  CONSTRAINT fotos_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_fotos_productos FOREIGN KEY (producto) REFERENCES public.productos(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Subastas y catálogos (RF-12..RF-19, RF-26)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.subastas (
-  identificador        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  -- al menos 10 días de anticipación respecto del momento de creación
-  fecha                date CHECK (fecha > CURRENT_DATE + INTERVAL '10 days'),
-  hora                 time NOT NULL,
-  estado               varchar(12) DEFAULT 'abierta'
-                       CHECK (estado IN ('abierta','cerrada','finalizada')),
-  subastador           bigint,
-  ubicacion            varchar(350),
-  capacidadasistentes  integer,
-  tienedeposito        boolean,
-  seguridadpropia      boolean,
-  categoria            varchar(10)
-                       CHECK (categoria IN ('comun','especial','plata','oro','platino')),
-  moneda               varchar(3) NOT NULL CHECK (moneda IN ('ARS','USD')),  -- RF-17/RF-18 monomonetaria
-  url_streaming        varchar(350),                                          -- RF-26
-  CONSTRAINT fk_subastas_subastadores FOREIGN KEY (subastador) REFERENCES public.subastadores(identificador)
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  fecha date CHECK (fecha > (CURRENT_DATE + '10 days'::interval)),
+  hora time without time zone NOT NULL,
+  estado character varying DEFAULT 'abierta'::character varying CHECK (estado::text = ANY (ARRAY['abierta'::character varying::text, 'cerrada'::character varying::text, 'finalizada'::character varying::text])),
+  subastador bigint,
+  ubicacion character varying,
+  capacidadasistentes integer,
+  tienedeposito boolean,
+  seguridadpropia boolean,
+  categoria character varying CHECK (categoria::text = ANY (ARRAY['comun'::character varying::text, 'especial'::character varying::text, 'plata'::character varying::text, 'oro'::character varying::text, 'platino'::character varying::text])),
+  moneda character varying NOT NULL CHECK (moneda::text = ANY (ARRAY['ARS'::character varying::text, 'USD'::character varying::text])),
+  url_streaming character varying,
+  catalogo bigint,
+  CONSTRAINT subastas_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_subastas_subastadores FOREIGN KEY (subastador) REFERENCES public.subastadores(identificador),
+  CONSTRAINT subastas_catalogo_fkey FOREIGN KEY (catalogo) REFERENCES public.catalogos(identificador)
 );
-
 CREATE TABLE public.catalogos (
-  identificador bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  descripcion   varchar(250) NOT NULL,
-  subasta       bigint,
-  responsable   bigint NOT NULL,
-  CONSTRAINT fk_catalogos_subastas  FOREIGN KEY (subasta)     REFERENCES public.subastas(identificador),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  descripcion character varying NOT NULL,
+  responsable bigint NOT NULL,
+  subasta bigint,
+  CONSTRAINT catalogos_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_catalogos_empleados FOREIGN KEY (responsable) REFERENCES public.empleados(identificador)
 );
-
 CREATE TABLE public.itemscatalogo (
-  identificador   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  catalogo        bigint NOT NULL,
-  producto        bigint NOT NULL,
-  numeropieza     integer,                                          -- RF-14
-  preciobase      numeric(18,2) NOT NULL CHECK (preciobase > 0.01),
-  comision        numeric(18,2) NOT NULL CHECK (comision > 0.01),
-  subastado       boolean DEFAULT false,
-  -- RF-50/RF-51: el dueño acepta o rechaza precio base + comisiones propuestos
-  estado_acuerdo  varchar(15) DEFAULT 'propuesto'
-                  CHECK (estado_acuerdo IN ('propuesto','aceptado','rechazado')),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  catalogo bigint NOT NULL,
+  producto bigint NOT NULL,
+  numeropieza integer,
+  preciobase numeric NOT NULL CHECK (preciobase > 0.01),
+  comision numeric NOT NULL CHECK (comision > 0.01),
+  subastado boolean DEFAULT false,
+  estado_acuerdo character varying DEFAULT 'propuesto'::character varying CHECK (estado_acuerdo::text = ANY (ARRAY['propuesto'::character varying, 'aceptado'::character varying, 'rechazado'::character varying]::text[])),
+  cierre_programado timestamp with time zone,
+  CONSTRAINT itemscatalogo_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_itemscatalogo_catalogos FOREIGN KEY (catalogo) REFERENCES public.catalogos(identificador),
   CONSTRAINT fk_itemscatalogo_productos FOREIGN KEY (producto) REFERENCES public.productos(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Participación y pujas (RF-20..RF-34, RF-58..RF-60)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.asistentes (
-  identificador   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  numeropostor    integer NOT NULL,
-  cliente         bigint NOT NULL,
-  subasta         bigint NOT NULL,
-  rol             varchar(12) DEFAULT 'espectador'
-                  CHECK (rol IN ('postor','espectador')),           -- RF-21/RF-22
-  conectado       boolean DEFAULT true,                             -- RF-23
-  fecha_conexion  timestamptz DEFAULT now(),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  numeropostor integer NOT NULL,
+  cliente bigint NOT NULL,
+  subasta bigint NOT NULL,
+  rol character varying DEFAULT 'espectador'::character varying CHECK (rol::text = ANY (ARRAY['postor'::character varying, 'espectador'::character varying]::text[])),
+  conectado boolean DEFAULT true,
+  fecha_conexion timestamp with time zone DEFAULT now(),
+  espectador boolean,
+  CONSTRAINT asistentes_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_asistentes_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador),
-  CONSTRAINT fk_asistentes_subasta  FOREIGN KEY (subasta) REFERENCES public.subastas(identificador)
+  CONSTRAINT fk_asistentes_subasta FOREIGN KEY (subasta) REFERENCES public.subastas(identificador)
 );
--- RF-23: un usuario no puede estar conectado a más de una subasta a la vez
-CREATE UNIQUE INDEX ux_asistentes_un_conectado
-  ON public.asistentes (cliente) WHERE conectado;
-
 CREATE TABLE public.pujos (
-  identificador bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  asistente     bigint NOT NULL,
-  item          bigint NOT NULL,
-  importe       numeric(18,2) NOT NULL CHECK (importe > 0.01),
-  ganador       boolean DEFAULT false,
-  fecha         timestamptz DEFAULT now(),                          -- RF-33: orden temporal
-  CONSTRAINT fk_pujos_asistentes    FOREIGN KEY (asistente) REFERENCES public.asistentes(identificador),
-  CONSTRAINT fk_pujos_itemscatalogo FOREIGN KEY (item)      REFERENCES public.itemscatalogo(identificador)
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  asistente bigint NOT NULL,
+  item bigint NOT NULL,
+  importe numeric NOT NULL CHECK (importe > 0.01),
+  ganador boolean DEFAULT false,
+  fecha timestamp with time zone DEFAULT now(),
+  CONSTRAINT pujos_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_pujos_asistentes FOREIGN KEY (asistente) REFERENCES public.asistentes(identificador),
+  CONSTRAINT fk_pujos_itemscatalogo FOREIGN KEY (item) REFERENCES public.itemscatalogo(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Cierre, adjudicación y pago (RF-35..RF-40)
--- ---------------------------------------------------------------------------
--- Registro histórico de adjudicaciones de cada subasta (RF-35/RF-36/RF-60).
--- cliente NULL + comprador_empresa = true → la empresa compra a precio base (RF-39).
 CREATE TABLE public.registrodesubasta (
-  identificador     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  subasta           bigint NOT NULL,
-  duenio            bigint NOT NULL,
-  producto          bigint NOT NULL,
-  cliente           bigint,
-  comprador_empresa boolean DEFAULT false,                          -- RF-39
-  importe           numeric(18,2) NOT NULL CHECK (importe > 0.01),
-  comision          numeric(18,2) NOT NULL CHECK (comision > 0.01),
-  CONSTRAINT fk_registrodesubasta_subastas FOREIGN KEY (subasta)  REFERENCES public.subastas(identificador),
-  CONSTRAINT fk_registrodesubasta_duenios  FOREIGN KEY (duenio)   REFERENCES public.duenios(identificador),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  subasta bigint NOT NULL,
+  duenio bigint NOT NULL,
+  producto bigint NOT NULL,
+  cliente bigint,
+  comprador_empresa boolean DEFAULT false,
+  importe numeric NOT NULL CHECK (importe > 0.01),
+  comision numeric NOT NULL CHECK (comision > 0.01),
+  CONSTRAINT registrodesubasta_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_registrodesubasta_subastas FOREIGN KEY (subasta) REFERENCES public.subastas(identificador),
+  CONSTRAINT fk_registrodesubasta_duenios FOREIGN KEY (duenio) REFERENCES public.duenios(identificador),
   CONSTRAINT fk_registrodesubasta_producto FOREIGN KEY (producto) REFERENCES public.productos(identificador),
-  CONSTRAINT fk_registrodesubasta_cliente  FOREIGN KEY (cliente)  REFERENCES public.clientes(identificador)
+  CONSTRAINT fk_registrodesubasta_cliente FOREIGN KEY (cliente) REFERENCES public.clientes(identificador)
 );
-
--- Operación de compra del ganador con su desglose (RF-36/RF-37/RF-38/RF-40)
 CREATE TABLE public.compras (
-  identificador    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente          bigint NOT NULL,
-  subasta          bigint NOT NULL,
-  producto         bigint NOT NULL,
-  medio_pago       bigint,                                          -- RF-36: medio de pago elegido
-  importe          numeric(18,2) NOT NULL,                          -- importe pujado
-  comision         numeric(18,2) NOT NULL,
-  costo_envio      numeric(18,2),                                   -- RF-37
-  total            numeric(18,2) NOT NULL,
-  retiro_personal  boolean DEFAULT false,                           -- RF-38 (anula el seguro)
-  direccion_envio  bigint,                                          -- RF-38 (envío a domicilio)
-  estado_pago      varchar(12) DEFAULT 'pendiente'
-                   CHECK (estado_pago IN ('pendiente','pagado','impago')),  -- RF-41/RF-43
-  fecha            timestamptz DEFAULT now(),
-  CONSTRAINT fk_compras_clientes      FOREIGN KEY (cliente)         REFERENCES public.clientes(identificador),
-  CONSTRAINT fk_compras_subastas      FOREIGN KEY (subasta)         REFERENCES public.subastas(identificador),
-  CONSTRAINT fk_compras_productos     FOREIGN KEY (producto)        REFERENCES public.productos(identificador),
-  CONSTRAINT fk_compras_medios_pago   FOREIGN KEY (medio_pago)      REFERENCES public.medios_pago(identificador),
-  CONSTRAINT fk_compras_direcciones   FOREIGN KEY (direccion_envio) REFERENCES public.direcciones(identificador)
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  cliente bigint NOT NULL,
+  subasta bigint NOT NULL,
+  producto bigint NOT NULL,
+  medio_pago bigint,
+  importe numeric NOT NULL,
+  comision numeric NOT NULL,
+  costo_envio numeric,
+  total numeric NOT NULL,
+  retiro_personal boolean DEFAULT false,
+  direccion_envio bigint,
+  estado_pago character varying DEFAULT 'pendiente'::character varying CHECK (estado_pago::text = ANY (ARRAY['pendiente'::character varying, 'pagado'::character varying, 'impago'::character varying]::text[])),
+  fecha timestamp with time zone DEFAULT now(),
+  CONSTRAINT compras_pkey PRIMARY KEY (identificador),
+  CONSTRAINT fk_compras_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador),
+  CONSTRAINT fk_compras_subastas FOREIGN KEY (subasta) REFERENCES public.subastas(identificador),
+  CONSTRAINT fk_compras_productos FOREIGN KEY (producto) REFERENCES public.productos(identificador),
+  CONSTRAINT fk_compras_medios_pago FOREIGN KEY (medio_pago) REFERENCES public.medios_pago(identificador),
+  CONSTRAINT fk_compras_direcciones FOREIGN KEY (direccion_envio) REFERENCES public.direcciones(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Incumplimiento de pago (RF-41..RF-44)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.multas (
-  identificador     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente           bigint NOT NULL,
-  compra            bigint,
-  importe_original  numeric(18,2) NOT NULL,                         -- valor ofertado
-  multa             numeric(18,2) NOT NULL,                         -- RF-41: 10% del valor ofertado
-  estado            varchar(12) DEFAULT 'pendiente'
-                    CHECK (estado IN ('pendiente','pagada','derivada')),  -- RF-42/RF-44
-  fecha_limite      timestamptz,                                    -- RF-43: 72 hs
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  cliente bigint NOT NULL,
+  compra bigint,
+  importe_original numeric NOT NULL,
+  multa numeric NOT NULL,
+  estado character varying DEFAULT 'pendiente'::character varying CHECK (estado::text = ANY (ARRAY['pendiente'::character varying::text, 'pagada'::character varying::text, 'derivada'::character varying::text])),
+  fecha_limite timestamp with time zone,
+  CONSTRAINT multas_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_multas_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador),
-  CONSTRAINT fk_multas_compras  FOREIGN KEY (compra)  REFERENCES public.compras(identificador)
+  CONSTRAINT fk_multas_compras FOREIGN KEY (compra) REFERENCES public.compras(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Notificaciones (F-12: HU-02, HU-26, HU-31, HU-41)
--- ---------------------------------------------------------------------------
 CREATE TABLE public.notificaciones (
-  identificador   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente         bigint NOT NULL,
-  titulo          varchar(250) NOT NULL,
-  mensaje         varchar(1000) NOT NULL,
-  tipo            varchar(30),                                      -- registro / subasta / objeto / multa
-  leida           boolean DEFAULT false,
-  fecha_creacion  timestamptz DEFAULT now(),
+  identificador bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  cliente bigint NOT NULL,
+  titulo character varying NOT NULL,
+  mensaje character varying NOT NULL,
+  tipo character varying,
+  leida boolean DEFAULT false,
+  fecha_creacion timestamp with time zone DEFAULT now(),
+  CONSTRAINT notificaciones_pkey PRIMARY KEY (identificador),
   CONSTRAINT fk_notificaciones_clientes FOREIGN KEY (cliente) REFERENCES public.clientes(identificador)
 );
-
--- ---------------------------------------------------------------------------
--- Referencias circulares (empleados <-> sectores)
--- ---------------------------------------------------------------------------
-ALTER TABLE public.empleados
-  ADD CONSTRAINT fk_empleados_sectores FOREIGN KEY (sector) REFERENCES public.sectores(identificador);

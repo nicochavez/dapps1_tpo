@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface NotificacionRepository extends JpaRepository<NotificacionEntity, Long> {
 
-    List<NotificacionEntity> findByClienteOrderByFechaCreacionDesc(Long cliente);
+    List<NotificacionEntity> findByClienteIdOrderByFechaCreacionDesc(Long clienteId);
 }

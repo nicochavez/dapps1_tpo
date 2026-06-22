@@ -1,5 +1,6 @@
 package com.tpo.backend.producto.controller;
 
+import com.tpo.backend.auth.security.AuthenticatedUser;
 import com.tpo.backend.producto.dto.ProductoDto;
 import com.tpo.backend.producto.dto.ProductoNewRequest;
 import com.tpo.backend.producto.dto.ProductoUpdateRequest;
@@ -7,6 +8,7 @@ import com.tpo.backend.producto.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,9 +48,9 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{duenioId}/addProducto")
-    public ResponseEntity<ProductoDto> crear(@PathVariable Long duenioId,
-                                              @Valid @RequestBody ProductoNewRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.crear(duenioId, request));
+    @PostMapping
+    public ResponseEntity<ProductoDto> crear(@AuthenticationPrincipal AuthenticatedUser me,
+                                             @Valid @RequestBody ProductoNewRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.crear(me.personaId(), request));
     }
 }

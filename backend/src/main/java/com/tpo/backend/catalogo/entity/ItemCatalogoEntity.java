@@ -1,5 +1,6 @@
 package com.tpo.backend.catalogo.entity;
 
+import com.tpo.backend.producto.entity.ProductoEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,11 +19,13 @@ public class ItemCatalogoEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "catalogo", nullable = false)
-    private Long catalogo;
+    @ManyToOne
+    @JoinColumn(name = "catalogo", nullable = false)
+    private CatalogoEntity catalogo;
 
-    @Column(name = "producto", nullable = false)
-    private Long producto;
+    @ManyToOne
+    @JoinColumn(name = "producto", nullable = false)
+    private ProductoEntity producto;
 
     @Column(name = "numeropieza")
     private Integer numeroPieza;

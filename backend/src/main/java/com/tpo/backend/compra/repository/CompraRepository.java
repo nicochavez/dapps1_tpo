@@ -9,5 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CompraRepository extends JpaRepository<CompraEntity, Long> {
 
-    Page<CompraEntity> findByCliente(Long cliente, Pageable pageable);
+    Page<CompraEntity> findByClienteId(Long clienteId, Pageable pageable);
 }

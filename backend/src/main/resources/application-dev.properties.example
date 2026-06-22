@@ -1,0 +1,12 @@
+# ============================================================
+# DEV profile template. Copy to application-dev.properties.
+# Points at the local PostgreSQL from docker-compose.yml.
+# Start it with:  docker compose up -d   (from /backend)
+# These are local-only creds (not secrets) and match docker-compose.yml.
+# ============================================================
+spring.datasource.url=jdbc:postgresql://localhost:5432/bidflow_dev
+spring.datasource.username=bidflow
+spring.datasource.password=bidflow
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true

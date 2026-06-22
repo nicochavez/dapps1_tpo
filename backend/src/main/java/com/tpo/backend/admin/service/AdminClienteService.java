@@ -15,6 +15,7 @@ import com.tpo.backend.usuario.entity.UsuarioEntity;
 import com.tpo.backend.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,19 +36,22 @@ public class AdminClienteService {
     private final NotificacionRepository notificacionRepository;
     private final ClienteService clienteService;
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminClienteService(ClienteRepository clienteRepository,
                                PersonaRepository personaRepository,
                                UsuarioRepository usuarioRepository,
                                NotificacionRepository notificacionRepository,
                                ClienteService clienteService,
-                               EmailService emailService) {
+                               EmailService emailService,
+                               PasswordEncoder passwordEncoder) {
         this.clienteRepository = clienteRepository;
         this.personaRepository = personaRepository;
         this.usuarioRepository = usuarioRepository;
         this.notificacionRepository = notificacionRepository;
         this.clienteService = clienteService;
         this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -76,7 +80,7 @@ public class AdminClienteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para persona: " + clienteId));
 
         String contraseniaTemporal = generarContrasenia(10);
-        usuario.setPasswordHash(contraseniaTemporal);
+        usuario.setPasswordHash(passwordEncoder.encode(contraseniaTemporal));
         usuario.setActivo(true);
         usuarioRepository.save(usuario);
 
@@ -90,7 +94,7 @@ public class AdminClienteService {
         emailService.enviarAprobacion(email, persona.getNombre(), contraseniaTemporal);
 
         NotificacionEntity notificacion = new NotificacionEntity();
-        notificacion.setCliente(cliente.getId());
+        notificacion.setCliente(cliente);
         notificacion.setTitulo("Registro aprobado");
         notificacion.setMensaje("Tu registro fue aprobado en la categoria " + cliente.getCategoria() +
                 ". Revisá tu email para obtener tu contraseña temporal.");

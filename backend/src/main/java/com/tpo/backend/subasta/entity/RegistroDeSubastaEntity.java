@@ -1,5 +1,8 @@
 package com.tpo.backend.subasta.entity;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
+import com.tpo.backend.duenio.entity.DuenioEntity;
+import com.tpo.backend.producto.entity.ProductoEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,18 +20,22 @@ public class RegistroDeSubastaEntity {
     @Column(name = "identificador")
     private Long id;
 
-    @Column(name = "subasta", nullable = false)
-    private Long subasta;
+    @ManyToOne
+    @JoinColumn(name = "subasta", nullable = false)
+    private SubastaEntity subasta;
 
-    @Column(name = "duenio", nullable = false)
-    private Long duenio;
+    @ManyToOne
+    @JoinColumn(name = "duenio", nullable = false)
+    private DuenioEntity duenio;
 
-    @Column(name = "producto", nullable = false)
-    private Long producto;
+    @ManyToOne
+    @JoinColumn(name = "producto", nullable = false)
+    private ProductoEntity producto;
 
     /** Ganador. NULL cuando compra la empresa (ver compradorEmpresa, RF-39). */
-    @Column(name = "cliente")
-    private Long cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente")
+    private ClienteEntity cliente;
 
     @Column(name = "importe", nullable = false, precision = 18, scale = 2)
     private BigDecimal importe;

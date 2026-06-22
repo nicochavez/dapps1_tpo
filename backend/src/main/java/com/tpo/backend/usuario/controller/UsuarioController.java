@@ -37,10 +37,10 @@ public class UsuarioController {
     public ResponseEntity<ClienteDto> getByEmail(@PathVariable String mail) {
         UsuarioEntity usuario = usuarioRepository.findByEmail(mail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + mail));
-        if (usuario.getPersonaId() == null) {
+        if (usuario.getPersona() == null) {
             throw new ResourceNotFoundException("Usuario sin persona asociada: " + mail);
         }
-        ClienteEntity cliente = clienteRepository.findById(usuario.getPersonaId())
+        ClienteEntity cliente = clienteRepository.findById(usuario.getPersona().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado para usuario: " + mail));
         return ResponseEntity.ok(clienteService.toDto(cliente));
     }

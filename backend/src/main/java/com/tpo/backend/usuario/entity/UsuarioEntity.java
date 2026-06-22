@@ -1,5 +1,6 @@
 package com.tpo.backend.usuario.entity;
 
+import com.tpo.backend.persona.PersonaEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,8 +24,9 @@ public class UsuarioEntity {
     @Column(name = "password_hash")
     private String passwordHash;
 
-    @Column(name = "persona", nullable = false, unique = true)
-    private Long personaId;
+    @OneToOne
+    @JoinColumn(name = "persona", nullable = false, unique = true)
+    private PersonaEntity persona;
 
     @Column(name = "ultimo_acceso")
     private OffsetDateTime ultimoAcceso;

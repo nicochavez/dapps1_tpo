@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface MultaRepository extends JpaRepository<MultaEntity, Long> {
 
-    List<MultaEntity> findByClienteAndEstado(Long cliente, String estado);
+    List<MultaEntity> findByClienteIdAndEstado(Long clienteId, String estado);
 
-    List<MultaEntity> findByCliente(Long cliente);
+    List<MultaEntity> findByClienteId(Long clienteId);
 }

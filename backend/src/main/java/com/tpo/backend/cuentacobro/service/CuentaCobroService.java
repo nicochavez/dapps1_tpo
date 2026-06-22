@@ -6,6 +6,8 @@ import com.tpo.backend.cuentacobro.dto.CuentaCobroDto;
 import com.tpo.backend.cuentacobro.dto.CuentaCobroRequest;
 import com.tpo.backend.cuentacobro.entity.CuentaCobroEntity;
 import com.tpo.backend.cuentacobro.repository.CuentaCobroRepository;
+import com.tpo.backend.duenio.entity.DuenioEntity;
+import com.tpo.backend.duenio.repository.DuenioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,27 +17,32 @@ import java.util.List;
 public class CuentaCobroService {
 
     private final CuentaCobroRepository cuentaCobroRepository;
+    private final DuenioRepository duenioRepository;
     private final ClienteService clienteService;
 
     public CuentaCobroService(CuentaCobroRepository cuentaCobroRepository,
+                              DuenioRepository duenioRepository,
                               ClienteService clienteService) {
         this.cuentaCobroRepository = cuentaCobroRepository;
+        this.duenioRepository = duenioRepository;
         this.clienteService = clienteService;
     }
 
     @Transactional
     public List<CuentaCobroDto> listar() {
-        Long clienteId = clienteService.currentClienteEntity().getId();
-        return cuentaCobroRepository.findByCliente(clienteId).stream()
+        Long duenioId = clienteService.currentClienteEntity().getId();
+        return cuentaCobroRepository.findByDuenioId(duenioId).stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Transactional
     public CuentaCobroDto crear(CuentaCobroRequest request) {
-        Long clienteId = clienteService.currentClienteEntity().getId();
+        Long duenioId = clienteService.currentClienteEntity().getId();
+        DuenioEntity duenio = duenioRepository.findById(duenioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Duenio no encontrado: " + duenioId));
         CuentaCobroEntity cuenta = new CuentaCobroEntity();
-        cuenta.setCliente(clienteId);
+        cuenta.setDuenio(duenio);
         cuenta.setBanco(request.getBanco());
         cuenta.setNumeroCuenta(request.getNumeroCuenta());
         cuenta.setMoneda(request.getMoneda());

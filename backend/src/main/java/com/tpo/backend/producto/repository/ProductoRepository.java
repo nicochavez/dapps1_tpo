@@ -13,5 +13,5 @@ public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> 
 
     Page<ProductoEntity> findByDisponible(Boolean disponible, Pageable pageable);
 
-    List<ProductoEntity> findByDuenio(Long duenio);
+    List<ProductoEntity> findByDuenioId(Long duenioId);
 }

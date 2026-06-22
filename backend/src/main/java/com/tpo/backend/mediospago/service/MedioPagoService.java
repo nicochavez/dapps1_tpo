@@ -1,5 +1,7 @@
 package com.tpo.backend.mediospago.service;
 
+import com.tpo.backend.cliente.entity.ClienteEntity;
+import com.tpo.backend.cliente.repository.ClienteRepository;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.mediospago.dto.*;
@@ -14,14 +16,16 @@ import java.util.List;
 public class MedioPagoService {
 
     private final MedioPagoRepository medioPagoRepository;
+    private final ClienteRepository clienteRepository;
 
-    public MedioPagoService(MedioPagoRepository medioPagoRepository) {
+    public MedioPagoService(MedioPagoRepository medioPagoRepository, ClienteRepository clienteRepository) {
         this.medioPagoRepository = medioPagoRepository;
+        this.clienteRepository = clienteRepository;
     }
 
     @Transactional(readOnly = true)
     public List<MedioPagoDto> listar(Long clienteId) {
-        return medioPagoRepository.findByCliente(clienteId).stream()
+        return medioPagoRepository.findByClienteId(clienteId).stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -29,16 +33,21 @@ public class MedioPagoService {
     @Transactional(readOnly = true)
     public MedioPagoDto getById(Long clienteId, Long id) {
         MedioPagoEntity mp = findOrThrow(id);
-        if (!mp.getCliente().equals(clienteId)) {
+        if (!mp.getCliente().getId().equals(clienteId)) {
             throw new ResourceNotFoundException("Medio de pago no encontrado: " + id);
         }
         return toDto(mp);
     }
 
+    private ClienteEntity findCliente(Long clienteId) {
+        return clienteRepository.findById(clienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado: " + clienteId));
+    }
+
     @Transactional
     public CuentaBancariaDto crearCuentaBancaria(Long clienteId, CuentaBancariaRequest req) {
         CuentaBancariaEntity e = new CuentaBancariaEntity();
-        e.setCliente(clienteId);
+        e.setCliente(findCliente(clienteId));
         e.setMoneda(req.getMoneda());
         e.setInternacional(req.isInternacional());
         e.setBanco(req.getBanco());
@@ -52,7 +61,7 @@ public class MedioPagoService {
     @Transactional
     public TarjetaCreditoDto crearTarjetaCredito(Long clienteId, TarjetaCreditoRequest req) {
         TarjetaCreditoEntity e = new TarjetaCreditoEntity();
-        e.setCliente(clienteId);
+        e.setCliente(findCliente(clienteId));
         e.setMoneda(req.getMoneda());
         e.setInternacional(req.isInternacional());
         e.setBancoEmisor(req.getBancoEmisor());
@@ -66,7 +75,7 @@ public class MedioPagoService {
     @Transactional
     public ChequeCertificadoDto crearChequeCertificado(Long clienteId, ChequeCertificadoRequest req) {
         ChequeCertificadoEntity e = new ChequeCertificadoEntity();
-        e.setCliente(clienteId);
+        e.setCliente(findCliente(clienteId));
         e.setMoneda(req.getMoneda());
         e.setInternacional(req.isInternacional());
         e.setBanco(req.getBanco());
@@ -80,10 +89,10 @@ public class MedioPagoService {
     @Transactional
     public void delete(Long clienteId, Long id) {
         MedioPagoEntity mp = findOrThrow(id);
-        if (!mp.getCliente().equals(clienteId)) {
+        if (!mp.getCliente().getId().equals(clienteId)) {
             throw new ResourceNotFoundException("Medio de pago no encontrado: " + id);
         }
-        long verified = medioPagoRepository.findByCliente(clienteId).stream()
+        long verified = medioPagoRepository.findByClienteId(clienteId).stream()
                 .filter(m -> Boolean.TRUE.equals(m.getVerificado()))
                 .count();
         if (Boolean.TRUE.equals(mp.getVerificado()) && verified <= 1) {

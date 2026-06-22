@@ -17,7 +17,6 @@ import com.tpo.backend.common.util.CategoriaUtil;
 import com.tpo.backend.mediospago.entity.MedioPagoEntity;
 import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import com.tpo.backend.persona.PersonaEntity;
-import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.producto.entity.FotoEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
@@ -50,7 +49,6 @@ public class SubastaService {
     private final ItemCatalogoRepository itemRepository;
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
-    private final PersonaRepository personaRepository;
     private final MedioPagoRepository medioPagoRepository;
     private final PujaRepository pujaRepository;
     private final ClienteService clienteService;
@@ -62,7 +60,6 @@ public class SubastaService {
                           ItemCatalogoRepository itemRepository,
                           ProductoRepository productoRepository,
                           FotoRepository fotoRepository,
-                          PersonaRepository personaRepository,
                           MedioPagoRepository medioPagoRepository,
                           PujaRepository pujaRepository,
                           ClienteService clienteService) {
@@ -73,7 +70,6 @@ public class SubastaService {
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
-        this.personaRepository = personaRepository;
         this.medioPagoRepository = medioPagoRepository;
         this.pujaRepository = pujaRepository;
         this.clienteService = clienteService;
@@ -106,7 +102,7 @@ public class SubastaService {
     @Transactional
     public SubastaDetailDto getById(Long id) {
         SubastaEntity s = findOrThrow(id);
-        CatalogoDto catalogo = buildCatalogoDto(s.getId());
+        CatalogoDto catalogo = buildCatalogoDto(s);
         return new SubastaDetailDto(
                 s.getId(),
                 s.getFecha() != null ? s.getFecha().toString() : null,
@@ -135,7 +131,14 @@ public class SubastaService {
         s.setSeguridadPropia(request.getSeguridadPropia());
         s.setCategoria(request.getCategoria());
         s.setMoneda(request.getMoneda() != null ? request.getMoneda() : "ARS");
-        s.setSubastador(request.getSubastador());
+        if (request.getSubastador() != null) {
+            s.setSubastador(subastadorRepository.findById(request.getSubastador())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subastador no encontrado: " + request.getSubastador())));
+        }
+        if (request.getCatalogo() != null) {
+            s.setCatalogo(catalogoRepository.findById(request.getCatalogo())
+                    .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + request.getCatalogo())));
+        }
         s = subastaRepository.save(s);
         return getById(s.getId());
     }
@@ -177,24 +180,24 @@ public class SubastaService {
 
         Long clienteId = cliente.getId();
 
-        boolean elsewhere = asistenteRepository.findByCliente(clienteId).stream()
-                .anyMatch(a -> !a.getSubasta().equals(subastaId));
+        boolean elsewhere = asistenteRepository.findByClienteId(clienteId).stream()
+                .anyMatch(a -> !a.getSubasta().getId().equals(subastaId));
 
         if (elsewhere) throw new ConflictException("Ya esta conectado a otra subasta.");
 
         // RF-22: para pujar (no espectador) hace falta medio de pago verificado.
         if (!espectador) {
-            boolean hasVerified = medioPagoRepository.findByCliente(clienteId).stream()
+            boolean hasVerified = medioPagoRepository.findByClienteId(clienteId).stream()
                     .anyMatch(m -> Boolean.TRUE.equals(m.getVerificado()));
             if (!hasVerified) throw new ForbiddenException("No tiene medio de pago verificado.");
         }
 
-        AsistenteEntity asistente = asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
+        AsistenteEntity asistente = asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId)
                 .orElseGet(() -> {
                     AsistenteEntity a = new AsistenteEntity();
-                    a.setSubasta(subastaId);
-                    a.setCliente(clienteId);
-                    a.setNumeroPostor((int) (100 + asistenteRepository.countBySubasta(subastaId) + 1));
+                    a.setSubasta(subasta);
+                    a.setCliente(cliente);
+                    a.setNumeroPostor((int) (100 + asistenteRepository.countBySubastaId(subastaId) + 1));
                     a.setEspectador(espectador);
                     return asistenteRepository.save(a);
                 });
@@ -205,39 +208,34 @@ public class SubastaService {
             asistente = asistenteRepository.save(asistente);
         }
 
-        return new ConectarResponse(new AsistenteDto(asistente.getCliente(), asistente.getNumeroPostor()));
+        return new ConectarResponse(new AsistenteDto(asistente.getCliente().getId(), asistente.getNumeroPostor()));
     }
     @Transactional
     public void desconectar(Long subastaId) {
         findOrThrow(subastaId);
         Long clienteId = clienteService.currentClienteEntity().getId();
-        asistenteRepository.findBySubastaAndCliente(subastaId, clienteId)
+        asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId)
                 .ifPresent(asistenteRepository::delete);
     }
 
     @Transactional
     public ItemActualDto getItemActual(Long subastaId) {
-        findOrThrow(subastaId);
-
-        List<CatalogoEntity> catalogos = catalogoRepository.findBySubasta(subastaId);
-        ItemCatalogoEntity item = catalogos.stream()
-                .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
+        SubastaEntity subasta = findOrThrow(subastaId);
+        if (subasta.getCatalogo() == null) {
+            throw new ResourceNotFoundException("No hay item activo en esta subasta.");
+        }
+        ItemCatalogoEntity item = itemRepository.findByCatalogoId(subasta.getCatalogo().getId()).stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("No hay item activo en esta subasta."));
 
-        List<FotoRefDto> imagenes = buildFotoRefs(item.getProducto());
-        ProductoEntity prod = productoRepository.findById(item.getProducto()).orElse(null);
+        List<FotoRefDto> imagenes = buildFotoRefs(item.getProducto().getId());
+        ProductoEntity prod = item.getProducto();
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
 
-        var topPuja = pujaRepository.findFirstByItemOrderByImporteDesc(item.getId()).orElse(null);
+        var topPuja = pujaRepository.findFirstByItemIdOrderByImporteDesc(item.getId()).orElse(null);
         java.math.BigDecimal mejorOferta = topPuja != null ? topPuja.getImporte() : item.getPrecioBase();
-        Integer numeroPostor = null;
-        if (topPuja != null) {
-            numeroPostor = asistenteRepository.findById(topPuja.getAsistente())
-                    .map(AsistenteEntity::getNumeroPostor)
-                    .orElse(null);
-        }
+        Integer numeroPostor = topPuja != null ? topPuja.getAsistente().getNumeroPostor() : null;
 
         return new ItemActualDto(
                 new ItemActualDto.ItemInfoDto(item.getId(), descripcion, item.getPrecioBase(), imagenes),
@@ -254,21 +252,21 @@ public class SubastaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + request.getCatalogo()));
 
         // RF-14: el item debe tener al menos 6 imagenes.
-        int cantidadFotos = fotoRepository.findByProducto(producto.getId()).size();
+        int cantidadFotos = fotoRepository.findByProductoId(producto.getId()).size();
         if (cantidadFotos < 6) {
             throw new UnprocessableEntityException(
                     "El producto debe tener al menos 6 imagenes (tiene " + cantidadFotos + ").");
         }
 
         ItemCatalogoEntity item = new ItemCatalogoEntity();
-        item.setCatalogo(catalogo.getId());
-        item.setProducto(producto.getId());
+        item.setCatalogo(catalogo);
+        item.setProducto(producto);
         item.setPrecioBase(request.getPrecioBase());
         item.setComision(request.getComision());
         item.setSubastado(false);
         item = itemRepository.save(item);
 
-        List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProducto(producto.getId()).stream()
+        List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProductoId(producto.getId()).stream()
                 .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
                         "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
                 .toList();
@@ -291,20 +289,20 @@ public class SubastaService {
 
     @Transactional
     public List<SubastaListItemDto> getByDuenio(Long userId) {
-        List<Long> productosDuenio = productoRepository.findByDuenio(userId).stream()
+        List<Long> productosDuenio = productoRepository.findByDuenioId(userId).stream()
                 .map(ProductoEntity::getId).toList();
         return subastaRepository.findAll().stream()
-                .filter(s -> catalogoRepository.findBySubasta(s.getId()).stream()
-                        .flatMap(c -> itemRepository.findByCatalogo(c.getId()).stream())
-                        .anyMatch(i -> productosDuenio.contains(i.getProducto())))
+                .filter(s -> s.getCatalogo() != null &&
+                        itemRepository.findByCatalogoId(s.getCatalogo().getId()).stream()
+                                .anyMatch(i -> productosDuenio.contains(i.getProducto().getId())))
                 .map(this::toListItemDto)
                 .toList();
     }
 
     @Transactional
     public List<SubastaListItemDto> getByCliente(Long userId) {
-        return asistenteRepository.findByCliente(userId).stream()
-                .map(a -> subastaRepository.findById(a.getSubasta()).orElse(null))
+        return asistenteRepository.findByClienteId(userId).stream()
+                .map(AsistenteEntity::getSubasta)
                 .filter(java.util.Objects::nonNull)
                 .map(this::toListItemDto)
                 .toList();
@@ -333,28 +331,25 @@ public class SubastaService {
         );
     }
 
-    private SubastadorDto toSubastadorDto(Long subastadorId) {
-        if (subastadorId == null) return null;
-        SubastadorEntity entity = subastadorRepository.findById(subastadorId).orElse(null);
+    private SubastadorDto toSubastadorDto(SubastadorEntity entity) {
         if (entity == null) return null;
-        PersonaEntity persona = personaRepository.findById(subastadorId).orElse(null);
-        String nombre = persona != null ? persona.getNombre() : "Subastador " + subastadorId;
+        PersonaEntity persona = entity.getPersona();
+        String nombre = persona != null ? persona.getNombre() : "Subastador " + entity.getId();
         return new SubastadorDto(entity.getId(), nombre, entity.getMatricula());
     }
 
-    private CatalogoDto buildCatalogoDto(Long subastaId) {
-        List<CatalogoEntity> catalogos = catalogoRepository.findBySubasta(subastaId);
-        if (catalogos.isEmpty()) return null;
-        CatalogoEntity first = catalogos.get(0);
-        List<ItemCatalogoDto> items = itemRepository.findByCatalogo(first.getId()).stream()
+    private CatalogoDto buildCatalogoDto(SubastaEntity subasta) {
+        if (subasta.getCatalogo() == null) return null;
+        CatalogoEntity cat = subasta.getCatalogo();
+        List<ItemCatalogoDto> items = itemRepository.findByCatalogoId(cat.getId()).stream()
                 .sorted(Comparator.comparing(ItemCatalogoEntity::getId))
                 .map(this::toItemDto)
                 .toList();
-        return new CatalogoDto(first.getId(), first.getDescripcion(), items);
+        return new CatalogoDto(cat.getId(), cat.getDescripcion(), items);
     }
 
     private ItemCatalogoDto toItemDto(ItemCatalogoEntity item) {
-        ProductoEntity prod = productoRepository.findById(item.getProducto()).orElse(null);
+        ProductoEntity prod = item.getProducto();
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
         return new ItemCatalogoDto(
                 item.getId(),
@@ -364,12 +359,12 @@ public class SubastaService {
                 clienteService.isAuthenticated() ? item.getPrecioBase() : null,
                 item.getComision(),
                 Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
-                buildFotoRefs(item.getProducto())
+                buildFotoRefs(item.getProducto().getId())
         );
     }
 
     private List<FotoRefDto> buildFotoRefs(Long productoId) {
-        return fotoRepository.findByProducto(productoId).stream()
+        return fotoRepository.findByProductoId(productoId).stream()
                 .map(f -> new FotoRefDto(f.getId(),
                         "/api/v1/productos/" + productoId + "/fotos/" + f.getId()))
                 .toList();

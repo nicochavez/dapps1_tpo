@@ -10,11 +10,11 @@ import java.util.Optional;
 @Repository
 public interface AsistenteRepository extends JpaRepository<AsistenteEntity, Long> {
 
-    Optional<AsistenteEntity> findBySubastaAndCliente(Long subasta, Long cliente);
+    Optional<AsistenteEntity> findBySubastaIdAndClienteId(Long subastaId, Long clienteId);
 
-    List<AsistenteEntity> findBySubasta(Long subasta);
+    List<AsistenteEntity> findBySubastaId(Long subastaId);
 
-    List<AsistenteEntity> findByCliente(Long cliente);
+    List<AsistenteEntity> findByClienteId(Long clienteId);
 
-    long countBySubasta(Long subasta);
+    long countBySubastaId(Long subastaId);
 }

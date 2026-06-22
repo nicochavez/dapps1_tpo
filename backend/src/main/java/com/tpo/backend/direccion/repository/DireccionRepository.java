@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface DireccionRepository extends JpaRepository<DireccionEntity, Long> {
 
-    List<DireccionEntity> findByPersona(Long persona);
+    List<DireccionEntity> findByPersonaId(Long personaId);
 
-    Optional<DireccionEntity> findByPersonaAndFavoritoTrue(Long persona);
+    Optional<DireccionEntity> findByPersonaIdAndFavoritoTrue(Long personaId);
 }

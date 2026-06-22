@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface MedioPagoRepository extends JpaRepository<MedioPagoEntity, Long> {
 
-    List<MedioPagoEntity> findByCliente(Long cliente);
+    List<MedioPagoEntity> findByClienteId(Long clienteId);
 }
