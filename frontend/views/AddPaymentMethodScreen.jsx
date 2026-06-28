@@ -14,7 +14,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
   const onSuccess = () => navigation.goBack();
 
   const renderActiveForm = () => {
-    const props = { clienteId: user?.id, token: user?.token, onSuccess };
+    const props = { token: user?.token, onSuccess };
     switch (activeMethod) {
       case 'bank': return <BankForm {...props} />;
       case 'card': return <CardForm {...props} />;

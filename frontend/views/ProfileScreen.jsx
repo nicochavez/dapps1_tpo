@@ -85,7 +85,7 @@ export default function ProfileScreen() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const medios = await getMediosPago(currentUser.id, currentUser.token);
+      const medios = await getMediosPago(currentUser.token);
       setFirstPm(Array.isArray(medios) && medios.length > 0 ? medios[0] : null);
     } catch (e) {
       Alert.alert('Error', e.message);

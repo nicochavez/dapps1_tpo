@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.0.165:8080/api/v1';
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, ...fetchOptions } = options;
@@ -134,35 +134,37 @@ export function deleteDireccion(personaId, direccionId, token) {
 
 // ── Medios de pago ────────────────────────────────────────────────────────────
 
-export function getMediosPago(clienteId, token) {
-  return apiRequest(`/clientes/${clienteId}/medios-pago`, { token });
+// La identidad sale del JWT (/clientes/me/...), nunca de la URL, para evitar IDOR.
+
+export function getMediosPago(token) {
+  return apiRequest('/clientes/me/medios-pago', { token });
 }
 
-export function deleteMedioPago(clienteId, id, token) {
-  return apiRequest(`/clientes/${clienteId}/medios-pago/${id}`, {
+export function deleteMedioPago(id, token) {
+  return apiRequest(`/clientes/me/medios-pago/${id}`, {
     method: 'DELETE',
     token,
   });
 }
 
-export function createCuentaBancaria(clienteId, body, token) {
-  return apiRequest(`/clientes/${clienteId}/medios-pago/cuenta-bancaria`, {
+export function createCuentaBancaria(body, token) {
+  return apiRequest('/clientes/me/medios-pago/cuenta-bancaria', {
     method: 'POST',
     body: JSON.stringify(body),
     token,
   });
 }
 
-export function createTarjetaCredito(clienteId, body, token) {
-  return apiRequest(`/clientes/${clienteId}/medios-pago/tarjeta-credito`, {
+export function createTarjetaCredito(body, token) {
+  return apiRequest('/clientes/me/medios-pago/tarjeta-credito', {
     method: 'POST',
     body: JSON.stringify(body),
     token,
   });
 }
 
-export function createChequeCertificado(clienteId, body, token) {
-  return apiRequest(`/clientes/${clienteId}/medios-pago/cheque-certificado`, {
+export function createChequeCertificado(body, token) {
+  return apiRequest('/clientes/me/medios-pago/cheque-certificado', {
     method: 'POST',
     body: JSON.stringify(body),
     token,

@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } fro
 import { Feather } from '@expo/vector-icons';
 import { createCuentaBancaria } from '../services/api';
 
-export default function BankForm({ clienteId, token, onSuccess }) {
+export default function BankForm({ token, onSuccess }) {
   const [form, setForm] = useState({
     banco: '',
     numeroCuenta: '',
@@ -21,7 +21,7 @@ export default function BankForm({ clienteId, token, onSuccess }) {
     }
     setSaving(true);
     try {
-      await createCuentaBancaria(clienteId, {
+      await createCuentaBancaria({
         banco: form.banco,
         numeroCuenta: form.numeroCuenta,
         titular: form.titular || undefined,

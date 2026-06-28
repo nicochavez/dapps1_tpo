@@ -50,7 +50,7 @@ export default function PaymentMethodsScreen({ navigation }) {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const data = await getMediosPago(user.id, user.token);
+      const data = await getMediosPago(user.token);
       setMethods(data);
     } catch (e) {
       Alert.alert('Error', e.message);
@@ -72,7 +72,7 @@ export default function PaymentMethodsScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteMedioPago(user.id, pm.identificador, user.token);
+              await deleteMedioPago(pm.identificador, user.token);
               setMethods(prev => prev.filter(m => m.identificador !== pm.identificador));
             } catch (e) {
               Alert.alert('Error', e.message);

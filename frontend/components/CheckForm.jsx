@@ -10,7 +10,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } fro
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { createChequeCertificado } from '../services/api';
 
-export default function CheckForm({ clienteId, token, onSuccess }) {
+export default function CheckForm({ token, onSuccess }) {
   const [form, setForm] = useState({
     banco: '',
     numeroCheque: '',
@@ -34,7 +34,7 @@ export default function CheckForm({ clienteId, token, onSuccess }) {
 
     setSaving(true);
     try {
-      await createChequeCertificado(clienteId, {
+      await createChequeCertificado({
         banco: form.banco,
         numeroCheque: form.numeroCheque || undefined,
         montoCertificado: monto,

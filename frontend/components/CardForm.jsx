@@ -18,7 +18,7 @@ function formatExpiry(text) {
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
-export default function CardForm({ clienteId, token, onSuccess }) {
+export default function CardForm({ token, onSuccess }) {
   const [form, setForm] = useState({
     titular: '',
     cardNumber: '',
@@ -48,7 +48,7 @@ export default function CardForm({ clienteId, token, onSuccess }) {
 
     setSaving(true);
     try {
-      await createTarjetaCredito(clienteId, {
+      await createTarjetaCredito({
         titular: form.titular,
         ultimosCuatro: digits.slice(-4),
         fechaVencimiento,
