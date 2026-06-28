@@ -327,7 +327,8 @@ public class SubastaService {
                 s.getUbicacion(),
                 s.getCategoria(),
                 s.getMoneda(),
-                toSubastadorDto(s.getSubastador())
+                toSubastadorDto(s.getSubastador()),
+                buildCatalogoDto(s)
         );
     }
 

@@ -16,6 +16,7 @@ public class ProductoDto {
     private String descripcionCompleta;
     private String fecha;
     private String disponible;
+    private String estado;
     private DuenioDto duenio;
     private List<FotoDto> fotos;
     private SeguroDto seguro;

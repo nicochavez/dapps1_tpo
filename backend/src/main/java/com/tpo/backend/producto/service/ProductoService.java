@@ -10,6 +10,7 @@ import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.producto.dto.ProductoDto;
 import com.tpo.backend.producto.dto.ProductoNewRequest;
 import com.tpo.backend.producto.dto.ProductoUpdateRequest;
+import com.tpo.backend.producto.entity.EstadoProducto;
 import com.tpo.backend.producto.entity.FotoEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
@@ -20,6 +21,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -70,6 +74,11 @@ public class ProductoService {
     }
 
     @Transactional
+    public List<ProductoDto> listarPorDuenio(Long personaId) {
+        return productoRepository.findByDuenioId(personaId).stream().map(this::toDto).toList();
+    }
+
+    @Transactional
     public ProductoDto getById(Long id) {
         ProductoEntity prod = productoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + id));
@@ -77,7 +86,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public ProductoDto actualizar(Long id, ProductoUpdateRequest request) {
+    public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<MultipartFile> fotos) {
         ProductoEntity prod = productoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + id));
         if (request.getFecha() != null) prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -90,12 +99,36 @@ public class ProductoService {
         if (request.getSubcategoria() != null) prod.setSubcategoria(request.getSubcategoria());
         if (request.getArtista() != null) prod.setArtista(request.getArtista());
         if (request.getResenia() != null) prod.setResenia(request.getResenia());
+        if (request.getEstado() != null) prod.setEstado(request.getEstado());
         productoRepository.save(prod);
+        saveFotos(prod, fotos);
         return toDto(prod);
     }
 
     @Transactional
-    public ProductoDto crear(Long duenioId, ProductoNewRequest request) {
+    public ProductoDto agregarFotos(Long productoId, List<MultipartFile> fotos) {
+        ProductoEntity prod = productoRepository.findById(productoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+        saveFotos(prod, fotos);
+        return toDto(prod);
+    }
+
+    @Transactional
+    public ProductoDto eliminarFotos(Long productoId, List<Long> fotoIds) {
+        if (!productoRepository.existsById(productoId)) {
+            throw new ResourceNotFoundException("Producto no encontrado: " + productoId);
+        }
+        fotoIds.forEach(fotoId -> {
+            FotoEntity foto = fotoRepository.findById(fotoId)
+                    .filter(f -> f.getProducto().getId().equals(productoId))
+                    .orElseThrow(() -> new ResourceNotFoundException("Foto no encontrada: " + fotoId));
+            fotoRepository.delete(foto);
+        });
+        return toDto(productoRepository.findById(productoId).get());
+    }
+
+    @Transactional
+    public ProductoDto crear(Long duenioId, ProductoNewRequest request, List<MultipartFile> fotos) {
         DuenioEntity duenio = ensureDuenio(duenioId);
         ProductoEntity prod = new ProductoEntity();
         prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -109,8 +142,10 @@ public class ProductoService {
         prod.setSubcategoria(request.getSubcategoria());
         prod.setArtista(request.getArtista());
         prod.setResenia(request.getResenia());
+        prod.setEstado(request.getEstado() != null ? request.getEstado() : EstadoProducto.en_revision);
         prod.setDuenio(duenio);
         prod = productoRepository.save(prod);
+        saveFotos(prod, fotos);
         return toDto(prod);
     }
 
@@ -133,12 +168,18 @@ public class ProductoService {
         });
     }
 
-    @Transactional
-    public byte[] getFoto(Long productoId, Long fotoId) {
-        FotoEntity foto = fotoRepository.findById(fotoId)
-                .filter(f -> f.getProducto().getId().equals(productoId))
-                .orElseThrow(() -> new ResourceNotFoundException("Foto no encontrada: " + fotoId));
-        return foto.getFoto();
+    private void saveFotos(ProductoEntity prod, List<MultipartFile> fotos) {
+        if (fotos == null) return;
+        fotos.forEach(file -> {
+            try {
+                FotoEntity foto = new FotoEntity();
+                foto.setProducto(prod);
+                foto.setFoto(file.getBytes());
+                fotoRepository.save(foto);
+            } catch (IOException e) {
+                throw new RuntimeException("Error al procesar foto: " + file.getOriginalFilename(), e);
+            }
+        });
     }
 
     private ProductoDto toDto(ProductoEntity prod) {
@@ -166,6 +207,7 @@ public class ProductoService {
                 prod.getDescripcionCompleta(),
                 prod.getFecha() != null ? prod.getFecha().toString() : null,
                 Boolean.TRUE.equals(prod.getDisponible()) ? "si" : "no",
+                prod.getEstado() != null ? prod.getEstado().name() : null,
                 duenioDto,
                 fotos,
                 seguroDto

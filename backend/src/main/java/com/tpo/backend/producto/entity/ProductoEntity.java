@@ -56,4 +56,8 @@ public class ProductoEntity {
 
     @Column(name = "resena_historica")
     private String resenia;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false)
+    private EstadoProducto estado;
 }

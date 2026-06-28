@@ -16,4 +16,5 @@ public class SubastaListItemDto {
     private String categoria;
     private String moneda;
     private SubastadorDto subastador;
+    private CatalogoDto catalogo;
 }

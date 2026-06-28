@@ -1,5 +1,6 @@
 package com.tpo.backend.producto.dto;
 
+import com.tpo.backend.producto.entity.EstadoProducto;
 import lombok.Data;
 
 @Data
@@ -14,4 +15,5 @@ public class ProductoUpdateRequest {
     private String subcategoria;
     private String artista;
     private String resenia;
+    private EstadoProducto estado;
 }

@@ -7,9 +7,11 @@ import com.tpo.backend.producto.dto.ProductoUpdateRequest;
 import com.tpo.backend.producto.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -36,21 +38,34 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.getById(productoId));
     }
 
-    @PutMapping("/{productoId}")
-    public ResponseEntity<ProductoDto> actualizar(@PathVariable Long productoId,
-                                                   @RequestBody ProductoUpdateRequest request) {
-        return ResponseEntity.ok(productoService.actualizar(productoId, request));
+    @GetMapping("/me")
+    public ResponseEntity<List<ProductoDto>> listarMios(@AuthenticationPrincipal AuthenticatedUser me) {
+        return ResponseEntity.ok(productoService.listarPorDuenio(me.personaId()));
     }
 
-    @GetMapping("/{productoId}/fotos/{fotoId}")
-    public ResponseEntity<byte[]> getFoto(@PathVariable Long productoId, @PathVariable Long fotoId) {
-        productoService.getFoto(productoId, fotoId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> crear(@AuthenticationPrincipal AuthenticatedUser me,
-                                             @Valid @RequestBody ProductoNewRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.crear(me.personaId(), request));
+                                             @Valid @RequestPart("data") ProductoNewRequest request,
+                                             @RequestPart(value = "fotos", required = false) List<MultipartFile> fotos) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.crear(me.personaId(), request, fotos));
+    }
+
+    @PutMapping(value = "/{productoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductoDto> actualizar(@PathVariable Long productoId,
+                                                  @RequestPart("data") ProductoUpdateRequest request,
+                                                  @RequestPart(value = "fotos", required = false) List<MultipartFile> fotos) {
+        return ResponseEntity.ok(productoService.actualizar(productoId, request, fotos));
+    }
+
+    @PatchMapping(value = "/{productoId}/fotos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductoDto> agregarFotos(@PathVariable Long productoId,
+                                                    @RequestPart("fotos") List<MultipartFile> fotos) {
+        return ResponseEntity.ok(productoService.agregarFotos(productoId, fotos));
+    }
+
+    @PatchMapping("/{productoId}/fotos/eliminar")
+    public ResponseEntity<ProductoDto> eliminarFotos(@PathVariable Long productoId,
+                                                     @RequestBody List<Long> fotoIds) {
+        return ResponseEntity.ok(productoService.eliminarFotos(productoId, fotoIds));
     }
 }

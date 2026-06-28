@@ -1,5 +1,6 @@
 package com.tpo.backend.producto.dto;
 
+import com.tpo.backend.producto.entity.EstadoProducto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -20,4 +21,5 @@ public class ProductoNewRequest {
     private String subcategoria;
     private String artista;
     private String resenia;
+    private EstadoProducto estado;
 }
