@@ -1,39 +1,43 @@
 package com.tpo.backend.notificacion.controller;
 
+import com.tpo.backend.auth.security.SecurityUtils;
 import com.tpo.backend.notificacion.dto.NotificacionDto;
-import com.tpo.backend.notificacion.entity.NotificacionEntity;
-import com.tpo.backend.notificacion.repository.NotificacionRepository;
+import com.tpo.backend.notificacion.service.NotificacionService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/usuarios/{userId}/notificaciones")
+@RequestMapping("/api/v1/clientes/me/notificaciones")
 public class NotificacionController {
 
-    private final NotificacionRepository notificacionRepository;
+    private final NotificacionService notificacionService;
 
-    public NotificacionController(NotificacionRepository notificacionRepository) {
-        this.notificacionRepository = notificacionRepository;
+    public NotificacionController(NotificacionService notificacionService) {
+        this.notificacionService = notificacionService;
     }
 
+    /** Lista historica de notificaciones del cliente autenticado. */
     @GetMapping
-    public ResponseEntity<List<NotificacionDto>> listar(@PathVariable Long userId) {
-        List<NotificacionDto> notificaciones = notificacionRepository
-                .findByClienteIdOrderByFechaCreacionDesc(userId).stream()
-                .map(this::toDto)
-                .toList();
-        return ResponseEntity.ok(notificaciones);
+    public ResponseEntity<List<NotificacionDto>> listar() {
+        Long clienteId = SecurityUtils.currentPersonaId();
+        return ResponseEntity.ok(notificacionService.listar(clienteId));
     }
 
-    private NotificacionDto toDto(NotificacionEntity n) {
-        return new NotificacionDto(
-                n.getId(),
-                n.getTitulo(),
-                n.getMensaje(),
-                Boolean.TRUE.equals(n.getLeida()),
-                n.getFechaCreacion() != null ? n.getFechaCreacion().toString() : null
-        );
+    /** Stream SSE: el cliente abre esta conexion para recibir notificaciones en tiempo real. */
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream() {
+        Long clienteId = SecurityUtils.currentPersonaId();
+        return notificacionService.subscribe(clienteId);
+    }
+
+    /** Marca una notificacion como leida. */
+    @PatchMapping("/{id}/leida")
+    public ResponseEntity<NotificacionDto> marcarLeida(@PathVariable Long id) {
+        Long clienteId = SecurityUtils.currentPersonaId();
+        return ResponseEntity.ok(notificacionService.marcarLeida(clienteId, id));
     }
 }
