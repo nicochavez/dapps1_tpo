@@ -1,0 +1,18 @@
+Necesito que crees un plan para conectar el flujo vendedor que va a permitir publicar un producto. Desde el backend (Swagger) vamos a simular la aprobación y asignación a un catalogo del producto publicado, en el mientras debe aparecer como "en revisión", tal y como esta actualmente en el frontend simulado. Los datos actualmente son tomados por la vista @frontend/views/CreateObjectStep3.jsx. El flujo seria: Usuario propone producto -> Se sube a la bd con estado en revisión -> se acepta/rechaza -> en caso aceptado se notifica al usuario que luego acepta/rechaza la propuesta -> en caso rechazado solo se notifica con el motivo. NOTA: Revisar endpoints de notificación, la idea es hacer algo simple del estulo titulo & cuerpo. Te paso los requerimientos del flujo:
+
+- Actualmente hay un post producto, que crea el producto.
+- Necesitamos hacer admin-producto-controller para aceptar/rechazar el producto y asignarlo a un catalogo.
+- El aceptar/rechazar producto desde admin-producto-controller debe hacer un post a notificaciones con el id usuario notificando su aceptación/rechazo
+- En caso de rechazo el sistema debe mostrar las causas y registrar la devolución con cargo al usuario.
+- En caso de aceptación el sistema debe informar al usuario fecha, hora, lugar de la subasta, precio base por ítem y comisiones.
+- Una vez aceptado el producto debe aparecer en la app.
+- Reemplazar el setTimeout del envío final por una llamada real al backend.
+- Conectar la propuesta de artículo del frontend con el endpoint real correspondiente.
+- Agregar propuesta de condiciones por parte de la empresa: precio base, comisión, etc.
+- Permitir que el usuario acepte o rechace esas condiciones desde la app.
+- los estados que puede tener un artículo son: pendiente de inspección, rechazado, 
+propuesta enviada, aceptado por usuario, rechazado por usuario e incluido en subasta.
+
+Para la aceptación/rechazo por parte del dueño, la idea es usar la vista @frontend/views/AuctionUnderReview.jsx, de tal forma que si el producto tiene estado de aceptación por parte de la empresa pero pendiente del usuario, sirva como vista para este paso con un botón de rechazo o de aceptación.
+
+

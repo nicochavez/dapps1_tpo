@@ -65,15 +65,15 @@ Documento derivado del enunciado en [`TPO.md`](./TPO.md). Recoge el alcance de l
 - **RF-44** Si el usuario no cumple con la obligación de pago, el sistema debe bloquear el acceso del usuario a todos los servicios y marcar el caso como derivado a la justicia (fuera del alcance de la app).
 
 ### 1.8 Submisión de ítems para subastar (rol Dueño)
-- **RF-45** El sistema debe permitir al usuario proponer un bien para incluir en una subasta cargando: datos del bien, al menos 6 fotos y datos históricos/de interés.
-- **RF-46** El sistema debe exigir una declaración (checkbox obligatorio) de que el bien le pertenece y no posee impedimentos para subastarlo.
-- **RF-47** El sistema debe permitir adjuntar acreditación de origen lícito cuando sea requerido.
+- **RF-45** ~~El sistema debe permitir al usuario proponer un bien para incluir en una subasta cargando: datos del bien, al menos 6 fotos y datos históricos/de interés.~~
+- **RF-46** ~~El sistema debe exigir una declaración (checkbox obligatorio) de que el bien le pertenece y no posee impedimentos para subastarlo.~~
+- **RF-47** El sistema debe permitir adjuntar acreditación de origen lícito cuando sea requerido. -- to be continued....
 - **RF-48** Tras una inspección, el sistema debe informar la aceptación o el rechazo del bien.
 - **RF-49** En caso de rechazo el sistema debe mostrar las causas y registrar la devolución con cargo al usuario.
 - **RF-50** En caso de aceptación el sistema debe informar al usuario fecha, hora, lugar de la subasta, precio base por ítem y comisiones.
-- **RF-51** El sistema debe permitir al usuario aceptar o rechazar el precio base/comisiones propuestos; el rechazo dispara devolución con cargo.
-- **RF-52** Si un dueño envía una cantidad muy numerosa de artículos, el sistema debe permitir a la empresa agruparlos como **colección** con el nombre del usuario.
-- **RF-53** El sistema debe exigir al dueño declarar antes del inicio de la subasta la cuenta (puede ser del exterior) donde recibirá el resultado de las ventas.
+- **RF-51** El sistema debe permitir al usuario aceptar o rechazar el precio base/comisiones propuestos; el rechazo dispara devolución con cargo. -- to be continued....
+- **RF-52** Si un dueño envía una cantidad muy numerosa de artículos, el sistema debe permitir a la empresa agruparlos como **colección** con el nombre del usuario. -- to be continued
+- **RF-53** El sistema debe exigir al dueño declarar antes del inicio de la subasta la cuenta (puede ser del exterior) donde recibirá el resultado de las ventas. -- Pendiente
 
 ### 1.9 Logística y seguros
 - **RF-54** El sistema debe contratar un seguro sobre el bien en función del precio base.
