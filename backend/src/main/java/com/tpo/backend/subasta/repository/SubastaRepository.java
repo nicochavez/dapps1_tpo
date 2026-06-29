@@ -6,11 +6,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SubastaRepository extends JpaRepository<SubastaEntity, Long> {
 
     List<SubastaEntity> findByEstado(String estado);
+
+    Optional<SubastaEntity> findByCatalogoId(Long catalogoId);
 
     List<SubastaEntity> findByCategoria(String categoria);
 

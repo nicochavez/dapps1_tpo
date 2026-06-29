@@ -4,6 +4,9 @@ import com.tpo.backend.producto.entity.EstadoProducto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Data
 public class ProductoNewRequest {
@@ -14,7 +17,7 @@ public class ProductoNewRequest {
     private String descripcionCatalogo;
     @NotBlank
     private String descripcionCompleta;
-    @NotNull
+    /** Empleado revisor; si no se informa, el service asigna el verificador por defecto. */
     private Long revisor;
     private String seguro;
     private String categoria;
@@ -22,4 +25,6 @@ public class ProductoNewRequest {
     private String artista;
     private String resenia;
     private EstadoProducto estado;
+    /** Fotos del bien, enviadas como partes multipart (RN FormData). */
+    private List<MultipartFile> fotos;
 }

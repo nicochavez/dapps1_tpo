@@ -4,6 +4,7 @@ import com.tpo.backend.auth.security.AuthenticatedUser;
 import com.tpo.backend.producto.dto.ProductoDto;
 import com.tpo.backend.producto.dto.ProductoNewRequest;
 import com.tpo.backend.producto.dto.ProductoUpdateRequest;
+import com.tpo.backend.producto.dto.PropuestaDto;
 import com.tpo.backend.producto.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -45,9 +46,9 @@ public class ProductoController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> crear(@AuthenticationPrincipal AuthenticatedUser me,
-                                             @Valid @RequestPart("data") ProductoNewRequest request,
-                                             @RequestPart(value = "fotos", required = false) List<MultipartFile> fotos) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.crear(me.personaId(), request, fotos));
+                                             @Valid @ModelAttribute ProductoNewRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(productoService.crear(me.personaId(), request, request.getFotos()));
     }
 
     @PutMapping(value = "/{productoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -67,5 +68,25 @@ public class ProductoController {
     public ResponseEntity<ProductoDto> eliminarFotos(@PathVariable Long productoId,
                                                      @RequestBody List<Long> fotoIds) {
         return ResponseEntity.ok(productoService.eliminarFotos(productoId, fotoIds));
+    }
+
+    // --- Propuesta de condiciones: el dueno consulta y acepta/rechaza --------
+
+    @GetMapping("/{productoId}/propuesta")
+    public ResponseEntity<PropuestaDto> getPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
+                                                     @PathVariable Long productoId) {
+        return ResponseEntity.ok(productoService.getPropuesta(me.personaId(), productoId));
+    }
+
+    @PostMapping("/{productoId}/propuesta/aceptar")
+    public ResponseEntity<ProductoDto> aceptarPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
+                                                        @PathVariable Long productoId) {
+        return ResponseEntity.ok(productoService.aceptarPropuesta(me.personaId(), productoId));
+    }
+
+    @PostMapping("/{productoId}/propuesta/rechazar")
+    public ResponseEntity<ProductoDto> rechazarPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
+                                                         @PathVariable Long productoId) {
+        return ResponseEntity.ok(productoService.rechazarPropuesta(me.personaId(), productoId));
     }
 }

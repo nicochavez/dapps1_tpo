@@ -171,6 +171,46 @@ export function createChequeCertificado(body, token) {
   });
 }
 
+// ── Productos (flujo vendedor) ─────────────────────────────────────────────────
+
+// Mapea el itemData del formulario (CreateObjectStep1/2) al ProductoNewRequest (@ModelAttribute).
+export function createProducto(itemData, photos, token) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const form = new FormData();
+  form.append('fecha', today);
+  form.append('disponible', 'false');
+  form.append('descripcionCatalogo', itemData.title ?? '');
+  form.append('descripcionCompleta', itemData.description ?? '');
+  if (itemData.category) form.append('categoria', itemData.category);
+  if (itemData.subCategory) form.append('subcategoria', itemData.subCategory);
+  if (itemData.artistName) form.append('artista', itemData.artistName);
+  if (itemData.itemHistory) form.append('resenia', itemData.itemHistory);
+
+  Object.entries(photos || {}).forEach(([key, uri], index) => {
+    if (!uri) return;
+    form.append('fotos', { uri, name: `foto_${key}_${index}.jpg`, type: 'image/jpeg' });
+  });
+
+  return apiRequest('/productos', { method: 'POST', body: form, token });
+}
+
+export function getMisProductos(token) {
+  return apiRequest('/productos/me', { token });
+}
+
+export function getPropuesta(productoId, token) {
+  return apiRequest(`/productos/${productoId}/propuesta`, { token });
+}
+
+export function aceptarPropuesta(productoId, token) {
+  return apiRequest(`/productos/${productoId}/propuesta/aceptar`, { method: 'POST', token });
+}
+
+export function rechazarPropuesta(productoId, token) {
+  return apiRequest(`/productos/${productoId}/propuesta/rechazar`, { method: 'POST', token });
+}
+
 // ── Subastas ──────────────────────────────────────────────────────────────────
 
 export function getSubastas() {

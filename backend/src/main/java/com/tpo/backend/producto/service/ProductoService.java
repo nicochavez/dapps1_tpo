@@ -1,6 +1,10 @@
 package com.tpo.backend.producto.service;
 
+import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
+import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
+import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.duenio.entity.DuenioEntity;
 import com.tpo.backend.duenio.repository.DuenioRepository;
 import com.tpo.backend.empleado.entity.EmpleadoEntity;
@@ -10,6 +14,9 @@ import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.producto.dto.ProductoDto;
 import com.tpo.backend.producto.dto.ProductoNewRequest;
 import com.tpo.backend.producto.dto.ProductoUpdateRequest;
+import com.tpo.backend.producto.dto.PropuestaDto;
+import com.tpo.backend.subasta.entity.SubastaEntity;
+import com.tpo.backend.subasta.repository.SubastaRepository;
 import com.tpo.backend.producto.entity.EstadoProducto;
 import com.tpo.backend.producto.entity.FotoEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
@@ -24,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,19 +47,25 @@ public class ProductoService {
     private final SeguroRepository seguroRepository;
     private final DuenioRepository duenioRepository;
     private final EmpleadoRepository empleadoRepository;
+    private final ItemCatalogoRepository itemCatalogoRepository;
+    private final SubastaRepository subastaRepository;
 
     public ProductoService(ProductoRepository productoRepository,
                            FotoRepository fotoRepository,
                            PersonaRepository personaRepository,
                            SeguroRepository seguroRepository,
                            DuenioRepository duenioRepository,
-                           EmpleadoRepository empleadoRepository) {
+                           EmpleadoRepository empleadoRepository,
+                           ItemCatalogoRepository itemCatalogoRepository,
+                           SubastaRepository subastaRepository) {
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
         this.personaRepository = personaRepository;
         this.seguroRepository = seguroRepository;
         this.duenioRepository = duenioRepository;
         this.empleadoRepository = empleadoRepository;
+        this.itemCatalogoRepository = itemCatalogoRepository;
+        this.subastaRepository = subastaRepository;
     }
 
     private EmpleadoEntity findEmpleado(Long id) {
@@ -136,7 +150,8 @@ public class ProductoService {
         prod.setDescripcionCatalogo(request.getDescripcionCatalogo() != null ?
                 request.getDescripcionCatalogo() : "No Posee");
         prod.setDescripcionCompleta(request.getDescripcionCompleta());
-        prod.setRevisor(findEmpleado(request.getRevisor()));
+        Long revisorId = request.getRevisor() != null ? request.getRevisor() : VERIFICADOR_SISTEMA_ID;
+        prod.setRevisor(findEmpleado(revisorId));
         if (request.getSeguro() != null) prod.setSeguro(findSeguro(request.getSeguro()));
         prod.setCategoria(request.getCategoria());
         prod.setSubcategoria(request.getSubcategoria());
@@ -182,7 +197,69 @@ public class ProductoService {
         });
     }
 
-    private ProductoDto toDto(ProductoEntity prod) {
+    // --- Propuesta de condiciones: aceptacion/rechazo por el dueno -----------
+
+    /** Devuelve las condiciones propuestas (precio base, comision, fecha/hora/lugar) para el dueno. */
+    @Transactional(readOnly = true)
+    public PropuestaDto getPropuesta(Long personaId, Long productoId) {
+        ProductoEntity prod = findPropioDueno(personaId, productoId);
+        ItemCatalogoEntity item = itemCatalogoRepository.findByProductoId(productoId).orElse(null);
+
+        PropuestaDto.SubastaInfo subastaInfo = null;
+        BigDecimal precioBase = null;
+        BigDecimal comision = null;
+        if (item != null) {
+            precioBase = item.getPrecioBase();
+            comision = item.getComision();
+            SubastaEntity subasta = subastaRepository.findByCatalogoId(item.getCatalogo().getId()).orElse(null);
+            if (subasta != null) {
+                subastaInfo = new PropuestaDto.SubastaInfo(
+                        subasta.getFecha() != null ? subasta.getFecha().toString() : null,
+                        subasta.getHora() != null ? subasta.getHora().toString() : null,
+                        subasta.getUbicacion());
+            }
+        }
+        return new PropuestaDto(prod.getId(), prod.getEstado().name(),
+                prod.getDescripcionCatalogo(), precioBase, comision, subastaInfo);
+    }
+
+    /** El dueno acepta las condiciones propuestas (RF flujo vendedor). */
+    @Transactional
+    public ProductoDto aceptarPropuesta(Long personaId, Long productoId) {
+        ProductoEntity prod = findPropioDueno(personaId, productoId);
+        exigirEstado(prod, EstadoProducto.propuesta_enviada);
+        prod.setEstado(EstadoProducto.aceptado_por_usuario);
+        productoRepository.save(prod);
+        return toDto(prod);
+    }
+
+    /** El dueno rechaza las condiciones propuestas. */
+    @Transactional
+    public ProductoDto rechazarPropuesta(Long personaId, Long productoId) {
+        ProductoEntity prod = findPropioDueno(personaId, productoId);
+        exigirEstado(prod, EstadoProducto.propuesta_enviada);
+        prod.setEstado(EstadoProducto.rechazado_por_usuario);
+        productoRepository.save(prod);
+        return toDto(prod);
+    }
+
+    private ProductoEntity findPropioDueno(Long personaId, Long productoId) {
+        ProductoEntity prod = productoRepository.findById(productoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+        if (!prod.getDuenio().getId().equals(personaId)) {
+            throw new ForbiddenException("El producto no pertenece al usuario autenticado.");
+        }
+        return prod;
+    }
+
+    private void exigirEstado(ProductoEntity prod, EstadoProducto esperado) {
+        if (prod.getEstado() != esperado) {
+            throw new UnprocessableEntityException(
+                    "El producto no esta en estado " + esperado + " (estado actual: " + prod.getEstado() + ").");
+        }
+    }
+
+    public ProductoDto toDto(ProductoEntity prod) {
         PersonaEntity duenioPersona = prod.getDuenio().getPersona();
         ProductoDto.DuenioDto duenioDto = new ProductoDto.DuenioDto(
                 prod.getDuenio().getId(),

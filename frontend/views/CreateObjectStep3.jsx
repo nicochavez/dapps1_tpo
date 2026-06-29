@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { AuthContext } from '../context/AuthContext';
+import { createProducto } from '../services/api';
 
 function SectionTitle({ label }) {
   return (
@@ -22,6 +24,7 @@ function DetailRow({ label, value }) {
 
 export default function CreateObjectStep3({ route, navigation }) {
   const { itemData, photos } = route.params || {};
+  const { token } = useContext(AuthContext);
 
   const [isChecked, setIsChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,15 +32,17 @@ export default function CreateObjectStep3({ route, navigation }) {
   const photoCount = Object.values(photos || {}).filter(Boolean).length;
   const isArtOrDesigner = !!(itemData?.artistName);
 
-  // RF-45 / RF-46: payload completo + declaración jurada
-  const handleConfirmAndSubmit = () => {
+  // RF-45 / RF-46: payload completo + declaración jurada → POST real al backend
+  const handleConfirmAndSubmit = async () => {
     setIsLoading(true);
-    const payloadToAPI = { ...itemData, photos };
-    console.log('Payload → API (simulación):', payloadToAPI);
-    setTimeout(() => {
+    try {
+      const producto = await createProducto(itemData, photos, token);
+      navigation.navigate('AuctionUnderReview', { productoId: producto?.identificador });
+    } catch (error) {
+      Alert.alert('No se pudo enviar el artículo', error.message);
+    } finally {
       setIsLoading(false);
-      navigation.navigate('AuctionUnderReview');
-    }, 1500);
+    }
   };
 
   return (

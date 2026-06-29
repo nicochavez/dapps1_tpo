@@ -1,42 +1,45 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import Footer from '../components/Footer';
 import { AuthContext } from '../context/AuthContext';
-import itemsData from '../data/items.json';
+import { getMisProductos, buildImageUrl } from '../services/api';
 
 const STATUS = {
-  en_puja: {
-    bg: 'bg-[#a78bfa]',
-    text: 'text-white',
-    label: 'LIVE',
-  },
-  pendiente: {
-    bg: 'bg-slate-200',
-    text: 'text-slate-600',
-    label: 'UPCOMING',
-  },
-  subastado: {
-    bg: 'bg-transparent border border-slate-300',
-    text: 'text-slate-400',
-    label: 'SOLD',
-  },
-  verificacion_pendiente: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-700',
-    label: 'PENDING REVIEW',
-  },
+  en_revision: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'PENDING REVIEW', hint: 'Awaiting expert inspection' },
+  propuesta_enviada: { bg: 'bg-[#a78bfa]', text: 'text-white', label: 'PROPOSAL', hint: 'Review and accept the auction terms' },
+  aceptado_por_usuario: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'ACCEPTED', hint: 'Terms accepted' },
+  incluido_en_subasta: { bg: 'bg-[#a78bfa]', text: 'text-white', label: 'IN AUCTION', hint: 'Included in the auction' },
+  rechazado: { bg: 'bg-red-100', text: 'text-red-700', label: 'REJECTED', hint: 'Rejected during inspection' },
+  rechazado_por_usuario: { bg: 'bg-slate-200', text: 'text-slate-600', label: 'DECLINED', hint: 'You declined the terms' },
 };
 
-function getStatus(estadoLote) {
-  return STATUS[estadoLote] ?? { bg: 'bg-slate-200', text: 'text-slate-500', label: estadoLote ?? '—' };
+function getStatus(estado) {
+  return STATUS[estado] ?? { bg: 'bg-slate-200', text: 'text-slate-500', label: estado ?? '—', hint: '' };
 }
 
 export default function MyAuctionsScreen() {
   const navigation = useNavigation();
-  const { user: currentUser } = useContext(AuthContext);
+  const { user: currentUser, token } = useContext(AuthContext);
+
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const cargar = useCallback(async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      setItems(await getMisProductos(token));
+    } catch (error) {
+      Alert.alert('No se pudieron cargar tus artículos', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
   useEffect(() => {
     if (!currentUser) {
@@ -53,14 +56,8 @@ export default function MyAuctionsScreen() {
 
   if (!currentUser) return null;
 
-  const myItems = itemsData.filter(item => String(item.ownerId) === String(currentUser.id));
-
   const handlePress = (item) => {
-    if (item.estadoLote === 'verificacion_pendiente') {
-      navigation.navigate('AuctionUnderReview');
-    } else {
-      navigation.navigate('ItemDetail', { itemId: item.id });
-    }
+    navigation.navigate('AuctionUnderReview', { productoId: item.identificador });
   };
 
   return (
@@ -83,33 +80,33 @@ export default function MyAuctionsScreen() {
         </View>
 
         <View className="mb-4">
-          {myItems.length > 0 ? (
-            myItems.map((item) => {
-              const statusStyle = getStatus(item.estadoLote);
-              const isPending = item.estadoLote === 'verificacion_pendiente';
+          {loading ? (
+            <View className="py-10 items-center justify-center">
+              <ActivityIndicator color="#7C3AED" />
+            </View>
+          ) : items.length > 0 ? (
+            items.map((item) => {
+              const statusStyle = getStatus(item.estado);
+              const isActionable = item.estado === 'propuesta_enviada';
+              const imageUrl = buildImageUrl(item.fotos?.[0]?.url);
 
               return (
                 <TouchableOpacity
-                  key={item.id}
+                  key={item.identificador}
                   onPress={() => handlePress(item)}
-                  className={`bg-white rounded-2xl p-3 mb-4 shadow-sm shadow-slate-100 flex-row items-center ${isPending ? 'border border-amber-100' : ''}`}
+                  className={`bg-white rounded-2xl p-3 mb-4 shadow-sm shadow-slate-100 flex-row items-center ${isActionable ? 'border border-purple-200' : ''}`}
                   activeOpacity={0.75}
                 >
-                  {/* Imagen */}
                   <View className="relative">
-                    <Image
-                      source={{ uri: item.image || item.producto?.image }}
-                      className={`w-16 h-16 rounded-2xl bg-slate-100 ${isPending ? 'opacity-60' : ''}`}
-                      resizeMode="cover"
-                    />
-                    {isPending && (
-                      <View className="absolute inset-0 rounded-2xl items-center justify-center">
-                        <Feather name="clock" size={20} color="#d97706" />
+                    {imageUrl ? (
+                      <Image source={{ uri: imageUrl }} className="w-16 h-16 rounded-2xl bg-slate-100" resizeMode="cover" />
+                    ) : (
+                      <View className="w-16 h-16 rounded-2xl bg-slate-100 items-center justify-center">
+                        <Feather name="image" size={20} color="#cbd5e1" />
                       </View>
                     )}
                   </View>
 
-                  {/* Contenido central */}
                   <View className="flex-1 ml-4 justify-center">
                     <View className="flex-row items-center mb-1">
                       <View className={`px-2 py-0.5 rounded-md mr-2 ${statusStyle.bg}`}>
@@ -117,33 +114,19 @@ export default function MyAuctionsScreen() {
                           {statusStyle.label}
                         </Text>
                       </View>
-                      {!isPending && item.pieceNumber ? (
-                        <Text className="text-xs text-slate-500 font-medium">{item.pieceNumber}</Text>
-                      ) : null}
                     </View>
 
                     <Text className="text-base font-bold text-slate-800 mb-0.5" numberOfLines={1}>
-                      {item.title}
+                      {item.descripcionCatalogo || item.descripcionCompleta}
                     </Text>
 
-                    {isPending ? (
-                      <Text className="text-xs text-amber-600">
-                        Awaiting expert inspection
-                      </Text>
-                    ) : (
-                      <Text className="text-xs text-slate-400">
-                        {'Base: $' + (item.precioBase?.toLocaleString('en-US') ?? '—')}
-                      </Text>
-                    )}
+                    <Text className="text-xs text-slate-400" numberOfLines={1}>
+                      {statusStyle.hint}
+                    </Text>
                   </View>
 
-                  {/* Ícono derecha */}
                   <View className="ml-2 pl-2">
-                    <Feather
-                      name={isPending ? 'chevron-right' : 'chevron-right'}
-                      size={16}
-                      color={isPending ? '#d97706' : '#94a3b8'}
-                    />
+                    <Feather name="chevron-right" size={16} color={isActionable ? '#7C3AED' : '#94a3b8'} />
                   </View>
                 </TouchableOpacity>
               );
@@ -155,7 +138,6 @@ export default function MyAuctionsScreen() {
           )}
         </View>
 
-        {/* Botón nuevo ítem */}
         <TouchableOpacity
           onPress={() => navigation.navigate('CreateObjectStep1')}
           className="border-2 border-dashed border-slate-200 rounded-[32px] p-8 items-center mb-10 bg-slate-50/50"
