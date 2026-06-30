@@ -20,6 +20,8 @@ public class ProductoDto {
     private DuenioDto duenio;
     private List<FotoDto> fotos;
     private SeguroDto seguro;
+    /** Datos de la subasta a la que quedo asignado el item (null si aun no esta en catalogo). */
+    private SubastaResumenDto subasta;
 
     @Data
     @AllArgsConstructor
@@ -27,6 +29,21 @@ public class ProductoDto {
     public static class DuenioDto {
         private Long identificador;
         private String nombre;
+    }
+
+    /** Resumen de la subasta del item para que el front muestre estado (upcoming/live/ended) y categoria. */
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class SubastaResumenDto {
+        private Long identificador;
+        private String estado;
+        private String fecha;
+        private String hora;
+        private String categoria;
+        /** Catalogo e item (itemcatalogo) del producto, para abrir el detalle unificado. */
+        private Long catalogoId;
+        private Long itemId;
     }
 
     @Data

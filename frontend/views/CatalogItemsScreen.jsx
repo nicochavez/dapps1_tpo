@@ -1,14 +1,32 @@
-import React, { useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useContext, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-import catalogsData from '../data/catalogs.json';
-import itemsData from '../data/items.json';
 import { AuthContext } from '../context/AuthContext';
+import { getCatalogos, buildImageUrl } from '../services/api';
+
+// Adapta un item del catálogo (backend) al shape que usa esta pantalla.
+function mapItem(it) {
+  return {
+    id: it.identificador,
+    numeroPieza: it.numeroPieza,
+    estadoLote: it.estadoLote,
+    subastado: it.subastado,
+    currentBid: it.currentBid,
+    precioBase: it.precioBase,
+    comision: it.comision,
+    importeAdjudicado: it.importeAdjudicado,
+    producto: {
+      image: buildImageUrl(it.imagenPrincipal),
+      descripcionCatalogo: it.descripcion,
+    },
+  };
+}
 
 // ─── Regla de negocio de categorías ─────────────────────────────────────────
 const CATEGORY_RANK = {
@@ -35,10 +53,36 @@ const formatPrice = (value) => {
 };
 
 export default function CatalogItemsScreen({ route, navigation }) {
-  const catalogId = route?.params?.catalogId || 'c1';
+  const catalogId = route?.params?.catalogId;
   const { user: currentUser } = useContext(AuthContext);
 
-  const activeCatalog = catalogsData.find(c => c.id === catalogId);
+  const [activeCatalog, setActiveCatalog] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const cargar = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getCatalogos(currentUser?.token);
+      const found = (data || []).find(c => String(c.identificador) === String(catalogId));
+      setActiveCatalog(found
+        ? { ...found, id: found.identificador, image: buildImageUrl(found.image), totalItems: found.cantidadItems }
+        : null);
+    } catch (error) {
+      Alert.alert('No se pudo cargar el catálogo', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [catalogId, currentUser?.token]);
+
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-[#f8fafc]">
+        <ActivityIndicator color="#7C3AED" />
+      </View>
+    );
+  }
 
   if (!activeCatalog) {
     return (
@@ -64,8 +108,8 @@ export default function CatalogItemsScreen({ route, navigation }) {
 
   // Items ordenados, con precios enmascarados si no tiene acceso
   const MASKED = '$ \u2014,\u2014';
-  const catalogItems = itemsData
-    .filter(item => item.catalogo === activeCatalog.id)
+  const catalogItems = (activeCatalog.items || [])
+    .map(mapItem)
     .sort((l, r) => Number(l.numeroPieza ?? 0) - Number(r.numeroPieza ?? 0))
     .map(item => canAccessPrices ? item : {
       ...item,
@@ -78,7 +122,7 @@ export default function CatalogItemsScreen({ route, navigation }) {
   // Estado general de la subasta
   const statusDb      = activeCatalog.subasta?.estado || 'pendiente';
   const isLive        = statusDb === 'abierta';
-  const isEnded       = statusDb === 'cerrada';
+  const isEnded       = statusDb === 'cerrada' || statusDb === 'finalizada';
   const statusDisplay = isLive ? 'LIVE' : isEnded ? 'ENDED' : 'UPCOMING';
 
   const statusColors = isLive
@@ -219,7 +263,15 @@ export default function CatalogItemsScreen({ route, navigation }) {
             return (
               <TouchableOpacity
                 key={item.id}
-                onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
+                onPress={() => navigation.navigate('ItemDetail', {
+                  catalogoId: activeCatalog.id,
+                  itemId: item.id,
+                  subastaId: activeCatalog.subasta?.identificador,
+                  subastaInfo: activeCatalog.subasta,
+                  estadoLote: item.estadoLote,
+                  catalogDescripcion: activeCatalog.descripcion,
+                  catalogImage: activeCatalog.image,
+                })}
                 className={`rounded-3xl px-4 py-4 mb-4 flex-row items-center relative overflow-hidden ${
                   isActive
                     ? 'bg-purple-50 border-2 border-[#7C3AED] shadow-md shadow-purple-200 min-h-36'

@@ -14,6 +14,8 @@ import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
+import com.tpo.backend.puja.entity.PujaEntity;
+import com.tpo.backend.puja.repository.PujaRepository;
 import com.tpo.backend.empleado.entity.EmpleadoEntity;
 import com.tpo.backend.empleado.repository.EmpleadoRepository;
 import com.tpo.backend.subasta.entity.SubastaEntity;
@@ -21,6 +23,7 @@ import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -36,6 +39,7 @@ public class CatalogoService {
     private final ClienteService clienteService;
     private final EmpleadoRepository empleadoRepository;
     private final SubastaRepository subastaRepository;
+    private final PujaRepository pujaRepository;
 
     public CatalogoService(CatalogoRepository catalogoRepository,
                            ItemCatalogoRepository itemRepository,
@@ -43,7 +47,8 @@ public class CatalogoService {
                            FotoRepository fotoRepository,
                            ClienteService clienteService,
                            EmpleadoRepository empleadoRepository,
-                           SubastaRepository subastaRepository) {
+                           SubastaRepository subastaRepository,
+                           PujaRepository pujaRepository) {
         this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
@@ -51,6 +56,7 @@ public class CatalogoService {
         this.clienteService = clienteService;
         this.empleadoRepository = empleadoRepository;
         this.subastaRepository = subastaRepository;
+        this.pujaRepository = pujaRepository;
     }
 
     @Transactional
@@ -98,8 +104,11 @@ public class CatalogoService {
         if (subasta.getCatalogo() == null || !subasta.getCatalogo().getId().equals(catalogoId)) {
             throw new ResourceNotFoundException("Catalogo no pertenece a subasta: " + subastaId);
         }
-        return itemRepository.findByCatalogoId(catalogoId).stream()
-                .map(this::toListItemDto)
+        boolean live = "abierta".equalsIgnoreCase(subasta.getEstado());
+        List<ItemCatalogoEntity> items = itemRepository.findByCatalogoId(catalogoId);
+        Long loteActual = currentLotId(items);
+        return items.stream()
+                .map(i -> toListItemDto(i, live, loteActual))
                 .toList();
     }
 
@@ -143,24 +152,73 @@ public class CatalogoService {
     }
 
     private CatalogoListDto toListDto(CatalogoEntity cat) {
-        List<CatalogoListDto.ItemDto> items = itemRepository.findByCatalogoId(cat.getId()).stream()
-                .map(this::toListItemDto)
+        SubastaEntity subasta = subastaRepository.findByCatalogoId(cat.getId()).orElse(null);
+        boolean live = subasta != null && "abierta".equalsIgnoreCase(subasta.getEstado());
+        List<ItemCatalogoEntity> itemEntities = itemRepository.findByCatalogoId(cat.getId());
+        Long loteActual = currentLotId(itemEntities);
+
+        List<CatalogoListDto.ItemDto> items = itemEntities.stream()
+                .map(i -> toListItemDto(i, live, loteActual))
                 .toList();
-        return new CatalogoListDto(cat.getId(), cat.getDescripcion(), items.size(), items);
+
+        // Portada e itemCategory derivados del primer item del catalogo.
+        String image = items.isEmpty() ? null : items.get(0).getImagenPrincipal();
+        String itemCategory = itemEntities.isEmpty() || itemEntities.get(0).getProducto() == null
+                ? null : itemEntities.get(0).getProducto().getCategoria();
+
+        CatalogoListDto.SubastaResumenDto subastaDto = subasta == null ? null
+                : new CatalogoListDto.SubastaResumenDto(
+                        subasta.getId(),
+                        subasta.getEstado(),
+                        subasta.getCategoria(),
+                        subasta.getFecha() != null ? subasta.getFecha().toString() : null,
+                        subasta.getHora() != null ? subasta.getHora().toString() : null);
+
+        return new CatalogoListDto(cat.getId(), cat.getDescripcion(), items.size(),
+                image, itemCategory, subastaDto, items);
     }
 
-    private CatalogoListDto.ItemDto toListItemDto(ItemCatalogoEntity item) {
+    /**
+     * Lote actual = primer item no subastado (menor id), mismo criterio que
+     * {@code AdjudicacionService.currentItem}. La subasta avanza por lotes: solo
+     * uno puede estar en puja a la vez.
+     */
+    private Long currentLotId(List<ItemCatalogoEntity> items) {
+        return items.stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
+                .map(ItemCatalogoEntity::getId)
+                .min(Long::compareTo)
+                .orElse(null);
+    }
+
+    private CatalogoListDto.ItemDto toListItemDto(ItemCatalogoEntity item, boolean live, Long loteActual) {
         ProductoEntity prod = item.getProducto();
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
         var fotos = fotoRepository.findByProductoId(item.getProducto().getId());
         String imagenPrincipal = fotos.isEmpty() ? null
                 : "/api/v1/productos/" + item.getProducto().getId() + "/fotos/" + fotos.get(0).getId();
+
+        boolean subastado = Boolean.TRUE.equals(item.getSubastado());
+        BigDecimal mejorOferta = pujaRepository.findFirstByItemIdOrderByImporteDesc(item.getId())
+                .map(PujaEntity::getImporte)
+                .orElse(null);
+
+        // Solo el lote actual de una subasta abierta esta "en puja"; el resto espera su turno.
+        String estadoLote = subastado ? "subastado"
+                : (live && item.getId().equals(loteActual)) ? "en_puja"
+                : "pendiente";
+
         return new CatalogoListDto.ItemDto(
                 item.getId(),
                 descripcion,
                 precioVisible(item.getPrecioBase()),
-                Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
-                imagenPrincipal
+                subastado ? "si" : "no",
+                imagenPrincipal,
+                item.getNumeroPieza(),
+                item.getComision(),
+                precioVisible(mejorOferta),
+                subastado ? precioVisible(mejorOferta) : null,
+                estadoLote
         );
     }
 
@@ -170,12 +228,25 @@ public class CatalogoService {
                 .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
                         "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
                 .toList();
+
+        // Mismo estado del lote que en el listado, para que ambas vistas sean consistentes.
+        Long catalogoId = item.getCatalogo() != null ? item.getCatalogo().getId() : null;
+        SubastaEntity subasta = catalogoId != null ? subastaRepository.findByCatalogoId(catalogoId).orElse(null) : null;
+        boolean live = subasta != null && "abierta".equalsIgnoreCase(subasta.getEstado());
+        Long loteActual = catalogoId != null ? currentLotId(itemRepository.findByCatalogoId(catalogoId)) : null;
+        boolean subastado = Boolean.TRUE.equals(item.getSubastado());
+        String estadoLote = subastado ? "subastado"
+                : (live && item.getId().equals(loteActual)) ? "en_puja"
+                : "pendiente";
+
         return new ItemCatalogoDetailDto(
                 item.getId(),
                 precioVisible(item.getPrecioBase()),
                 item.getComision(),
-                Boolean.TRUE.equals(item.getSubastado()) ? "si" : "no",
+                subastado ? "si" : "no",
+                estadoLote,
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
+                        producto.getDuenio() != null ? producto.getDuenio().getId() : null,
                         producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),
                         producto.getArtista(),
                         producto.getFecha() != null ? producto.getFecha().toString() : null,

@@ -21,9 +21,13 @@ export default function ItemDetailBase({
   badgeLabel,   // texto del badge (ej: 'Live Auction')
   children,     // sección específica de cada estado (precio, puja, historial...)
 }) {
-  const mainImage    = item?.producto?.image || parentCatalog?.image
-    || 'https://ui-avatars.com/api/?name=Item&background=e2e8f0&color=94a3b8';
-  const catalogImage = parentCatalog?.image || mainImage;
+  const fallbackImage = 'https://ui-avatars.com/api/?name=Item&background=e2e8f0&color=94a3b8';
+  // Si el item trae una galeria completa (producto real), la usamos; si no, caemos
+  // al esquema original main + catalogo (flujo del postor con data estatica).
+  const galleryImages = (item?.producto?.images && item.producto.images.length > 0)
+    ? item.producto.images.filter(Boolean)
+    : [item?.producto?.image || parentCatalog?.image || fallbackImage, parentCatalog?.image].filter(Boolean);
+  const mainImage    = galleryImages[0] || fallbackImage;
   const [activeImage, setActiveImage] = useState(mainImage);
 
   const lotLabel      = item?.numeroPieza ? `LOT ${item.numeroPieza}` : item?.pieceNumber || 'LOT';
@@ -62,8 +66,8 @@ export default function ItemDetailBase({
           </View>
         </View>
 
-        <View className="flex-row">
-          {[mainImage, catalogImage].filter(Boolean).map((img, index) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+          {galleryImages.map((img, index) => (
             <TouchableOpacity
               key={index}
               onPress={() => setActiveImage(img)}
@@ -74,7 +78,7 @@ export default function ItemDetailBase({
               <Image source={{ uri: img }} className="w-full h-full bg-slate-200" resizeMode="cover" />
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {/* Metadatos */}

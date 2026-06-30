@@ -14,9 +14,16 @@ const fmtTime = (iso) => {
 };
 
 function BidRow({ bid, currentUserId, canAccessPrices, isFirst }) {
-  const isMe = bid.userId === currentUserId;
-  const user  = usersData.find(u => u.id === bid.userId);
-  const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2) ?? '?';
+  // Pujas reales del backend traen numeroPostor (anónimo); la data local trae userId.
+  const hasNumero = bid.numeroPostor != null;
+  const isMe = !hasNumero && bid.userId === currentUserId;
+  const user  = hasNumero ? null : usersData.find(u => u.id === bid.userId);
+  const displayName = hasNumero
+    ? `Bidder #${bid.numeroPostor}`
+    : (isMe ? 'You' : (user?.name ?? 'Unknown'));
+  const initials = hasNumero
+    ? `#${bid.numeroPostor}`
+    : (user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2) ?? '?');
   const isWinner = bid.ganador === true;
 
   return (
@@ -41,7 +48,7 @@ function BidRow({ bid, currentUserId, canAccessPrices, isFirst }) {
       {/* Name + timestamp */}
       <View className="flex-1">
         <Text className="font-bold text-slate-800 text-sm mb-0.5">
-          {isMe ? 'You' : (user?.name ?? 'Unknown')}
+          {displayName}
         </Text>
         <Text className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
           {fmtTime(bid.fecha)}

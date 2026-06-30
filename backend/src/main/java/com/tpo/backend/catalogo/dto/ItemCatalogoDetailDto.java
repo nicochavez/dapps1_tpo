@@ -15,6 +15,8 @@ public class ItemCatalogoDetailDto {
     private BigDecimal precioBase;
     private BigDecimal comision;
     private String subastado;
+    /** Estado del lote: en_puja | subastado | pendiente (regla de lote actual). */
+    private String estadoLote;
     private ProductoRefDto producto;
 
     @Data
@@ -22,6 +24,7 @@ public class ItemCatalogoDetailDto {
     @NoArgsConstructor
     public static class ProductoRefDto {
         private Long identificador;
+        private Long duenioId;
         private String descripcionCatalogo;
         private String descripcionCompleta;
         private String artista;

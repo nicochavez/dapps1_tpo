@@ -21,4 +21,16 @@ public class AprobarProductoRequest {
     @NotNull
     @Positive
     private BigDecimal comision;
+
+    /** Fecha de la subasta (ISO yyyy-MM-dd). Opcional: si se informa, actualiza la subasta del catalogo. */
+    private String fecha;
+
+    /** Hora de la subasta (ISO HH:mm o HH:mm:ss). Opcional. */
+    private String hora;
+
+    /** Ubicacion/lugar de la subasta. Opcional. */
+    private String ubicacion;
+
+    /** Categoria minima de usuario que puede pujar (comun, especial, plata, oro, platino). Opcional. */
+    private String categoria;
 }

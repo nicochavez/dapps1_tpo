@@ -1,6 +1,7 @@
 package com.tpo.backend.producto.controller;
 
 import com.tpo.backend.auth.security.AuthenticatedUser;
+import com.tpo.backend.common.exception.UnauthorizedException;
 import com.tpo.backend.producto.dto.ProductoDto;
 import com.tpo.backend.producto.dto.ProductoNewRequest;
 import com.tpo.backend.producto.dto.ProductoUpdateRequest;
@@ -39,14 +40,34 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.getById(productoId));
     }
 
+    /** Sirve los bytes de una foto del producto. Publico: lo consume el <Image> de RN sin token. */
+    @GetMapping("/{productoId}/fotos/{fotoId}")
+    public ResponseEntity<byte[]> getFoto(@PathVariable Long productoId, @PathVariable Long fotoId) {
+        byte[] bytes = productoService.getFotoBytes(productoId, fotoId);
+        return ResponseEntity.ok()
+                .contentType(detectImageType(bytes))
+                .body(bytes);
+    }
+
+    private static MediaType detectImageType(byte[] bytes) {
+        if (bytes != null && bytes.length >= 4) {
+            if ((bytes[0] & 0xFF) == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) {
+                return MediaType.IMAGE_PNG;
+            }
+        }
+        return MediaType.IMAGE_JPEG;
+    }
+
     @GetMapping("/me")
     public ResponseEntity<List<ProductoDto>> listarMios(@AuthenticationPrincipal AuthenticatedUser me) {
+        if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.ok(productoService.listarPorDuenio(me.personaId()));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> crear(@AuthenticationPrincipal AuthenticatedUser me,
                                              @Valid @ModelAttribute ProductoNewRequest request) {
+        if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(productoService.crear(me.personaId(), request, request.getFotos()));
     }
@@ -75,18 +96,21 @@ public class ProductoController {
     @GetMapping("/{productoId}/propuesta")
     public ResponseEntity<PropuestaDto> getPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
                                                      @PathVariable Long productoId) {
+        if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.ok(productoService.getPropuesta(me.personaId(), productoId));
     }
 
     @PostMapping("/{productoId}/propuesta/aceptar")
     public ResponseEntity<ProductoDto> aceptarPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
                                                         @PathVariable Long productoId) {
+        if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.ok(productoService.aceptarPropuesta(me.personaId(), productoId));
     }
 
     @PostMapping("/{productoId}/propuesta/rechazar")
     public ResponseEntity<ProductoDto> rechazarPropuesta(@AuthenticationPrincipal AuthenticatedUser me,
                                                          @PathVariable Long productoId) {
+        if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.ok(productoService.rechazarPropuesta(me.personaId(), productoId));
     }
 }

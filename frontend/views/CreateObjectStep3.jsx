@@ -24,7 +24,7 @@ function DetailRow({ label, value }) {
 
 export default function CreateObjectStep3({ route, navigation }) {
   const { itemData, photos } = route.params || {};
-  const { token } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   const [isChecked, setIsChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +36,7 @@ export default function CreateObjectStep3({ route, navigation }) {
   const handleConfirmAndSubmit = async () => {
     setIsLoading(true);
     try {
-      const producto = await createProducto(itemData, photos, token);
+      const producto = await createProducto(itemData, photos, user?.token);
       navigation.navigate('AuctionUnderReview', { productoId: producto?.identificador });
     } catch (error) {
       Alert.alert('No se pudo enviar el artículo', error.message);

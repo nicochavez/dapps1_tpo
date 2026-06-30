@@ -99,6 +99,15 @@ public class ProductoService {
         return toDto(prod);
     }
 
+    /** Bytes de una foto que pertenece al producto indicado (para servirla por HTTP). */
+    @Transactional(readOnly = true)
+    public byte[] getFotoBytes(Long productoId, Long fotoId) {
+        return fotoRepository.findById(fotoId)
+                .filter(f -> f.getProducto().getId().equals(productoId))
+                .map(FotoEntity::getFoto)
+                .orElseThrow(() -> new ResourceNotFoundException("Foto no encontrada: " + fotoId));
+    }
+
     @Transactional
     public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<MultipartFile> fotos) {
         ProductoEntity prod = productoRepository.findById(id)
@@ -287,7 +296,29 @@ public class ProductoService {
                 prod.getEstado() != null ? prod.getEstado().name() : null,
                 duenioDto,
                 fotos,
-                seguroDto
+                seguroDto,
+                buildSubastaResumen(prod.getId())
+        );
+    }
+
+    /** Resumen de la subasta a la que quedo asignado el producto (null si aun no esta en un catalogo). */
+    private ProductoDto.SubastaResumenDto buildSubastaResumen(Long productoId) {
+        ItemCatalogoEntity item = itemCatalogoRepository.findByProductoId(productoId).orElse(null);
+        if (item == null || item.getCatalogo() == null) {
+            return null;
+        }
+        SubastaEntity subasta = subastaRepository.findByCatalogoId(item.getCatalogo().getId()).orElse(null);
+        if (subasta == null) {
+            return null;
+        }
+        return new ProductoDto.SubastaResumenDto(
+                subasta.getId(),
+                subasta.getEstado(),
+                subasta.getFecha() != null ? subasta.getFecha().toString() : null,
+                subasta.getHora() != null ? subasta.getHora().toString() : null,
+                subasta.getCategoria(),
+                item.getCatalogo().getId(),
+                item.getId()
         );
     }
 }

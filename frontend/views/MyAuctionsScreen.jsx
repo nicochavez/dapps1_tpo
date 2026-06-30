@@ -16,28 +16,52 @@ const STATUS = {
   rechazado_por_usuario: { bg: 'bg-slate-200', text: 'text-slate-600', label: 'DECLINED', hint: 'You declined the terms' },
 };
 
-function getStatus(estado) {
-  return STATUS[estado] ?? { bg: 'bg-slate-200', text: 'text-slate-500', label: estado ?? '—', hint: '' };
+// Una vez aceptado por ambas partes, la card refleja el estado de la subasta.
+const EN_SUBASTA_ESTADOS = ['aceptado_por_usuario', 'incluido_en_subasta'];
+
+const AUCTION_STATUS = {
+  upcoming: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'UPCOMING', hint: 'Scheduled — auction has not started yet' },
+  live:     { bg: 'bg-red-100', text: 'text-red-700', label: 'LIVE', hint: 'The auction is live right now' },
+  ended:    { bg: 'bg-slate-200', text: 'text-slate-600', label: 'ENDED', hint: 'The auction has finished' },
+};
+
+/** Deriva upcoming/live/ended del resumen de subasta (estado + fecha/hora). */
+function getAuctionState(subasta) {
+  const estado = (subasta?.estado || '').toLowerCase();
+  if (estado === 'finalizada' || estado === 'cerrada') return 'ended';
+  if (subasta?.fecha) {
+    const dt = new Date(`${subasta.fecha}T${subasta.hora || '00:00:00'}`);
+    if (!isNaN(dt.getTime()) && dt.getTime() > Date.now()) return 'upcoming';
+  }
+  return 'live';
+}
+
+function getStatus(item) {
+  // Si ya fue aceptado y tiene subasta asignada, mostramos el estado de la subasta.
+  if (EN_SUBASTA_ESTADOS.includes(item?.estado) && item?.subasta) {
+    return AUCTION_STATUS[getAuctionState(item.subasta)];
+  }
+  return STATUS[item?.estado] ?? { bg: 'bg-slate-200', text: 'text-slate-500', label: item?.estado ?? '—', hint: '' };
 }
 
 export default function MyAuctionsScreen() {
   const navigation = useNavigation();
-  const { user: currentUser, token } = useContext(AuthContext);
+  const { user: currentUser } = useContext(AuthContext);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const cargar = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser?.token) return;
     try {
       setLoading(true);
-      setItems(await getMisProductos(token));
+      setItems(await getMisProductos(currentUser.token));
     } catch (error) {
       Alert.alert('No se pudieron cargar tus artículos', error.message);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [currentUser?.token]);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
@@ -56,8 +80,13 @@ export default function MyAuctionsScreen() {
 
   if (!currentUser) return null;
 
+  // Una vez aceptado por ambas partes el item ya es un lote de subasta: se ve como tal.
   const handlePress = (item) => {
-    navigation.navigate('AuctionUnderReview', { productoId: item.identificador });
+    if (EN_SUBASTA_ESTADOS.includes(item.estado)) {
+      navigation.navigate('ItemDetail', { productoId: item.identificador, producto: item });
+    } else {
+      navigation.navigate('AuctionUnderReview', { productoId: item.identificador });
+    }
   };
 
   return (
@@ -86,7 +115,7 @@ export default function MyAuctionsScreen() {
             </View>
           ) : items.length > 0 ? (
             items.map((item) => {
-              const statusStyle = getStatus(item.estado);
+              const statusStyle = getStatus(item);
               const isActionable = item.estado === 'propuesta_enviada';
               const imageUrl = buildImageUrl(item.fotos?.[0]?.url);
 

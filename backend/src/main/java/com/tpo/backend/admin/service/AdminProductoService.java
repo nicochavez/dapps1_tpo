@@ -24,7 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
@@ -83,12 +86,44 @@ public class AdminProductoService {
         itemRequest.setComision(request.getComision());
         catalogoService.crearItem(itemRequest);
 
+        // El admin fija fecha/hora/lugar de la subasta desde Swagger (RF flujo vendedor).
+        aplicarDatosSubasta(request);
+
         producto.setEstado(EstadoProducto.propuesta_enviada);
         productoRepository.save(producto);
 
         notificarAceptacion(producto, request);
         log.info("Producto {} aprobado: propuesta enviada al dueno {}", productoId, producto.getDuenio().getId());
         return productoService.toDto(producto);
+    }
+
+    /** Si el admin informo fecha/hora/ubicacion/categoria, las graba en la subasta del catalogo. */
+    private void aplicarDatosSubasta(AprobarProductoRequest request) {
+        if (request.getFecha() == null && request.getHora() == null
+                && request.getUbicacion() == null && request.getCategoria() == null) {
+            return;
+        }
+        SubastaEntity subasta = subastaRepository.findByCatalogoId(request.getCatalogoId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No hay subasta asociada al catalogo " + request.getCatalogoId()));
+        try {
+            if (request.getFecha() != null && !request.getFecha().isBlank()) {
+                subasta.setFecha(LocalDate.parse(request.getFecha().trim()));
+            }
+            if (request.getHora() != null && !request.getHora().isBlank()) {
+                subasta.setHora(LocalTime.parse(request.getHora().trim()));
+            }
+        } catch (DateTimeParseException e) {
+            throw new UnprocessableEntityException(
+                    "Fecha u hora con formato invalido (esperado yyyy-MM-dd y HH:mm): " + e.getMessage());
+        }
+        if (request.getUbicacion() != null && !request.getUbicacion().isBlank()) {
+            subasta.setUbicacion(request.getUbicacion().trim());
+        }
+        if (request.getCategoria() != null && !request.getCategoria().isBlank()) {
+            subasta.setCategoria(request.getCategoria().trim().toLowerCase());
+        }
+        subastaRepository.save(subasta);
     }
 
     @Transactional

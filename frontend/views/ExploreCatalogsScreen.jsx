@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useContext, useCallback } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, TouchableWithoutFeedback, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// Asumiendo que catalogs.json ya incluye el atributo itemCategory
-import catalogsData from '../data/catalogs.json';
+import { AuthContext } from '../context/AuthContext';
+import { getCatalogos, buildImageUrl } from '../services/api';
+
+// Adapta el catálogo del backend al shape que usa esta pantalla.
+function mapCatalogo(c) {
+  return {
+    ...c,
+    id: c.identificador,
+    totalItems: c.cantidadItems,
+    image: buildImageUrl(c.image),
+  };
+}
 
 // --- COMPONENTE DROPDOWN COMPACTO (Se mantiene igual que en la versión anterior) ---
 const CustomDropdown = ({ label, options, selectedValue, isOpen, onToggle, onSelect, zIndex }) => {
@@ -56,6 +67,12 @@ const CustomDropdown = ({ label, options, selectedValue, isOpen, onToggle, onSel
 };
 
 export default function ExploreCatalogsScreen({ navigation }) {
+  const { user: currentUser } = useContext(AuthContext);
+
+  // DATOS DEL BACKEND
+  const [catalogs, setCatalogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   // ESTADOS DE FILTROS
   const [searchQuery, setSearchQuery] = useState('');
   const [activeItemCategory, setActiveItemCategory] = useState('All');
@@ -63,16 +80,31 @@ export default function ExploreCatalogsScreen({ navigation }) {
   const [activeUserCategory, setActiveUserCategory] = useState('All');
   const [openDropdown, setOpenDropdown] = useState(null);
 
+  const cargar = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getCatalogos(currentUser?.token);
+      setCatalogs((data || []).map(mapCatalogo));
+    } catch (error) {
+      Alert.alert('No se pudieron cargar los catálogos', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.token]);
+
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
+
   // EXTRACCIÓN DINÁMICA DE OPCIONES
-  const itemCategories = ['All', ...new Set(catalogsData.map(c => c.itemCategory).filter(Boolean))];
-  const statuses = ['All', ...new Set(catalogsData.map(c => c.subasta?.estado).filter(Boolean))];
-  const userCategories = ['All', ...new Set(catalogsData.map(c => c.subasta?.categoria).filter(Boolean))];
+  const itemCategories = ['All', ...new Set(catalogs.map(c => c.itemCategory).filter(Boolean))];
+  const statuses = ['All', ...new Set(catalogs.map(c => c.subasta?.estado).filter(Boolean))];
+  const userCategories = ['All', ...new Set(catalogs.map(c => c.subasta?.categoria).filter(Boolean))];
 
   // UTILIDADES DE UI PARA ESTADOS
   const getStatusInfo = (status) => {
     switch (status) {
       case 'abierta':
         return { label: 'LIVE', color: 'bg-red-500', textColor: 'text-red-700', icon: 'pulse' };
+      case 'finalizada':
       case 'cerrada':
         return { label: 'ENDED', color: 'bg-slate-500', textColor: 'text-slate-700', icon: 'check-circle-outline' };
       default:
@@ -81,7 +113,7 @@ export default function ExploreCatalogsScreen({ navigation }) {
   };
 
   // LÓGICA DE FILTRADO
-  const filteredCatalogs = catalogsData.filter((catalog) => {
+  const filteredCatalogs = catalogs.filter((catalog) => {
     const query = searchQuery.toLowerCase().trim();
     const description = catalog.descripcion ? catalog.descripcion.toLowerCase() : '';
     const matchesSearch = query === '' || description.includes(query);
@@ -161,7 +193,11 @@ export default function ExploreCatalogsScreen({ navigation }) {
 
           {/* --- RESULTADOS: NUEVO DISEÑO DE TARJETAS --- */}
           <View>
-            {filteredCatalogs.length > 0 ? (
+            {loading ? (
+              <View className="py-16 items-center justify-center">
+                <ActivityIndicator color="#7C3AED" />
+              </View>
+            ) : filteredCatalogs.length > 0 ? (
               filteredCatalogs.map((catalog) => {
                 const statusInfo = getStatusInfo(catalog.subasta?.estado);
                 
@@ -197,7 +233,7 @@ export default function ExploreCatalogsScreen({ navigation }) {
                         <View className="flex-row items-center mb-3">
                           <MaterialCommunityIcons name={statusInfo.icon} size={14} className={statusInfo.textColor} />
                           <Text className={`text-xs font-medium ml-1.5 ${statusInfo.textColor}`}>
-                            Status: {catalog.subasta?.estado.charAt(0).toUpperCase() + catalog.subasta?.estado.slice(1)}
+                            Status: {statusInfo.label}
                           </Text>
                         </View>
 

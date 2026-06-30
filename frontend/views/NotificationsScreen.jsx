@@ -1,33 +1,56 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'; 
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 import Footer from '../components/Footer';
-import notificationsData from '../data/notifications.json';
-
-// Importamos el Contexto
 import { AuthContext } from '../context/AuthContext';
+import { getNotificaciones, marcarNotificacionLeida } from '../services/api';
 
-const getIconConfig = (type) => {
-  switch (type) {
-    case 'outbid':
-      return { bg: 'bg-purple-100', icon: <MaterialCommunityIcons name="gavel" size={24} color="#7C3AED" /> };
-    case 'won':
-      return { bg: 'bg-emerald-100', icon: <Feather name="check" size={20} color="#10b981" /> };
-    case 'payment':
-      return { bg: 'bg-slate-100', icon: <Feather name="credit-card" size={20} color="#475569" /> };
-    case 'view':
-      return { bg: 'bg-slate-200', icon: <Feather name="eye" size={20} color="#475569" /> };
-    case 'info':
-      return { bg: 'bg-slate-200', icon: <Feather name="info" size={20} color="#475569" /> };
-    default:
-      return { bg: 'bg-slate-100', icon: <Feather name="bell" size={20} color="#475569" /> };
+// El backend no tipa la notificación: inferimos el ícono a partir del título.
+const getIconConfig = (titulo = '') => {
+  const t = titulo.toLowerCase();
+  if (t.includes('acept')) {
+    return { bg: 'bg-emerald-100', icon: <Feather name="check" size={20} color="#10b981" /> };
   }
+  if (t.includes('rechaz')) {
+    return { bg: 'bg-red-100', icon: <Feather name="x" size={20} color="#dc2626" /> };
+  }
+  if (t.includes('puja') || t.includes('subasta') || t.includes('oferta')) {
+    return { bg: 'bg-purple-100', icon: <MaterialCommunityIcons name="gavel" size={22} color="#7C3AED" /> };
+  }
+  if (t.includes('pago') || t.includes('cargo') || t.includes('multa')) {
+    return { bg: 'bg-slate-100', icon: <Feather name="credit-card" size={20} color="#475569" /> };
+  }
+  return { bg: 'bg-slate-200', icon: <Feather name="bell" size={20} color="#475569" /> };
 };
 
+function formatFecha(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
 export default function NotificationsScreen({ navigation }) {
-  // Obtenemos al usuario activo desde la burbuja global
   const { user: currentUser } = useContext(AuthContext);
+
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const cargar = useCallback(async () => {
+    if (!currentUser?.token) return;
+    try {
+      setLoading(true);
+      setNotifications(await getNotificaciones(currentUser.token));
+    } catch (error) {
+      Alert.alert('No se pudieron cargar las notificaciones', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.token]);
+
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
   useEffect(() => {
     if (!currentUser) {
@@ -36,21 +59,29 @@ export default function NotificationsScreen({ navigation }) {
         'You need to be logged in to view your notifications.',
         [
           { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
-          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
-        ]  
+          { text: 'Go to Login', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
+        ]
       );
     }
   }, [currentUser]);
 
   if (!currentUser) return null;
 
-  // Filtramos la base de datos usando el ID dinámico
-  const userNotifications = notificationsData.filter(n => n.userId === currentUser.id);
+  const handlePress = async (n) => {
+    if (n.leida) return;
+    // Optimista: marcamos en UI y avisamos al backend.
+    setNotifications(prev => prev.map(x => x.identificador === n.identificador ? { ...x, leida: true } : x));
+    try {
+      await marcarNotificacionLeida(n.identificador, currentUser.token);
+    } catch {
+      // Si falla, recargamos para reflejar el estado real.
+      cargar();
+    }
+  };
 
   return (
     <View className="flex-1 bg-[#f8fafc]">
-      
-      {/* --- HEADER PERSONALIZADO --- */}
+
       <View className="flex-row items-center px-6 pt-14 pb-6 bg-[#f8fafc]">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
           <Feather name="arrow-left" size={24} color="#7C3AED" />
@@ -59,18 +90,23 @@ export default function NotificationsScreen({ navigation }) {
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        
-        {/* --- LISTADO DE NOTIFICACIONES --- */}
+
         <View className="mb-10">
-          {userNotifications.length > 0 ? (
-            userNotifications.map((notification) => {
-              const config = getIconConfig(notification.type);
-              
+          {loading ? (
+            <View className="py-10 items-center justify-center">
+              <ActivityIndicator color="#7C3AED" />
+            </View>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => {
+              const config = getIconConfig(notification.titulo);
+
               return (
-                <TouchableOpacity 
-                  key={notification.id} 
+                <TouchableOpacity
+                  key={notification.identificador}
+                  onPress={() => handlePress(notification)}
+                  activeOpacity={0.75}
                   className={`bg-white rounded-3xl p-5 mb-4 flex-row ${
-                    notification.isRead ? 'shadow-sm shadow-slate-100' : 'shadow-md shadow-slate-200 border border-purple-50'
+                    notification.leida ? 'shadow-sm shadow-slate-100' : 'shadow-md shadow-slate-200 border border-purple-50'
                   }`}
                 >
                   <View className={`w-12 h-12 rounded-full ${config.bg} items-center justify-center mr-4`}>
@@ -80,30 +116,29 @@ export default function NotificationsScreen({ navigation }) {
                   <View className="flex-1">
                     <View className="flex-row justify-between items-start mb-1">
                       <Text className={`text-[15px] font-bold flex-1 pr-2 ${
-                        notification.isRead ? 'text-slate-600' : 'text-slate-800'
+                        notification.leida ? 'text-slate-600' : 'text-slate-800'
                       }`}>
-                        {notification.title}
+                        {notification.titulo}
                       </Text>
-                      {!notification.isRead && (
+                      {!notification.leida && (
                         <View className="w-2.5 h-2.5 bg-[#7C3AED] rounded-full mt-1.5" />
                       )}
                     </View>
-                    
+
                     <Text className={`text-[13px] mb-3 leading-5 ${
-                      notification.isRead ? 'text-slate-400' : 'text-slate-500'
+                      notification.leida ? 'text-slate-400' : 'text-slate-500'
                     }`}>
-                      {notification.message}
+                      {notification.mensaje}
                     </Text>
-                    
+
                     <Text className="text-[11px] text-slate-400 font-medium">
-                      {notification.timestamp}
+                      {formatFecha(notification.fechaCreacion)}
                     </Text>
                   </View>
                 </TouchableOpacity>
               );
             })
           ) : (
-            /* Estado Vacío por si el usuario no tiene notificaciones */
             <View className="items-center justify-center mt-10 p-8">
               <View className="bg-slate-100 p-6 rounded-full mb-4">
                 <Feather name="bell-off" size={32} color="#cbd5e1" />

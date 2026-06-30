@@ -58,9 +58,13 @@ export default function AuctionUnderReviewScreen({ route, navigation }) {
   const responder = async (accion) => {
     try {
       setActing(true);
-      await (accion === 'aceptar'
-        ? aceptarPropuesta(productoId, token)
-        : rechazarPropuesta(productoId, token));
+      if (accion === 'aceptar') {
+        await aceptarPropuesta(productoId, token);
+        // Aceptado por ambas partes: ya es un lote de subasta, se ve como tal.
+        navigation.navigate('ItemDetail', { productoId });
+        return;
+      }
+      await rechazarPropuesta(productoId, token);
       await cargar();
     } catch (error) {
       Alert.alert('No se pudo registrar tu respuesta', error.message);

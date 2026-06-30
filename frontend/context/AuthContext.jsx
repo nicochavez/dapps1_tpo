@@ -19,12 +19,9 @@ function parseJwtPayload(token) {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
 
   const login = async ({ documento, contrasenia }) => {
-    console.log('Attempting login with:', { documento, contrasenia });
     const data = await loginRequest(documento, contrasenia);
-    console.log('Login response data:', data);
     const receivedToken = data?.token || data?.accessToken || data;
 
     const claims = parseJwtPayload(receivedToken);
@@ -51,18 +48,16 @@ export const AuthProvider = ({ children }) => {
       };
     }
 
-    setToken(receivedToken);
     setUser(resolvedUser);
     return receivedToken;
   };
 
   const logout = () => {
     setUser(null);
-    setToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token: user?.token ?? null, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

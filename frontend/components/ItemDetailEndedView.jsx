@@ -13,8 +13,9 @@ const formatPrice = (value) => {
 export default function ItemDetailEndedView(props) {
   const { item, canAccessPrices, currentUser } = props;
 
-  // Bid history sorted descending: winner (ganador:true) ends up first
-  const bids = bidsData
+  // Bid history sorted descending: winner ends up first. Usa props.bids (backend
+  // real) si está disponible; si no, cae a la data local.
+  const bids = props.bids ?? bidsData
     .filter(b => b.itemId === item?.id)
     .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 

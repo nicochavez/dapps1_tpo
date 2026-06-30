@@ -80,6 +80,7 @@ public class AdminClienteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para persona: " + clienteId));
 
         String contraseniaTemporal = generarContrasenia(10);
+        System.out.println("Contraseña temporal generada para el cliente " + clienteId + ": " + contraseniaTemporal);
         usuario.setPasswordHash(passwordEncoder.encode(contraseniaTemporal));
         usuario.setActivo(true);
         usuarioRepository.save(usuario);

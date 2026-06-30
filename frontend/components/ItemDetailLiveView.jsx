@@ -20,8 +20,9 @@ export default function ItemDetailLiveView(props) {
   const currentPriceNum = typeof item?.currentBid === 'number' ? item.currentBid
                         : typeof item?.precioBase === 'number' ? item.precioBase : 0;
 
-  // Bid history: load from local data sorted desc, then keep in sync via WS
-  const initialBids = bidsData
+  // Bid history: si llega por props (datos reales del backend) se usa eso; si no,
+  // cae a la data local. En ambos casos se mantiene en sync por WS.
+  const initialBids = props.bids ?? bidsData
     .filter(b => b.itemId === item?.id)
     .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 

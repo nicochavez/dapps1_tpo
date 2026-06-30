@@ -99,6 +99,16 @@ export function getMetricasMe(token) {
   return apiRequest('/clientes/me/metricas', { token });
 }
 
+// ── Notificaciones ──────────────────────────────────────────────────────────
+
+export function getNotificaciones(token) {
+  return apiRequest('/clientes/me/notificaciones', { token });
+}
+
+export function marcarNotificacionLeida(id, token) {
+  return apiRequest(`/clientes/me/notificaciones/${id}/leida`, { method: 'PATCH', token });
+}
+
 export function getSubastasByDuenio(userId) {
   return apiRequest(`/subastas/duenios/${userId}`);
 }
@@ -199,6 +209,10 @@ export function getMisProductos(token) {
   return apiRequest('/productos/me', { token });
 }
 
+export function getProductoById(productoId, token) {
+  return apiRequest(`/productos/${productoId}`, { token });
+}
+
 export function getPropuesta(productoId, token) {
   return apiRequest(`/productos/${productoId}/propuesta`, { token });
 }
@@ -225,16 +239,21 @@ export function getCatalogosBySubasta(subastaId) {
   return apiRequest(`/subastas/${subastaId}/catalogos`);
 }
 
+// Todos los catálogos (con su subasta embebida e items). Token opcional: si va, se ven los precios.
+export function getCatalogos(token) {
+  return apiRequest('/catalogos', token ? { token } : {});
+}
+
 export function conectarASubasta(subastaId, token) {
   return apiRequest(`/subastas/${subastaId}/conectar`, { method: 'POST', token });
 }
 
-export function getItemCatalogoDetalle(catalogoId, itemId) {
-  return apiRequest(`/catalogos/${catalogoId}/items/${itemId}`);
+export function getItemCatalogoDetalle(catalogoId, itemId, token) {
+  return apiRequest(`/catalogos/${catalogoId}/items/${itemId}`, token ? { token } : {});
 }
 
-export function getHistorialPujas(subastaId, itemId) {
-  return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`);
+export function getHistorialPujas(subastaId, itemId, token) {
+  return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`, token ? { token } : {});
 }
 
 export function realizarPuja(subastaId, itemId, importe, medioPagoId, token) {
