@@ -6,6 +6,7 @@ import com.tpo.backend.catalogo.repository.CatalogoRepository;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.common.ws.SubastaEventPublisher;
+import com.tpo.backend.notificacion.service.NotificacionService;
 import com.tpo.backend.compra.entity.CompraEntity;
 import com.tpo.backend.compra.repository.CompraRepository;
 import com.tpo.backend.duenio.entity.DuenioEntity;
@@ -48,19 +49,22 @@ public class AdjudicacionService {
     private final CompraRepository compraRepository;
     private final RegistroDeSubastaRepository registroRepository;
     private final SubastaEventPublisher eventPublisher;
+    private final NotificacionService notificacionService;
 
     public AdjudicacionService(SubastaRepository subastaRepository,
                                ItemCatalogoRepository itemRepository,
                                PujaRepository pujaRepository,
                                CompraRepository compraRepository,
                                RegistroDeSubastaRepository registroRepository,
-                               SubastaEventPublisher eventPublisher) {
+                               SubastaEventPublisher eventPublisher,
+                               NotificacionService notificacionService) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
         this.compraRepository = compraRepository;
         this.registroRepository = registroRepository;
         this.eventPublisher = eventPublisher;
+        this.notificacionService = notificacionService;
     }
 
     /**
@@ -106,6 +110,7 @@ public class AdjudicacionService {
         if (catalogo == null) return Optional.empty();
         return itemRepository.findByCatalogoId(catalogo.getId()).stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
+                .filter(i -> "aceptado".equals(i.getEstadoAcuerdo()))
                 .min(Comparator.comparing(ItemCatalogoEntity::getId));
     }
 
@@ -133,6 +138,13 @@ public class AdjudicacionService {
 
             puja.setGanador(true);
             pujaRepository.save(puja);
+
+            if (ganadorCliente != null) {
+                String desc = producto != null ? producto.getDescripcionCatalogo() : "el item";
+                notificacionService.enviar(ganadorCliente.getId(),
+                        "¡Ganaste la puja!",
+                        "Felicitaciones, ganaste \"" + desc + "\" por $" + importe + ". Completá la compra desde Mis Pujas.");
+            }
 
             crearCompra(ganadorCliente, subasta, item.getProducto(), importe, comision);
             // RF-35/36: el ganador queda registrado como adjudicatario en registrodesubasta.
@@ -178,6 +190,7 @@ public class AdjudicacionService {
         compra.setCostoEnvio(null);
         compra.setTotal(importe.add(comision));
         compra.setRetiroPersonal(null); // el ganador elige envio o retiro luego (RF-38)
+        compra.setEstadoPago("pendiente");
         compra.setFecha(OffsetDateTime.now());
         compraRepository.save(compra);
     }
@@ -198,6 +211,7 @@ public class AdjudicacionService {
     private void finalizarSiCorresponde(SubastaEntity subasta) {
         boolean quedanItems = subasta.getCatalogo() != null &&
                 itemRepository.findByCatalogoId(subasta.getCatalogo().getId()).stream()
+                        .filter(i -> "aceptado".equals(i.getEstadoAcuerdo()))
                         .anyMatch(i -> !Boolean.TRUE.equals(i.getSubastado()));
         if (!quedanItems) {
             subasta.setEstado("finalizada");

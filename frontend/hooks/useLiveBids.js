@@ -1,50 +1,68 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Client } from '@stomp/stompjs';
+import { API_BASE_URL } from '../services/api';
 
-// El back debe exponer un endpoint WebSocket en esta ruta.
-// Cada mensaje es un JSON: { id, itemId, userId, importe, ganador, fecha }
-// Ejemplo de implementación en Spring Boot:
-//   @ServerEndpoint("/ws/items/{itemId}/pujas")
-const wsUrl = (itemId) => `ws://10.0.2.2:8080/ws/items/${itemId}/pujas`;
+const WS_URL = API_BASE_URL
+  .replace('/api/v1', '')
+  .replace(/^http/, 'ws') + '/ws-native';
 
-export default function useLiveBids(itemId, initialBids = []) {
-  const [bids, setBids] = useState(initialBids);
-  const [connected, setConnected] = useState(false);
-  const wsRef = useRef(null);
+/**
+ * Gestiona la conexión WebSocket/STOMP para una subasta en vivo.
+ * NO mantiene el historial de pujas — eso lo gestiona el padre via polling.
+ * Sí mantiene: conexión, precio actual, tiempo de cierre, y si el lote cerró.
+ */
+export default function useLiveBids(subastaId, itemId, initialClosesAt = null) {
+  const [connected, setConnected]   = useState(false);
+  const [currentBid, setCurrentBid] = useState(null);
+  const [closesAt, setClosesAt]     = useState(initialClosesAt);
+  const [itemClosed, setItemClosed] = useState(false);
+  const clientRef = useRef(null);
+
+  // Sincronizar closesAt desde el item cuando llega por primera vez.
+  useEffect(() => {
+    if (initialClosesAt) setClosesAt(initialClosesAt);
+  }, [initialClosesAt]);
+
+  // Resetea el contador optimistamente a 60s (llamado por la vista tras pujar).
+  const resetTimer = useCallback(() => {
+    setClosesAt(new Date(Date.now() + 60_000).toISOString());
+  }, []);
 
   useEffect(() => {
-    if (!itemId) return;
+    if (!subastaId || !itemId) return;
 
-    let ws;
-    try {
-      ws = new WebSocket(wsUrl(itemId));
-      wsRef.current = ws;
+    const client = new Client({
+      webSocketFactory: () => new WebSocket(WS_URL),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        setConnected(true);
+        client.subscribe(`/topic/subastas/${subastaId}`, ({ body }) => {
+          try {
+            const { tipo, payload } = JSON.parse(body);
 
-      ws.onopen = () => setConnected(true);
+            if (tipo === 'item-actual' && Number(payload?.itemId) === Number(itemId)) {
+              setClosesAt(payload.cierreProgramado);
 
-      ws.onclose = () => setConnected(false);
+            } else if (tipo === 'nueva-puja' && Number(payload?.itemId) === Number(itemId)) {
+              setCurrentBid(payload.importe);
+              setClosesAt(payload.cierreProgramado ?? new Date(Date.now() + 60_000).toISOString());
 
-      ws.onerror = () => setConnected(false);
+            } else if (tipo === 'item-cerrado' && Number(payload?.itemId) === Number(itemId)) {
+              setItemClosed(true);
+              setClosesAt(null);
+            }
+          } catch {}
+        });
+      },
+      onDisconnect: () => setConnected(false),
+      onStompError:  () => setConnected(false),
+    });
 
-      ws.onmessage = ({ data }) => {
-        try {
-          const incoming = JSON.parse(data);
-          // Prepend (lista ordenada desc, el más reciente arriba)
-          setBids(prev => {
-            if (prev.some(b => b.id === incoming.id)) return prev;
-            return [incoming, ...prev];
-          });
-        } catch {
-          // Ignorar mensajes malformados
-        }
-      };
-    } catch {
-      // WebSocket no disponible (dev sin backend) — queda con datos iniciales
-    }
+    client.activate();
+    clientRef.current = client;
 
-    return () => {
-      wsRef.current?.close();
-    };
-  }, [itemId]);
+    return () => { client.deactivate(); };
+  }, [subastaId, itemId]);
 
-  return { bids, connected };
+  return { connected, currentBid, closesAt, itemClosed, resetTimer };
 }

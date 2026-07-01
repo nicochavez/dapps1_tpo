@@ -39,6 +39,10 @@ public class ItemCatalogoEntity {
     @Column(name = "subastado")
     private Boolean subastado;
 
+    /** 'aceptado' = dueño aceptó las condiciones; 'propuesto' = pendiente de aceptación del dueño. */
+    @Column(name = "estado_acuerdo")
+    private String estadoAcuerdo;
+
     /** Momento programado de cierre automatico del item (se extiende con cada puja). */
     @Column(name = "cierre_programado")
     private OffsetDateTime cierreProgramado;

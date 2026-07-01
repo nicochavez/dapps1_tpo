@@ -17,6 +17,8 @@ public class ItemCatalogoDetailDto {
     private String subastado;
     /** Estado del lote: en_puja | subastado | pendiente (regla de lote actual). */
     private String estadoLote;
+    /** Momento de cierre del lote (ISO 8601). Solo presente cuando estadoLote = en_puja. */
+    private String cierreProgramado;
     private ProductoRefDto producto;
 
     @Data

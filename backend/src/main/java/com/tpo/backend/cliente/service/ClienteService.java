@@ -67,6 +67,7 @@ public class ClienteService {
         int subastasAsistidas = asistenteRepository.findByClienteId(cliente.getId()).size();
 
         var registros = registroRepository.findByClienteId(cliente.getId());
+        // Contar items ganados individualmente (cada adjudicación es una victoria).
         int subastasGanadas = registros.size();
 
         BigDecimal totalPagado = registros.stream()

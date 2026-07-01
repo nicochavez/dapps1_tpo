@@ -270,7 +270,7 @@ public class SubastaService {
                 .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
                         "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
                 .toList();
-        return new ItemCatalogoDetailDto(item.getId(), item.getPrecioBase(), item.getComision(), "no", "pendiente",
+        return new ItemCatalogoDetailDto(item.getId(), item.getPrecioBase(), item.getComision(), "no", "pendiente", null,
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
                         producto.getDuenio() != null ? producto.getDuenio().getId() : null,
                         producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),

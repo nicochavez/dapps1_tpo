@@ -9,6 +9,7 @@ import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
 import com.tpo.backend.catalogo.repository.CatalogoRepository;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.cliente.service.ClienteService;
+import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.producto.entity.ProductoEntity;
@@ -104,11 +105,12 @@ public class CatalogoService {
         if (subasta.getCatalogo() == null || !subasta.getCatalogo().getId().equals(catalogoId)) {
             throw new ResourceNotFoundException("Catalogo no pertenece a subasta: " + subastaId);
         }
-        boolean live = "abierta".equalsIgnoreCase(subasta.getEstado());
-        List<ItemCatalogoEntity> items = itemRepository.findByCatalogoId(catalogoId);
+        List<ItemCatalogoEntity> items = itemRepository.findByCatalogoId(catalogoId).stream()
+                .filter(i -> "aceptado".equals(i.getEstadoAcuerdo()))
+                .toList();
         Long loteActual = currentLotId(items);
         return items.stream()
-                .map(i -> toListItemDto(i, live, loteActual))
+                .map(i -> toListItemDto(i, loteActual))
                 .toList();
     }
 
@@ -119,6 +121,18 @@ public class CatalogoService {
         CatalogoEntity catalogo = catalogoRepository.findById(request.getCatalogo())
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogo no encontrado: " + request.getCatalogo()));
 
+        SubastaEntity subasta = subastaRepository.findByCatalogoId(catalogo.getId()).orElse(null);
+        if (subasta != null) {
+            if ("finalizada".equalsIgnoreCase(subasta.getEstado())) {
+                throw new ConflictException("No se pueden agregar items a una subasta finalizada.");
+            }
+            boolean enVivo = itemRepository.findByCatalogoId(catalogo.getId()).stream()
+                    .anyMatch(i -> i.getCierreProgramado() != null);
+            if (enVivo) {
+                throw new ConflictException("No se pueden agregar items a una subasta en vivo.");
+            }
+        }
+
         validarMinimoFotos(producto.getId());
 
         ItemCatalogoEntity item = new ItemCatalogoEntity();
@@ -127,6 +141,7 @@ public class CatalogoService {
         item.setPrecioBase(request.getPrecioBase());
         item.setComision(request.getComision());
         item.setSubastado(false);
+        item.setEstadoAcuerdo("propuesto");
         item = itemRepository.save(item);
 
         return toDetailDto(item);
@@ -153,18 +168,21 @@ public class CatalogoService {
 
     private CatalogoListDto toListDto(CatalogoEntity cat) {
         SubastaEntity subasta = subastaRepository.findByCatalogoId(cat.getId()).orElse(null);
-        boolean live = subasta != null && "abierta".equalsIgnoreCase(subasta.getEstado());
-        List<ItemCatalogoEntity> itemEntities = itemRepository.findByCatalogoId(cat.getId());
-        Long loteActual = currentLotId(itemEntities);
+        List<ItemCatalogoEntity> itemsAceptados = itemRepository.findByCatalogoId(cat.getId()).stream()
+                .filter(i -> "aceptado".equals(i.getEstadoAcuerdo()))
+                .toList();
+        // enVivo = el scheduler ya activó al menos un lote (tiene cierre_programado); false = upcoming.
+        boolean enVivo = itemsAceptados.stream().anyMatch(i -> i.getCierreProgramado() != null);
+        Long loteActual = currentLotId(itemsAceptados);
 
-        List<CatalogoListDto.ItemDto> items = itemEntities.stream()
-                .map(i -> toListItemDto(i, live, loteActual))
+        List<CatalogoListDto.ItemDto> items = itemsAceptados.stream()
+                .map(i -> toListItemDto(i, loteActual))
                 .toList();
 
-        // Portada e itemCategory derivados del primer item del catalogo.
+        // Portada e itemCategory derivados del primer item aceptado del catalogo.
         String image = items.isEmpty() ? null : items.get(0).getImagenPrincipal();
-        String itemCategory = itemEntities.isEmpty() || itemEntities.get(0).getProducto() == null
-                ? null : itemEntities.get(0).getProducto().getCategoria();
+        String itemCategory = itemsAceptados.isEmpty() || itemsAceptados.get(0).getProducto() == null
+                ? null : itemsAceptados.get(0).getProducto().getCategoria();
 
         CatalogoListDto.SubastaResumenDto subastaDto = subasta == null ? null
                 : new CatalogoListDto.SubastaResumenDto(
@@ -172,7 +190,8 @@ public class CatalogoService {
                         subasta.getEstado(),
                         subasta.getCategoria(),
                         subasta.getFecha() != null ? subasta.getFecha().toString() : null,
-                        subasta.getHora() != null ? subasta.getHora().toString() : null);
+                        subasta.getHora() != null ? subasta.getHora().toString() : null,
+                        enVivo);
 
         return new CatalogoListDto(cat.getId(), cat.getDescripcion(), items.size(),
                 image, itemCategory, subastaDto, items);
@@ -186,12 +205,13 @@ public class CatalogoService {
     private Long currentLotId(List<ItemCatalogoEntity> items) {
         return items.stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
+                .filter(i -> "aceptado".equals(i.getEstadoAcuerdo()))
                 .map(ItemCatalogoEntity::getId)
                 .min(Long::compareTo)
                 .orElse(null);
     }
 
-    private CatalogoListDto.ItemDto toListItemDto(ItemCatalogoEntity item, boolean live, Long loteActual) {
+    private CatalogoListDto.ItemDto toListItemDto(ItemCatalogoEntity item, Long loteActual) {
         ProductoEntity prod = item.getProducto();
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
         var fotos = fotoRepository.findByProductoId(item.getProducto().getId());
@@ -203,15 +223,18 @@ public class CatalogoService {
                 .map(PujaEntity::getImporte)
                 .orElse(null);
 
-        // Solo el lote actual de una subasta abierta esta "en puja"; el resto espera su turno.
+        // en_puja = el scheduler abrió la ventana (cierre_programado != null) Y es el lote actual.
         String estadoLote = subastado ? "subastado"
-                : (live && item.getId().equals(loteActual)) ? "en_puja"
+                : (item.getCierreProgramado() != null && item.getId().equals(loteActual)) ? "en_puja"
                 : "pendiente";
 
         // Adjudicado: la oferta ganadora; si no hubo pujas (compró la empresa), el precio base.
         BigDecimal adjudicado = subastado
                 ? precioVisible(mejorOferta != null ? mejorOferta : item.getPrecioBase())
                 : null;
+
+        String cierreProgramado = "en_puja".equals(estadoLote) && item.getCierreProgramado() != null
+                ? item.getCierreProgramado().toString() : null;
 
         return new CatalogoListDto.ItemDto(
                 item.getId(),
@@ -223,7 +246,8 @@ public class CatalogoService {
                 item.getComision(),
                 precioVisible(mejorOferta),
                 adjudicado,
-                estadoLote
+                estadoLote,
+                cierreProgramado
         );
     }
 
@@ -236,13 +260,13 @@ public class CatalogoService {
 
         // Mismo estado del lote que en el listado, para que ambas vistas sean consistentes.
         Long catalogoId = item.getCatalogo() != null ? item.getCatalogo().getId() : null;
-        SubastaEntity subasta = catalogoId != null ? subastaRepository.findByCatalogoId(catalogoId).orElse(null) : null;
-        boolean live = subasta != null && "abierta".equalsIgnoreCase(subasta.getEstado());
         Long loteActual = catalogoId != null ? currentLotId(itemRepository.findByCatalogoId(catalogoId)) : null;
         boolean subastado = Boolean.TRUE.equals(item.getSubastado());
         String estadoLote = subastado ? "subastado"
-                : (live && item.getId().equals(loteActual)) ? "en_puja"
+                : (item.getCierreProgramado() != null && item.getId().equals(loteActual)) ? "en_puja"
                 : "pendiente";
+        String cierreProgramado = "en_puja".equals(estadoLote) && item.getCierreProgramado() != null
+                ? item.getCierreProgramado().toString() : null;
 
         return new ItemCatalogoDetailDto(
                 item.getId(),
@@ -250,6 +274,7 @@ public class CatalogoService {
                 item.getComision(),
                 subastado ? "si" : "no",
                 estadoLote,
+                cierreProgramado,
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
                         producto.getDuenio() != null ? producto.getDuenio().getId() : null,
                         producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),

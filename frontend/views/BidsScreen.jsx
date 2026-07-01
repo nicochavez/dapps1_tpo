@@ -203,7 +203,7 @@ export default function BidsScreen({ navigation }) {
   const wonCount = metrics?.subastasGanadas ?? participaciones.filter(p => p.won).length;
   const totalPaid = num(metrics?.totalPagado) || allMisPujas.filter(b => b.ganador).reduce((s, b) => s + num(b.importe), 0);
   const totalOffered = num(metrics?.totalOfertado) || allMisPujas.reduce((s, b) => s + num(b.importe), 0);
-  const winRate = attended > 0 ? Math.round((wonCount / attended) * 100) : 0;
+  const winRate = attended > 0 ? Math.min(100, Math.round((wonCount / attended) * 100)) : 0;
 
   // Category breakdown desde participaciones
   const categoryStats = {};

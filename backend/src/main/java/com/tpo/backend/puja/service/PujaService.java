@@ -121,11 +121,12 @@ public class PujaService {
         item.setCierreProgramado(OffsetDateTime.now().plusSeconds(AdjudicacionService.VENTANA_PUJA_SEGUNDOS));
         itemRepository.save(item);
 
-        // RF-25: propaga la nueva oferta a los conectados.
+        // RF-25: propaga la nueva oferta a los conectados (incluye cierre_programado para el countdown).
         eventPublisher.publish(subastaId, "nueva-puja", new java.util.HashMap<>(java.util.Map.of(
                 "itemId", itemId,
                 "importe", nueva.getImporte(),
-                "numeroPostor", asistente.getNumeroPostor())));
+                "numeroPostor", asistente.getNumeroPostor(),
+                "cierreProgramado", item.getCierreProgramado().toString())));
 
         // RF-32: la respuesta se devuelve confirmada solo tras persistir y propagar la puja.
         return new PujaResponse(nueva.getId(), nueva.getImporte(), "no", true);

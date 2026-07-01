@@ -31,6 +31,8 @@ public class CatalogoListDto {
         private String categoria;
         private String fecha;
         private String hora;
+        /** true = el scheduler ya arrancó al menos un lote; false = upcoming (abierta pero sin actividad). */
+        private Boolean enVivo;
     }
 
     @Data
@@ -50,5 +52,7 @@ public class CatalogoListDto {
         private BigDecimal importeAdjudicado;
         /** Estado del lote para la UI: en_puja | subastado | pendiente. */
         private String estadoLote;
+        /** Momento de cierre del lote (ISO 8601). Solo presente cuando estadoLote = en_puja. */
+        private String cierreProgramado;
     }
 }

@@ -13,7 +13,7 @@
 --   40000014    | CLIENTE platino          | platino@bidflow.com
 --   50000020    | CLIENTE comun + DUEÑO    | duenio@bidflow.com
 --
--- Subastas:  #1 LIVE plata (cat.1) · #2 ENDED oro (cat.2) · #3 LIVE comun (cat.3)
+-- Subastas:  #1 LIVE plata (cat.1) · #2 ENDED oro (cat.2) · #3 LIVE comun (cat.3) · #4 UPCOMING especial (cat.4, sin items)
 -- Casos: estados de lote (en_puja/pendiente/subastado), dueño vs no-dueño,
 --        visibilidad de precios por rango, historial de pujas, multa suelta,
 --        notificaciones, medios de pago (3 tipos), direcciones, flujo vendedor
@@ -125,34 +125,38 @@ INSERT INTO public.catalogos (identificador, descripcion, responsable, subasta)
 OVERRIDING SYSTEM VALUE VALUES
   (1, 'Relojes de Lujo',     1, NULL),
   (2, 'Arte Contemporáneo',  1, NULL),
-  (3, 'Coleccionables',      1, NULL);
+  (3, 'Coleccionables',      1, NULL),
+  (4, 'Instrumentos Musicales', 1, NULL);
 
 -- ─── 10) Subastas (fecha > hoy+10 por CHECK) ────────────────────────────────
 INSERT INTO public.subastas
   (identificador, fecha, hora, estado, subastador, ubicacion, capacidadasistentes,
    tienedeposito, seguridadpropia, categoria, moneda, catalogo)
 OVERRIDING SYSTEM VALUE VALUES
-  (1, DATE '2026-08-20', '14:00', 'abierta',    2, 'Salón Central', 100, true,  true,  'plata', 'ARS', 1),
-  (2, DATE '2026-08-25', '16:00', 'finalizada', 2, 'Salón Norte',    80, true,  false, 'oro',   'USD', 2),
-  (3, DATE '2026-09-10', '11:00', 'abierta',    2, 'Salón Sur',     120, false, true,  'comun', 'ARS', 3);
+  (1, DATE '2026-08-20', '14:00', 'abierta',    2, 'Salón Central', 100, true,  true,  'plata',   'ARS', 1),
+  (2, DATE '2026-08-25', '16:00', 'finalizada', 2, 'Salón Norte',    80, true,  false, 'oro',     'USD', 2),
+  (3, DATE '2026-09-10', '11:00', 'abierta',    2, 'Salón Sur',     120, false, true,  'comun',   'ARS', 3),
+  (4, DATE '2026-10-15', '10:00', 'abierta',    2, 'Salón Este',     60, true,  true,  'especial','ARS', 4);
 
 UPDATE public.catalogos SET subasta = 1 WHERE identificador = 1;
 UPDATE public.catalogos SET subasta = 2 WHERE identificador = 2;
 UPDATE public.catalogos SET subasta = 3 WHERE identificador = 3;
+UPDATE public.catalogos SET subasta = 4 WHERE identificador = 4;
 
 -- ─── 11) Items de catálogo (lote actual = primer no-subastado por id) ───────
---  cat.1 (LIVE):  item1 en_puja (cierre futuro) · item2 pendiente
---  cat.2 (ENDED): item3 vendido a oro · item4 a la empresa (sin pujas) ·
---                 item8 vendido a oro (pagado) · item9 vendido a platino (con mora)
---  cat.3 (LIVE):  item5 en_puja · item6 propuesta pendiente · item7 aceptado (pendiente)
+--  cat.1 (LIVE):    item1 · item2 — ambos aceptados, scheduler arranca al levantar
+--  cat.2 (ENDED):   item3 vendido a oro · item4 a la empresa (sin pujas) ·
+--                   item8 vendido a oro (pagado) · item9 vendido a platino (con mora)
+--  cat.3 (LIVE):    item5 aceptado · item6 propuesta pendiente · item7 aceptado
+--  cat.4 (UPCOMING): sin items todavía — para probar que el admin puede agregar items
 INSERT INTO public.itemscatalogo
   (identificador, catalogo, producto, numeropieza, preciobase, comision, subastado, estado_acuerdo, cierre_programado)
 OVERRIDING SYSTEM VALUE VALUES
-  (1, 1, 1,  1, 1000000, 100000, false, 'aceptado',  now() + interval '1 day'),
+  (1, 1, 1,  1, 1000000, 100000, false, 'aceptado',  NULL),
   (2, 1, 2,  2,  500000,  50000, false, 'aceptado',  NULL),
   (3, 2, 3,  1,    2000,    200, true,  'aceptado',  NULL),
   (4, 2, 4,  2,    3000,    300, true,  'aceptado',  NULL),
-  (5, 3, 5,  1,   50000,   5000, false, 'aceptado',  now() + interval '1 day'),
+  (5, 3, 5,  1,   50000,   5000, false, 'aceptado',  NULL),
   (6, 3, 6,  2,   30000,   3000, false, 'propuesto', NULL),
   (7, 3, 7,  3,   80000,   8000, false, 'aceptado',  NULL),
   (8, 2, 10, 3,    1800,    180, true,  'aceptado',  NULL),
@@ -258,6 +262,7 @@ SELECT setval(pg_get_serial_sequence('public.sectores',     'identificador'), (S
 SELECT setval(pg_get_serial_sequence('public.productos',    'identificador'), (SELECT MAX(identificador) FROM public.productos));
 SELECT setval(pg_get_serial_sequence('public.catalogos',    'identificador'), (SELECT MAX(identificador) FROM public.catalogos));
 SELECT setval(pg_get_serial_sequence('public.subastas',     'identificador'), (SELECT MAX(identificador) FROM public.subastas));
+-- cat.4 / subasta 4 ya quedan con el máximo correcto por el setval anterior
 SELECT setval(pg_get_serial_sequence('public.itemscatalogo','identificador'), (SELECT MAX(identificador) FROM public.itemscatalogo));
 SELECT setval(pg_get_serial_sequence('public.asistentes',   'identificador'), (SELECT MAX(identificador) FROM public.asistentes));
 SELECT setval(pg_get_serial_sequence('public.medios_pago',  'identificador'), (SELECT MAX(identificador) FROM public.medios_pago));

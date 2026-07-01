@@ -9,6 +9,5 @@ import java.math.BigDecimal;
 public class PujaRequest {
     @NotNull
     private BigDecimal importe;
-    @NotNull
     private Long medioPagoId;
 }

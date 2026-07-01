@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 
 import Header from '../components/Header';
@@ -44,6 +44,8 @@ function mapBid(p) {
 // del backend) + el historial de pujas, calcula acceso/dueño y renderiza la vista
 // Live/Upcoming/Ended. Lo usan TANTO el camino del catálogo como el de MyAuctions,
 // así el mismo item se ve igual sin importar por dónde se entre.
+const BIDS_POLL_MS = 5000;
+
 function CatalogItemDetail({
   catalogoId, itemId, subastaId, subastaInfo, estadoLote: estadoLoteHint,
   catalogDescripcion, catalogImage, won,
@@ -52,29 +54,41 @@ function CatalogItemDetail({
   const [detail, setDetail] = useState(null);
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bidTick, setBidTick] = useState(0);
 
+  // ── Carga el detalle del item (solo al montar) ──────────────────────────────
   useEffect(() => {
     let cancel = false;
-    (async () => {
-      try {
-        const d = await getItemCatalogoDetalle(catalogoId, itemId, currentUser?.token);
-        const lote = d?.estadoLote ?? estadoLoteHint;
-        let history = [];
-        if ((lote === 'en_puja' || lote === 'subastado') && subastaId) {
-          history = await getHistorialPujas(subastaId, itemId, currentUser?.token).catch(() => []);
-        }
-        if (!cancel) {
-          setDetail(d);
-          setBids((history || []).map(mapBid).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)));
-        }
-      } catch (error) {
-        if (!cancel) Alert.alert('No se pudo cargar el item', error.message);
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    })();
+    getItemCatalogoDetalle(catalogoId, itemId, currentUser?.token)
+      .then(d => { if (!cancel) { setDetail(d); setLoading(false); } })
+      .catch(err => { if (!cancel) { Alert.alert('No se pudo cargar el item', err.message); setLoading(false); } });
     return () => { cancel = true; };
-  }, [catalogoId, itemId, subastaId, currentUser?.token]);
+  }, [catalogoId, itemId, currentUser?.token]);
+
+  // ── Fetch de pujas: se ejecuta al montar, al pujar (bidTick) y cada 5s ─────
+  const estadoLoteActual = detail?.estadoLote ?? estadoLoteHint;
+  const detailItemId = detail?.identificador;
+
+  useEffect(() => {
+    if (!detailItemId || !subastaId) return;
+    const activo = estadoLoteActual === 'en_puja' || estadoLoteActual === 'subastado';
+    if (!activo) return;
+    let cancel = false;
+    getHistorialPujas(subastaId, detailItemId, currentUser?.token)
+      .then(h => { if (!cancel) setBids((h || []).map(mapBid).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [detailItemId, subastaId, currentUser?.token, bidTick, estadoLoteActual]);
+
+  // ── Polling cada 5s para lotes en vivo ────────────────────────────────────
+  useEffect(() => {
+    if (estadoLoteActual !== 'en_puja' || !subastaId) return;
+    const id = setInterval(() => setBidTick(t => t + 1), BIDS_POLL_MS);
+    return () => clearInterval(id);
+  }, [estadoLoteActual, subastaId]);
+
+  // Callback para que el hijo dispare un refresh inmediato después de pujar.
+  const refreshBids = useCallback(() => setBidTick(t => t + 1), []);
 
   if (loading) {
     return (
@@ -92,7 +106,7 @@ function CatalogItemDetail({
   }
 
   // Estado del LOTE (backend autoritativo): define la vista. La subasta va por lotes.
-  const estadoLote = detail.estadoLote ?? estadoLoteHint;
+  const estadoLote = estadoLoteActual;
   const isLive = estadoLote === 'en_puja';
   const isEnded = estadoLote === 'subastado';
 
@@ -119,6 +133,7 @@ function CatalogItemDetail({
     currentBid: showPrices ? highest : MASKED,
     importeAdjudicado: showPrices ? (isEnded ? highest : null) : MASKED,
     estadoLote,
+    cierreProgramado: detail.cierreProgramado ?? null,
     producto: {
       descripcionCatalogo: detail.producto?.descripcionCatalogo,
       descripcionCompleta: detail.producto?.descripcionCompleta,
@@ -135,6 +150,7 @@ function CatalogItemDetail({
     item, parentCatalog, navigation,
     canAccessPrices: showPrices, lockReason, requiredLabel,
     currentUser, isOwner, bids, won: !!won,
+    subastaId, refreshBids,
   };
 
   if (isLive) return <ItemDetailLiveView {...shared} />;
