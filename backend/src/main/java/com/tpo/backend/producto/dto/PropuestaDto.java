@@ -19,6 +19,8 @@ public class PropuestaDto {
     private String titulo;
     private BigDecimal precioBase;
     private BigDecimal comision;
+    /** Motivo del rechazo (solo cuando el producto fue rechazado por la empresa). */
+    private String motivo;
     private SubastaInfo subasta;
 
     @Data

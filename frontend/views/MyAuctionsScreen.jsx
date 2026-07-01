@@ -25,8 +25,16 @@ const AUCTION_STATUS = {
   ended:    { bg: 'bg-slate-200', text: 'text-slate-600', label: 'ENDED', hint: 'The auction has finished' },
 };
 
-/** Deriva upcoming/live/ended del resumen de subasta (estado + fecha/hora). */
+/** Deriva upcoming/live/ended. Prioriza el estado del LOTE (consistente con ItemDetail). */
 function getAuctionState(subasta) {
+  // El estado del lote es la fuente de verdad (igual que en el detalle del item).
+  switch (subasta?.estadoLote) {
+    case 'subastado': return 'ended';
+    case 'en_puja':   return 'live';
+    case 'pendiente': return 'upcoming';
+    default: break;
+  }
+  // Fallback por estado/fecha de la subasta.
   const estado = (subasta?.estado || '').toLowerCase();
   if (estado === 'finalizada' || estado === 'cerrada') return 'ended';
   if (subasta?.fecha) {

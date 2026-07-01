@@ -7,8 +7,6 @@ import ItemDetailLiveView from '../components/ItemDetailLiveView';
 import ItemDetailUpcomingView from '../components/ItemDetailUpcomingView';
 import ItemDetailEndedView from '../components/ItemDetailEndedView';
 
-import itemsData from '../data/items.json';
-import catalogsData from '../data/catalogs.json';
 import { AuthContext } from '../context/AuthContext';
 import { getProductoById, getItemCatalogoDetalle, getHistorialPujas, buildImageUrl } from '../services/api';
 
@@ -48,7 +46,7 @@ function mapBid(p) {
 // así el mismo item se ve igual sin importar por dónde se entre.
 function CatalogItemDetail({
   catalogoId, itemId, subastaId, subastaInfo, estadoLote: estadoLoteHint,
-  catalogDescripcion, catalogImage,
+  catalogDescripcion, catalogImage, won,
   currentUser, navigation,
 }) {
   const [detail, setDetail] = useState(null);
@@ -136,7 +134,7 @@ function CatalogItemDetail({
   const shared = {
     item, parentCatalog, navigation,
     canAccessPrices: showPrices, lockReason, requiredLabel,
-    currentUser, isOwner, bids,
+    currentUser, isOwner, bids, won: !!won,
   };
 
   if (isLive) return <ItemDetailLiveView {...shared} />;
@@ -208,56 +206,6 @@ export default function ItemDetailScreen({ route, navigation }) {
   const realProducto = route?.params?.producto;
   const realCatalogoId = route?.params?.catalogoId;
 
-  const itemId = route?.params?.itemId || 'i3';
-  const item   = itemsData.find(i => i.id === itemId);
-  const parentCatalog = item ? catalogsData.find(c => c.id === item.catalogo) : null;
-  const lotState = item?.estadoLote || (item?.subastado === 'si' ? 'subastado' : 'pendiente');
-
-  // ── Evaluación de acceso ─────────────────────────────────────────────────
-  const requiredCategory = parentCatalog?.subasta?.categoria;
-  const isLoggedIn       = !!currentUser;
-  const isOwner          = isLoggedIn && String(currentUser.id) === String(item?.ownerId);
-  const categoryOk       = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
-  const canAccessPrices  = isLoggedIn && categoryOk;
-
-  // Motivo de bloqueo — se pasa a los sub-componentes para mostrar el banner
-  const lockReason = !isLoggedIn ? 'sign-in' : !categoryOk ? 'category' : null;
-
-  // Etiqueta legible de la categoría requerida
-  const requiredLabel = requiredCategory
-    ? requiredCategory.charAt(0).toUpperCase() + requiredCategory.slice(1)
-    : '—';
-  // ────────────────────────────────────────────────────────────────────────
-
-  // El dueño del item siempre puede ver los precios de su propio item
-  const MASKED = '$ —,—';
-  const maskedItem = (canAccessPrices || isOwner)
-    ? item
-    : {
-        ...item,
-        currentBid:        MASKED,
-        precioBase:        MASKED,
-        comision:          MASKED,
-        importeAdjudicado: MASKED,
-      };
-
-  const sharedProps = {
-    item: maskedItem,
-    parentCatalog,
-    navigation,
-    canAccessPrices,
-    lockReason: isOwner ? null : lockReason,
-    requiredLabel,
-    currentUser,
-    isOwner,
-  };
-
-  const renderStateView = () => {
-    if (lotState === 'en_puja')   return <ItemDetailLiveView     {...sharedProps} />;
-    if (lotState === 'subastado') return <ItemDetailEndedView    {...sharedProps} />;
-    return                               <ItemDetailUpcomingView {...sharedProps} />;
-  };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -274,6 +222,7 @@ export default function ItemDetailScreen({ route, navigation }) {
           estadoLote={route?.params?.estadoLote}
           catalogDescripcion={route?.params?.catalogDescripcion}
           catalogImage={route?.params?.catalogImage}
+          won={route?.params?.won}
           currentUser={currentUser}
           navigation={navigation}
         />
@@ -284,8 +233,6 @@ export default function ItemDetailScreen({ route, navigation }) {
           currentUser={currentUser}
           navigation={navigation}
         />
-      ) : item ? (
-        renderStateView()
       ) : (
         <View className="flex-1 items-center justify-center px-6 py-16">
           <Text className="text-slate-500 font-bold">Item not found.</Text>

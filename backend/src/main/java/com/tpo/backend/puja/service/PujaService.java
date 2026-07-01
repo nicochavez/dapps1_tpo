@@ -8,10 +8,13 @@ import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.ws.SubastaEventPublisher;
+import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
+import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
 import com.tpo.backend.subasta.service.AdjudicacionService;
 import com.tpo.backend.puja.dto.MiPujaDto;
+import com.tpo.backend.puja.dto.ParticipacionDto;
 import com.tpo.backend.puja.dto.PujaHistorialDto;
 import com.tpo.backend.puja.dto.PujaRequest;
 import com.tpo.backend.puja.dto.PujaResponse;
@@ -26,7 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PujaService {
@@ -36,6 +42,7 @@ public class PujaService {
     private final PujaRepository pujaRepository;
     private final AsistenteRepository asistenteRepository;
     private final ProductoRepository productoRepository;
+    private final FotoRepository fotoRepository;
     private final ClienteService clienteService;
     private final SubastaEventPublisher eventPublisher;
 
@@ -44,6 +51,7 @@ public class PujaService {
                        PujaRepository pujaRepository,
                        AsistenteRepository asistenteRepository,
                        ProductoRepository productoRepository,
+                       FotoRepository fotoRepository,
                        ClienteService clienteService,
                        SubastaEventPublisher eventPublisher) {
         this.subastaRepository = subastaRepository;
@@ -51,6 +59,7 @@ public class PujaService {
         this.pujaRepository = pujaRepository;
         this.asistenteRepository = asistenteRepository;
         this.productoRepository = productoRepository;
+        this.fotoRepository = fotoRepository;
         this.clienteService = clienteService;
         this.eventPublisher = eventPublisher;
     }
@@ -142,6 +151,86 @@ public class PujaService {
                         .map(this::toMiPujaDto)
                         .toList())
                 .orElse(List.of());
+    }
+
+    /** Participaciones del cliente autenticado (para "My Bids"): por subasta, sus pujas + historial por item. */
+    @Transactional(readOnly = true)
+    public List<ParticipacionDto> getMisParticipaciones() {
+        Long clienteId = clienteService.currentClienteEntity().getId();
+        List<ParticipacionDto> result = new ArrayList<>();
+
+        for (AsistenteEntity asistente : asistenteRepository.findByClienteId(clienteId)) {
+            SubastaEntity subasta = asistente.getSubasta();
+            if (subasta == null) continue;
+
+            List<PujaEntity> misPujas = pujaRepository.findByAsistenteId(asistente.getId());
+            if (misPujas.isEmpty()) continue; // se conectó pero no pujó
+
+            List<ParticipacionDto.MiPujaResumen> misResumen = misPujas.stream()
+                    .map(p -> new ParticipacionDto.MiPujaResumen(
+                            p.getItem() != null ? p.getItem().getId() : null,
+                            p.getImporte(),
+                            Boolean.TRUE.equals(p.getGanador()),
+                            p.getFecha() != null ? p.getFecha().toString() : null))
+                    .toList();
+            boolean won = misPujas.stream().anyMatch(p -> Boolean.TRUE.equals(p.getGanador()));
+
+            CatalogoEntity catalogo = subasta.getCatalogo();
+            boolean abierta = "abierta".equalsIgnoreCase(subasta.getEstado());
+            Long loteActual = catalogo != null ? currentLotIdOf(catalogo.getId()) : null;
+
+            List<Long> itemIds = misPujas.stream()
+                    .map(p -> p.getItem() != null ? p.getItem().getId() : null)
+                    .filter(Objects::nonNull).distinct().toList();
+
+            List<ParticipacionDto.ItemParticipacion> items = new ArrayList<>();
+            String itemCategory = null;
+            for (Long itemId : itemIds) {
+                ItemCatalogoEntity item = itemRepository.findById(itemId).orElse(null);
+                if (item == null) continue;
+                ProductoEntity prod = item.getProducto();
+                if (itemCategory == null && prod != null) itemCategory = prod.getCategoria();
+                boolean enPuja = abierta && !Boolean.TRUE.equals(item.getSubastado())
+                        && item.getId().equals(loteActual);
+                List<PujaHistorialDto> historial = pujaRepository.findByItemIdOrderByFechaAsc(itemId).stream()
+                        .map(this::toHistorialDto).toList();
+                items.add(new ParticipacionDto.ItemParticipacion(
+                        itemId,
+                        prod != null ? prod.getDescripcionCatalogo() : "",
+                        firstFotoUrl(prod),
+                        enPuja,
+                        historial));
+            }
+
+            result.add(new ParticipacionDto(
+                    subasta.getId(),
+                    catalogo != null ? catalogo.getId() : null,
+                    catalogo != null ? catalogo.getDescripcion() : null,
+                    items.isEmpty() ? null : items.get(0).getImagen(),
+                    subasta.getCategoria(),
+                    itemCategory,
+                    abierta,
+                    won,
+                    misResumen,
+                    items));
+        }
+        return result;
+    }
+
+    /** Lote actual del catálogo (primer item no subastado por id), igual criterio que la adjudicación. */
+    private Long currentLotIdOf(Long catalogoId) {
+        return itemRepository.findByCatalogoId(catalogoId).stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
+                .map(ItemCatalogoEntity::getId)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+    }
+
+    private String firstFotoUrl(ProductoEntity prod) {
+        if (prod == null) return null;
+        var fotos = fotoRepository.findByProductoId(prod.getId());
+        return fotos.isEmpty() ? null
+                : "/api/v1/productos/" + prod.getId() + "/fotos/" + fotos.get(0).getId();
     }
 
     @Transactional

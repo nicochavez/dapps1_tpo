@@ -208,6 +208,11 @@ public class CatalogoService {
                 : (live && item.getId().equals(loteActual)) ? "en_puja"
                 : "pendiente";
 
+        // Adjudicado: la oferta ganadora; si no hubo pujas (compró la empresa), el precio base.
+        BigDecimal adjudicado = subastado
+                ? precioVisible(mejorOferta != null ? mejorOferta : item.getPrecioBase())
+                : null;
+
         return new CatalogoListDto.ItemDto(
                 item.getId(),
                 descripcion,
@@ -217,7 +222,7 @@ public class CatalogoService {
                 item.getNumeroPieza(),
                 item.getComision(),
                 precioVisible(mejorOferta),
-                subastado ? precioVisible(mejorOferta) : null,
+                adjudicado,
                 estadoLote
         );
     }

@@ -1,5 +1,7 @@
 package com.tpo.backend.compra.service;
 
+import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
+import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.dto.PagedResponse;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
@@ -23,13 +25,16 @@ public class CompraService {
 
     private final CompraRepository compraRepository;
     private final RegistroDeSubastaRepository registroRepository;
+    private final ItemCatalogoRepository itemRepository;
     private final ClienteService clienteService;
 
     public CompraService(CompraRepository compraRepository,
                          RegistroDeSubastaRepository registroRepository,
+                         ItemCatalogoRepository itemRepository,
                          ClienteService clienteService) {
         this.compraRepository = compraRepository;
         this.registroRepository = registroRepository;
+        this.itemRepository = itemRepository;
         this.clienteService = clienteService;
     }
 
@@ -50,6 +55,14 @@ public class CompraService {
     public void setRetiroPersonal(Long id) {
         CompraEntity compra = findOrThrow(id);
         compra.setRetiroPersonal(true);
+        compraRepository.save(compra);
+    }
+
+    /** Marca la compra como pagada (RF pago del ganador). */
+    @Transactional
+    public void pagar(Long id) {
+        CompraEntity compra = findOrThrow(id);
+        compra.setEstadoPago("pagado");
         compraRepository.save(compra);
     }
 
@@ -84,6 +97,12 @@ public class CompraService {
     private CompraDto toDto(CompraEntity compra) {
         SubastaEntity s = compra.getSubasta();
         ProductoEntity p = compra.getProducto();
+
+        // Item de catálogo del producto, para poder abrir su detalle si ya está pagado.
+        ItemCatalogoEntity item = itemRepository.findByProductoId(p.getId()).orElse(null);
+        Long catalogoId = item != null && item.getCatalogo() != null ? item.getCatalogo().getId() : null;
+        Long itemId = item != null ? item.getId() : null;
+
         return new CompraDto(
                 compra.getId(),
                 new CompraDto.SubastaRefDto(s.getId(),
@@ -93,7 +112,10 @@ public class CompraService {
                 compra.getComision(),
                 compra.getCostoEnvio() != null ? compra.getCostoEnvio() : BigDecimal.ZERO,
                 compra.getTotal(),
-                Boolean.TRUE.equals(compra.getRetiroPersonal())
+                Boolean.TRUE.equals(compra.getRetiroPersonal()),
+                compra.getEstadoPago() != null ? compra.getEstadoPago() : "pendiente",
+                catalogoId,
+                itemId
         );
     }
 }

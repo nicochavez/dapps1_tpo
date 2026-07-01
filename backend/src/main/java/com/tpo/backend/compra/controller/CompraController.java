@@ -43,6 +43,12 @@ public class CompraController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/compras/{id}/pagar")
+    public ResponseEntity<Void> pagar(@PathVariable Long id) {
+        compraService.pagar(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/subastas")
     public ResponseEntity<PagedResponse<HistorialSubastaDto>> getHistorial(
             @RequestParam(defaultValue = "0") int page,

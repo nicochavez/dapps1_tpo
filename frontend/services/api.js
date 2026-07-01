@@ -99,6 +99,10 @@ export function getMetricasMe(token) {
   return apiRequest('/clientes/me/metricas', { token });
 }
 
+export function getMisParticipaciones(token) {
+  return apiRequest('/clientes/me/participaciones', { token });
+}
+
 // ── Notificaciones ──────────────────────────────────────────────────────────
 
 export function getNotificaciones(token) {
@@ -117,6 +121,42 @@ export function getSubastasByDuenio(userId) {
 
 export function getDirecciones(personaId, token) {
   return apiRequest(`/usuarios/${personaId}/direcciones`, { token });
+}
+
+export function getDireccionFavorita(personaId, token) {
+  return apiRequest(`/usuarios/${personaId}/direcciones/favorita`, { token });
+}
+
+// ── Compras ───────────────────────────────────────────────────────────────────
+
+export function getCompras(token) {
+  return apiRequest('/clientes/me/compras', { token });
+}
+
+export function getCompraById(id, token) {
+  return apiRequest(`/clientes/me/compras/${id}`, { token });
+}
+
+export function setRetiroPersonal(id, token) {
+  return apiRequest(`/clientes/me/compras/${id}/retiro-personal`, { method: 'PUT', token });
+}
+
+export function pagarCompra(id, token) {
+  return apiRequest(`/clientes/me/compras/${id}/pagar`, { method: 'POST', token });
+}
+
+// ── Multas ────────────────────────────────────────────────────────────────────
+
+export function getMultas(token) {
+  return apiRequest('/clientes/me/multas', { token });
+}
+
+export function pagarMulta(id, medioPagoId, token) {
+  return apiRequest(`/clientes/me/multas/${id}/pagar`, {
+    method: 'POST',
+    body: JSON.stringify({ medioPagoId }),
+    token,
+  });
 }
 
 export function createDireccion(personaId, body, token) {

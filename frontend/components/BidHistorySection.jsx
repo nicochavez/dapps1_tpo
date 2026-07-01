@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import usersData from '../data/users.json';
 
 const fmt = (v) =>
   `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
@@ -14,17 +13,11 @@ const fmtTime = (iso) => {
 };
 
 function BidRow({ bid, currentUserId, canAccessPrices, isFirst }) {
-  // Pujas reales del backend traen numeroPostor (anónimo); la data local trae userId.
-  const hasNumero = bid.numeroPostor != null;
-  const isMe = !hasNumero && bid.userId === currentUserId;
-  const user  = hasNumero ? null : usersData.find(u => u.id === bid.userId);
-  const displayName = hasNumero
-    ? `Bidder #${bid.numeroPostor}`
-    : (isMe ? 'You' : (user?.name ?? 'Unknown'));
-  const initials = hasNumero
-    ? `#${bid.numeroPostor}`
-    : (user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2) ?? '?');
-  const isWinner = bid.ganador === true;
+  // Pujas reales del backend: anónimas por numeroPostor.
+  const displayName = bid.numeroPostor != null ? `Bidder #${bid.numeroPostor}` : 'Bidder';
+  const initials = bid.numeroPostor != null ? `#${bid.numeroPostor}` : '?';
+  const isMe = false;
+  const isWinner = bid.ganador === true || bid.ganador === 'si';
 
   return (
     <View

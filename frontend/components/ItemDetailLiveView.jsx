@@ -4,7 +4,6 @@ import { Feather } from '@expo/vector-icons';
 import ItemDetailBase from './ItemDetailBase';
 import BidHistorySection from './BidHistorySection';
 import useLiveBids from '../hooks/useLiveBids';
-import bidsData from '../data/bids.json';
 
 const formatPrice = (value) => {
   if (value === null || value === undefined) return '$ —,—';
@@ -20,11 +19,8 @@ export default function ItemDetailLiveView(props) {
   const currentPriceNum = typeof item?.currentBid === 'number' ? item.currentBid
                         : typeof item?.precioBase === 'number' ? item.precioBase : 0;
 
-  // Bid history: si llega por props (datos reales del backend) se usa eso; si no,
-  // cae a la data local. En ambos casos se mantiene en sync por WS.
-  const initialBids = props.bids ?? bidsData
-    .filter(b => b.itemId === item?.id)
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  // Historial de pujas real (viene del backend por props). Se mantiene en sync por WS.
+  const initialBids = props.bids ?? [];
 
   const { bids, connected } = useLiveBids(item?.id, initialBids);
 

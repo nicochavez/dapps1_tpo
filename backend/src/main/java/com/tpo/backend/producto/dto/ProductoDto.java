@@ -41,6 +41,8 @@ public class ProductoDto {
         private String fecha;
         private String hora;
         private String categoria;
+        /** Estado del lote de este producto: en_puja | subastado | pendiente. */
+        private String estadoLote;
         /** Catalogo e item (itemcatalogo) del producto, para abrir el detalle unificado. */
         private Long catalogoId;
         private Long itemId;

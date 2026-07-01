@@ -9,9 +9,7 @@ import { Alert } from 'react-native';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { AuthContext } from '../context/AuthContext';
-import { getMediosPago } from '../services/api';
-import itemsData from '../data/items.json';
-import bidsData from '../data/bids.json';
+import { getMediosPago, getMetricasMe, getMisProductos } from '../services/api';
 
 const TIPO_GRADIENTS = {
   tarjeta_credito:    ['#8b5cf6', '#a855f7', '#d946ef'],
@@ -66,6 +64,8 @@ export default function ProfileScreen() {
   const { user: currentUser, logout } = useContext(AuthContext);
 
   const [firstPm, setFirstPm]   = useState(null);
+  const [metrics, setMetrics]   = useState(null);
+  const [myAuctionsCount, setMyAuctionsCount] = useState(0);
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
@@ -85,8 +85,14 @@ export default function ProfileScreen() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const medios = await getMediosPago(currentUser.token);
+      const [medios, met, productos] = await Promise.all([
+        getMediosPago(currentUser.token),
+        getMetricasMe(currentUser.token).catch(() => null),
+        getMisProductos(currentUser.token).catch(() => []),
+      ]);
       setFirstPm(Array.isArray(medios) && medios.length > 0 ? medios[0] : null);
+      setMetrics(met);
+      setMyAuctionsCount(Array.isArray(productos) ? productos.length : 0);
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
@@ -98,17 +104,8 @@ export default function ProfileScreen() {
 
   if (!currentUser) return null;
 
-  const uid = String(currentUser.id);
-  const myAuctionsCount = itemsData.filter(i => String(i.ownerId) === uid).length;
-  const userBids = bidsData.filter(b => String(b.userId) === uid);
-  const attendedCatalogs = new Set(
-    userBids.map(b => {
-      const item = itemsData.find(i => i.id === b.itemId);
-      return item?.catalogo;
-    }).filter(Boolean)
-  );
-  const subastasAsistidas = attendedCatalogs.size;
-  const subastasGanadas   = userBids.filter(b => b.ganador).length;
+  const subastasAsistidas = metrics?.subastasAsistidas ?? 0;
+  const subastasGanadas   = metrics?.subastasGanadas ?? 0;
   const winRate = subastasAsistidas > 0
     ? Math.round((subastasGanadas / subastasAsistidas) * 100)
     : 0;

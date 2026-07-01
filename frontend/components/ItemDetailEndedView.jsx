@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import ItemDetailBase from './ItemDetailBase';
 import BidHistorySection from './BidHistorySection';
-import bidsData from '../data/bids.json';
 
 const formatPrice = (value) => {
   if (value === null || value === undefined) return '$ —,—';
@@ -13,11 +12,8 @@ const formatPrice = (value) => {
 export default function ItemDetailEndedView(props) {
   const { item, canAccessPrices, currentUser } = props;
 
-  // Bid history sorted descending: winner ends up first. Usa props.bids (backend
-  // real) si está disponible; si no, cae a la data local.
-  const bids = props.bids ?? bidsData
-    .filter(b => b.itemId === item?.id)
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  // Historial de pujas real (viene del backend por props), ordenado descendente.
+  const bids = [...(props.bids ?? [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   return (
     <ItemDetailBase {...props} badgeColor="bg-slate-700/90" badgeLabel="Ended Auction">

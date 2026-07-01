@@ -17,6 +17,7 @@ export default function ItemDetailBase({
   requiredLabel,
   currentUser,
   isOwner,
+  won,          // true si el usuario ganó este item (vista de solo lectura)
   badgeColor,   // color del badge de estado (ej: 'bg-red-500/90')
   badgeLabel,   // texto del badge (ej: 'Live Auction')
   children,     // sección específica de cada estado (precio, puja, historial...)
@@ -105,6 +106,21 @@ export default function ItemDetailBase({
           </Text>
         </View>
       </View>
+
+      {/* Cartel de ganador (solo lectura) */}
+      {won && (
+        <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6 flex-row items-center">
+          <View className="bg-emerald-500 p-2 rounded-full mr-3">
+            <Feather name="award" size={16} color="white" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-emerald-700 font-bold text-sm mb-0.5">You won this item</Text>
+            <Text className="text-emerald-600 text-xs leading-5">
+              Congratulations! This lot was adjudicated to you. This is a read-only view of your won item.
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Cartel de dueño */}
       {isOwner && (

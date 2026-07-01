@@ -75,6 +75,7 @@ export default function AuctionUnderReviewScreen({ route, navigation }) {
 
   const estado = propuesta?.estado;
   const esPropuesta = estado === 'propuesta_enviada';
+  const esRechazado = estado === 'rechazado' || estado === 'rechazado_por_usuario';
 
   const titulo =
     esPropuesta ? 'Proposal Received'
@@ -142,6 +143,32 @@ export default function AuctionUnderReviewScreen({ route, navigation }) {
                 <DetailRow label="Date" value={propuesta?.subasta?.fecha} />
                 <DetailRow label="Time" value={propuesta?.subasta?.hora} />
                 <DetailRow label="Location" value={propuesta?.subasta?.lugar} />
+              </View>
+            </>
+          ) : esRechazado ? (
+            <>
+              <Text className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-3">
+                Rejection details
+              </Text>
+              <View className="bg-red-50 rounded-3xl p-5 mb-8 border border-red-100">
+                <View className="flex-row items-center mb-3">
+                  <Feather name="alert-circle" size={16} color="#dc2626" />
+                  <Text className="text-red-700 font-bold text-sm ml-2">
+                    {estado === 'rechazado_por_usuario' ? 'You declined the terms' : 'Rejected during inspection'}
+                  </Text>
+                </View>
+                {estado === 'rechazado' ? (
+                  <>
+                    <Text className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Reason</Text>
+                    <Text className="text-sm text-slate-700 leading-6">
+                      {propuesta?.motivo || 'No reason was provided.'}
+                    </Text>
+                  </>
+                ) : (
+                  <Text className="text-sm text-slate-700 leading-6">
+                    You declined the proposed auction terms, so this item will not be auctioned.
+                  </Text>
+                )}
               </View>
             </>
           ) : (

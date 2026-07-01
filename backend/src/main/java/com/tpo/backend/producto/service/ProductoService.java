@@ -229,7 +229,8 @@ public class ProductoService {
             }
         }
         return new PropuestaDto(prod.getId(), prod.getEstado().name(),
-                prod.getDescripcionCatalogo(), precioBase, comision, subastaInfo);
+                prod.getDescripcionCatalogo(), precioBase, comision,
+                prod.getMotivoRechazo(), subastaInfo);
     }
 
     /** El dueno acepta las condiciones propuestas (RF flujo vendedor). */
@@ -311,12 +312,27 @@ public class ProductoService {
         if (subasta == null) {
             return null;
         }
+
+        // Estado del lote (mismo criterio que el listado/detalle): solo el lote actual
+        // de una subasta abierta esta en puja; el resto pendiente o subastado.
+        boolean subastado = Boolean.TRUE.equals(item.getSubastado());
+        boolean abierta = "abierta".equalsIgnoreCase(subasta.getEstado());
+        Long loteActual = itemCatalogoRepository.findByCatalogoId(item.getCatalogo().getId()).stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getSubastado()))
+                .map(ItemCatalogoEntity::getId)
+                .min(Long::compareTo)
+                .orElse(null);
+        String estadoLote = subastado ? "subastado"
+                : (abierta && item.getId().equals(loteActual)) ? "en_puja"
+                : "pendiente";
+
         return new ProductoDto.SubastaResumenDto(
                 subasta.getId(),
                 subasta.getEstado(),
                 subasta.getFecha() != null ? subasta.getFecha().toString() : null,
                 subasta.getHora() != null ? subasta.getHora().toString() : null,
                 subasta.getCategoria(),
+                estadoLote,
                 item.getCatalogo().getId(),
                 item.getId()
         );

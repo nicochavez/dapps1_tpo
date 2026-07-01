@@ -131,6 +131,7 @@ public class AdminProductoService {
         ProductoEntity producto = findEnRevision(productoId);
 
         producto.setEstado(EstadoProducto.rechazado);
+        producto.setMotivoRechazo(request.getMotivo());
         productoRepository.save(producto);
 
         BigDecimal cargo = request.getCargoDevolucion() != null

@@ -1,35 +1,52 @@
-import React, { useContext, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useContext, useMemo, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { AuthContext } from '../context/AuthContext';
-import itemsData from '../data/items.json';
+import { getItemCatalogoDetalle, buildImageUrl } from '../services/api';
 
 export default function ManageObjectScreen({ route, navigation }) {
   const { user: currentUser } = useContext(AuthContext);
-  const itemId = route?.params?.itemId || 'i7';
-  const item = itemsData.find(i => i.id === itemId) || itemsData[0];
+  const catalogoId = route?.params?.catalogoId;
+  const itemId = route?.params?.itemId;
 
-  const [activeImage, setActiveImage] = useState(item?.producto?.image || item?.image);
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(null);
 
-  const itemOwnerId = item?.ownerId || item?.producto?.duenioId;
-  const isOwner = Boolean(currentUser?.id && itemOwnerId && currentUser.id === itemOwnerId);
-  const lotState = item?.estadoLote || (item?.subastado === 'si' ? 'subastado' : 'pendiente');
+  const cargar = useCallback(async () => {
+    try {
+      setLoading(true);
+      const d = await getItemCatalogoDetalle(catalogoId, itemId, currentUser?.token);
+      setDetail(d);
+      const first = buildImageUrl(d?.producto?.fotos?.[0]?.url);
+      setActiveImage(first || null);
+    } catch (error) {
+      Alert.alert('No se pudo cargar el item', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [catalogoId, itemId, currentUser?.token]);
 
-  const lotLabel = item?.numeroPieza ? `LOT ${item.numeroPieza}` : item?.pieceNumber || 'LOT';
-  const coverImage = item?.producto?.image || item?.image || 'https://ui-avatars.com/api/?name=Item&background=e2e8f0&color=94a3b8';
-  const photos = [coverImage].filter(Boolean);
-  const priceLabel = lotState === 'subastado'
-    ? item?.importeAdjudicado || item?.currentBid || item?.precioBase || 0
-    : item?.currentBid || item?.precioBase || 0;
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
+  const lotState = detail?.estadoLote || (detail?.subastado === 'si' ? 'subastado' : 'pendiente');
   const screenTitle = useMemo(() => {
     if (lotState === 'en_puja') return 'Owner View - Live Lot';
     if (lotState === 'subastado') return 'Owner View - Ended Lot';
     return 'Owner View - Upcoming Lot';
   }, [lotState]);
 
-  if (!item) {
+  if (loading) {
+    return (
+      <View className="flex-1 bg-[#f8fafc] items-center justify-center">
+        <ActivityIndicator color="#7C3AED" />
+      </View>
+    );
+  }
+
+  if (!detail) {
     return (
       <View className="flex-1 bg-[#f8fafc] items-center justify-center px-6">
         <Text className="text-slate-500 font-bold">Item not found.</Text>
@@ -39,6 +56,8 @@ export default function ManageObjectScreen({ route, navigation }) {
       </View>
     );
   }
+
+  const isOwner = !!currentUser?.id && String(currentUser.id) === String(detail.producto?.duenioId);
 
   if (!isOwner) {
     return (
@@ -59,6 +78,10 @@ export default function ManageObjectScreen({ route, navigation }) {
     );
   }
 
+  const photos = (detail.producto?.fotos || []).map(f => buildImageUrl(f.url)).filter(Boolean);
+  const cover = activeImage || photos[0] || 'https://ui-avatars.com/api/?name=Item&background=e2e8f0&color=94a3b8';
+  const price = Number(detail.precioBase) || 0;
+
   return (
     <View className="flex-1 bg-[#f8fafc]">
       <View className="flex-row items-center justify-between px-6 pt-14 pb-4 bg-[#f8fafc]">
@@ -73,11 +96,11 @@ export default function ManageObjectScreen({ route, navigation }) {
         <View className="mb-4">
           <View className="relative mb-3">
             <Image
-              source={{ uri: activeImage }}
+              source={{ uri: cover }}
               className="w-full h-56 rounded-3xl bg-slate-200"
               resizeMode="cover"
             />
-            <View className={`absolute top-4 left-4 px-3 py-1.5 rounded-full flex-row items-center backdrop-blur-md ${lotState === 'en_puja' ? 'bg-rose-600/90' : lotState === 'subastado' ? 'bg-slate-700/90' : 'bg-blue-600/90'}`}>
+            <View className={`absolute top-4 left-4 px-3 py-1.5 rounded-full flex-row items-center ${lotState === 'en_puja' ? 'bg-rose-600/90' : lotState === 'subastado' ? 'bg-slate-700/90' : 'bg-blue-600/90'}`}>
               <View className="w-1.5 h-1.5 rounded-full bg-white mr-1.5" />
               <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
                 {lotState === 'en_puja' ? 'LIVE' : lotState === 'subastado' ? 'ENDED' : 'UPCOMING'}
@@ -101,47 +124,22 @@ export default function ManageObjectScreen({ route, navigation }) {
         <View className="bg-white rounded-3xl p-6 mb-4 shadow-sm shadow-slate-200">
           <View className="flex-row items-start justify-between mb-2">
             <View className="flex-1 pr-3">
-              <Text className="text-xl font-bold text-slate-800 mb-1">{item.producto?.descripcionCatalogo || item.title}</Text>
-              <Text className="text-xs text-slate-500 mb-4">{item.producto?.descripcionCompleta || item.description || 'No description available.'}</Text>
-            </View>
-            <View className="bg-purple-100 px-3 py-1 rounded-full">
-              <Text className="text-[#7C3AED] text-[10px] font-bold tracking-widest uppercase">{lotLabel}</Text>
+              <Text className="text-xl font-bold text-slate-800 mb-1">{detail.producto?.descripcionCatalogo}</Text>
+              <Text className="text-xs text-slate-500 mb-4">{detail.producto?.descripcionCompleta || 'No description available.'}</Text>
             </View>
           </View>
 
           <View className="flex-row justify-between items-end">
             <View>
-              <Text className="text-[#7C3AED] text-[9px] font-bold uppercase tracking-widest mb-1">
-                {lotState === 'subastado' ? 'Winning Bid' : 'Current Price'}
-              </Text>
+              <Text className="text-[#7C3AED] text-[9px] font-bold uppercase tracking-widest mb-1">Base Price</Text>
               <Text className="text-3xl font-bold text-[#7C3AED]">
-                ${Number(priceLabel).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                ${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </Text>
             </View>
             <View className="items-end">
               <Text className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mb-1">Owner</Text>
-              <Text className="text-slate-800 font-bold text-sm">{currentUser?.name || 'Owner'}</Text>
+              <Text className="text-slate-800 font-bold text-sm">{currentUser?.nombre || 'Owner'}</Text>
             </View>
-          </View>
-        </View>
-
-        <View className="flex-row justify-between mb-6">
-          <View className="bg-white rounded-3xl p-4 items-center justify-center flex-1 mr-2 shadow-sm shadow-slate-200">
-            <Feather name="eye" size={20} color="#a78bfa" className="mb-2" />
-            <Text className="text-lg font-bold text-slate-800">1,248</Text>
-            <Text className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Views</Text>
-          </View>
-
-          <View className="bg-white rounded-3xl p-4 items-center justify-center flex-1 mx-1 shadow-sm shadow-slate-200">
-            <MaterialCommunityIcons name="gavel" size={20} color="#a78bfa" className="mb-2" />
-            <Text className="text-lg font-bold text-slate-800">42</Text>
-            <Text className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bids</Text>
-          </View>
-
-          <View className="bg-white rounded-3xl p-4 items-center justify-center flex-1 ml-2 shadow-sm shadow-slate-200">
-            <Feather name="star" size={20} color="#a78bfa" className="mb-2" />
-            <Text className="text-lg font-bold text-slate-800">86</Text>
-            <Text className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Watchers</Text>
           </View>
         </View>
 
@@ -153,10 +151,9 @@ export default function ManageObjectScreen({ route, navigation }) {
                 <Text className="text-rose-600 text-[9px] font-bold uppercase tracking-wider">Read only</Text>
               </View>
             </View>
-            <Text className="text-slate-500 leading-6 text-sm mb-3">
-              The lot is currently active. You can monitor the current price and bidding pressure, but no edit actions are available from this screen.
+            <Text className="text-slate-500 leading-6 text-sm">
+              The lot is currently active. You can monitor it, but no edit actions are available from this screen.
             </Text>
-            <Text className="text-slate-700 font-semibold text-sm">Current state: live</Text>
           </View>
         ) : lotState === 'subastado' ? (
           <View className="bg-white rounded-3xl p-6 mb-6 shadow-sm shadow-slate-200">
@@ -166,8 +163,6 @@ export default function ManageObjectScreen({ route, navigation }) {
                 <Text className="text-slate-500 text-[9px] font-bold uppercase tracking-wider">Final</Text>
               </View>
             </View>
-            <Text className="text-slate-500 leading-6 text-sm mb-2">Winner: {item.ganadorNombre || 'Unknown bidder'}</Text>
-            <Text className="text-slate-500 leading-6 text-sm mb-2">Final bid: ${Number(item.importeAdjudicado || item.currentBid || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
             <Text className="text-slate-500 leading-6 text-sm">This item is closed and cannot be edited.</Text>
           </View>
         ) : (
@@ -178,8 +173,7 @@ export default function ManageObjectScreen({ route, navigation }) {
                 <Text className="text-blue-600 text-[9px] font-bold uppercase tracking-wider">Preview</Text>
               </View>
             </View>
-            <Text className="text-slate-500 leading-6 text-sm mb-2">This publication has not started yet.</Text>
-            <Text className="text-slate-500 leading-6 text-sm">The owner can only preview the item data here, not edit it.</Text>
+            <Text className="text-slate-500 leading-6 text-sm">This publication has not started yet.</Text>
           </View>
         )}
       </ScrollView>

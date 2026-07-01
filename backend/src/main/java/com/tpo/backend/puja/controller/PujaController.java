@@ -1,6 +1,7 @@
 package com.tpo.backend.puja.controller;
 
 import com.tpo.backend.puja.dto.MiPujaDto;
+import com.tpo.backend.puja.dto.ParticipacionDto;
 import com.tpo.backend.puja.dto.PujaHistorialDto;
 import com.tpo.backend.puja.dto.PujaRequest;
 import com.tpo.backend.puja.dto.PujaResponse;
@@ -39,6 +40,11 @@ public class PujaController {
     @GetMapping("/clientes/me/subastas/{subastaId}/pujas")
     public ResponseEntity<List<MiPujaDto>> getMisPujas(@PathVariable Long subastaId) {
         return ResponseEntity.ok(pujaService.getMisPujas(subastaId));
+    }
+
+    @GetMapping("/clientes/me/participaciones")
+    public ResponseEntity<List<ParticipacionDto>> getMisParticipaciones() {
+        return ResponseEntity.ok(pujaService.getMisParticipaciones());
     }
 
     @GetMapping("/pujas/{productoId}")

@@ -58,6 +58,10 @@ public class CompraEntity {
     @Column(name = "retiro_personal")
     private Boolean retiroPersonal;
 
+    /** pendiente | pagado | impago */
+    @Column(name = "estado_pago")
+    private String estadoPago;
+
     @Column(name = "fecha")
     private OffsetDateTime fecha;
 }

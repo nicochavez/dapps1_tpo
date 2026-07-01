@@ -18,6 +18,11 @@ public class CompraDto {
     private BigDecimal costoEnvio;
     private BigDecimal total;
     private boolean retiroPersonal;
+    /** pendiente | pagado | impago */
+    private String estadoPago;
+    /** Item de catálogo del producto, para abrir su detalle (cuando ya está pagado). */
+    private Long catalogoId;
+    private Long itemId;
 
     @Data
     @AllArgsConstructor

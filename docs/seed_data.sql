@@ -1,0 +1,239 @@
+-- ============================================================================
+-- BidFlow — Seed de datos de prueba (cubre todos los casos de negocio)
+-- ----------------------------------------------------------------------------
+-- Login: por DOCUMENTO. Password de TODOS los usuarios: comun123
+--
+--   Documento   | Rol / Categoría          | Email
+--   30000001    | EMPLEADO (admin/verif.)  | admin@bidflow.com
+--   30000002    | SUBASTADOR               | subastador@bidflow.com
+--   40000010    | CLIENTE comun            | comun@bidflow.com
+--   40000011    | CLIENTE especial         | especial@bidflow.com
+--   40000012    | CLIENTE plata            | plata@bidflow.com
+--   40000013    | CLIENTE oro (ganador)    | oro@bidflow.com
+--   40000014    | CLIENTE platino          | platino@bidflow.com
+--   50000020    | CLIENTE comun + DUEÑO    | duenio@bidflow.com
+--
+-- Subastas:  #1 LIVE plata (cat.1) · #2 ENDED oro (cat.2) · #3 LIVE comun (cat.3)
+-- Casos: estados de lote (en_puja/pendiente/subastado), dueño vs no-dueño,
+--        visibilidad de precios por rango, historial de pujas, compra ganada,
+--        multa, notificaciones, medios de pago (3 tipos), direcciones, flujo
+--        vendedor (en_revision/propuesta_enviada/aceptado_por_usuario/
+--        incluido_en_subasta/rechazado).
+-- ============================================================================
+
+BEGIN;
+
+-- ─── 0) BORRAR TODO (empezar de 0; resetea los IDENTITY) ────────────────────
+TRUNCATE TABLE
+  public.pujos, public.asistentes, public.registrodesubasta, public.multas,
+  public.compras, public.notificaciones, public.itemscatalogo, public.fotos,
+  public.componentes_producto, public.medios_cheque_certificado,
+  public.medios_tarjeta_credito, public.medios_cuenta_bancaria, public.medios_pago,
+  public.direcciones, public.cuentas_cobro, public.colecciones, public.productos,
+  public.seguros, public.subastas, public.catalogos, public.subastadores,
+  public.duenios, public.clientes, public.empleados, public.sectores,
+  public.usuarios, public.personas, public.paises
+RESTART IDENTITY CASCADE;
+
+-- ─── 1) Países ──────────────────────────────────────────────────────────────
+INSERT INTO public.paises (numero, nombre, nombrecorto, capital, nacionalidad, idiomas) VALUES
+  (32,  'Argentina',      'ARG', 'Buenos Aires', 'argentina',     'español'),
+  (840, 'Estados Unidos', 'USA', 'Washington',   'estadounidense','inglés');
+
+-- ─── 2) Sectores (responsable se setea luego para evitar FK circular) ───────
+INSERT INTO public.sectores (identificador, nombresector, codigosector, responsablesector)
+OVERRIDING SYSTEM VALUE VALUES (1, 'Administración', 'ADM', NULL);
+
+-- ─── 3) Personas ────────────────────────────────────────────────────────────
+INSERT INTO public.personas (identificador, documento, nombre, apellido, pais_origen, estado, fecha_registro)
+OVERRIDING SYSTEM VALUE VALUES
+  (1,  '30000001', 'Ana',     'Admin',      32, 'aprobado', now()),
+  (2,  '30000002', 'Sergio',  'Subastador', 32, 'aprobado', now()),
+  (10, '40000010', 'Carla',   'Comun',      32, 'aprobado', now()),
+  (11, '40000011', 'Esteban', 'Especial',   32, 'aprobado', now()),
+  (12, '40000012', 'Paula',   'Plata',      32, 'aprobado', now()),
+  (13, '40000013', 'Oscar',   'Oro',        32, 'aprobado', now()),
+  (14, '40000014', 'Pia',     'Platino',    32, 'aprobado', now()),
+  (20, '50000020', 'Diego',   'Dueño',      32, 'aprobado', now());
+
+-- ─── 4) Usuarios (password = comun123 para todos) ───────────────────────────
+INSERT INTO public.usuarios (persona, email, password_hash, activo, ultimo_acceso) VALUES
+  (1,  'admin@bidflow.com',      '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (2,  'subastador@bidflow.com', '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (10, 'comun@bidflow.com',      '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (11, 'especial@bidflow.com',   '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (12, 'plata@bidflow.com',      '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (13, 'oro@bidflow.com',        '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (14, 'platino@bidflow.com',    '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now()),
+  (20, 'duenio@bidflow.com',     '$2a$10$oOKYJg/t6iRKfpTLS0Cs8.mhL7oaqDe3pe01lu5rJXmguwCwMqZ.y', true, now());
+
+-- ─── 5) Subtipos de persona ─────────────────────────────────────────────────
+INSERT INTO public.empleados (identificador, cargo, sector) VALUES (1, 'Verificador', 1);
+UPDATE public.sectores SET responsablesector = 1 WHERE identificador = 1;
+
+INSERT INTO public.subastadores (identificador, matricula, region) VALUES (2, 'MAT-001', 'AMBA');
+
+INSERT INTO public.clientes (identificador, admitido, categoria, verificador, numeropais) VALUES
+  (10, true, 'comun',    1, 32),
+  (11, true, 'especial', 1, 32),
+  (12, true, 'plata',    1, 32),
+  (13, true, 'oro',      1, 32),
+  (14, true, 'platino',  1, 32),
+  (20, true, 'comun',    1, 32);   -- el dueño también es cliente (login + notificaciones)
+
+INSERT INTO public.duenios (identificador, verificacionfinanciera, verificacionjudicial, calificacionriesgo, verificador, numeropais) VALUES
+  (20, true, true, 2, 1, 32);
+
+-- ─── 6) Seguro ──────────────────────────────────────────────────────────────
+INSERT INTO public.seguros (nropoliza, compania, contacto, telefono, polizacombinada, importe) VALUES
+  ('POL-001', 'La Seguridad', 'contacto@seg.com', '+541100000000', false, 50000);
+
+-- ─── 7) Productos (dueño 20, revisor 1) — todos los estados del flujo vendedor
+INSERT INTO public.productos
+  (identificador, duenio, revisor, fecha, disponible, descripcioncompleta, descripcioncatalogo,
+   categoria, subcategoria, estado_revision, estado, seguro)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 20, 1, CURRENT_DATE, false, 'Rolex Submariner full set',            'Rolex Submariner',    'Relojes',        'Buceo',       'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (2, 20, 1, CURRENT_DATE, false, 'Omega Speedmaster Moonwatch',          'Omega Speedmaster',   'Relojes',        'Cronógrafo',  'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (3, 20, 1, CURRENT_DATE, false, 'Cuadro óleo abstracto firmado',        'Óleo Abstracto',      'Arte',           'Pintura',     'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (4, 20, 1, CURRENT_DATE, false, 'Escultura de bronce 1960',             'Escultura Bronce',    'Arte',           'Escultura',   'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (5, 20, 1, CURRENT_DATE, false, 'Figura coleccionable edición limitada','Figura Coleccionable','Coleccionables', 'Figuras',     'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (6, 20, 1, CURRENT_DATE, false, 'Moneda antigua de plata',              'Moneda Antigua',      'Coleccionables', 'Numismática', 'aceptado',    'propuesta_enviada',   'POL-001'),
+  (7, 20, 1, CURRENT_DATE, false, 'Reloj de bolsillo vintage',            'Reloj de Bolsillo',   'Relojes',        'Vintage',     'aceptado',    'aceptado_por_usuario','POL-001'),
+  (8, 20, 1, CURRENT_DATE, false, 'Vinilo raro de los 70',                'Vinilo 70s',          'Coleccionables', 'Música',      'en_revision', 'en_revision',         NULL),
+  (9, 20, 1, CURRENT_DATE, false, 'Cámara antigua dañada',                'Cámara Antigua',      'Coleccionables', 'Fotografía',  'rechazado',   'rechazado',           NULL);
+
+-- Motivo del rechazo (para que la vista del item rechazado lo muestre)
+UPDATE public.productos
+   SET motivo_rechazo = 'La pieza presenta daños no declarados y falta documentación de origen lícito.'
+ WHERE identificador = 9;
+
+-- ─── 8) Fotos: 6 por producto (PNG 1x1 placeholder, válido para el endpoint) ─
+INSERT INTO public.fotos (producto, foto)
+SELECT p.id, decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
+FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9)) AS p(id)
+CROSS JOIN generate_series(1, 6);
+
+-- ─── 9) Catálogos (subasta se setea luego para evitar FK circular) ──────────
+INSERT INTO public.catalogos (identificador, descripcion, responsable, subasta)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 'Relojes de Lujo',     1, NULL),
+  (2, 'Arte Contemporáneo',  1, NULL),
+  (3, 'Coleccionables',      1, NULL);
+
+-- ─── 10) Subastas (fecha > hoy+10 por CHECK) ────────────────────────────────
+INSERT INTO public.subastas
+  (identificador, fecha, hora, estado, subastador, ubicacion, capacidadasistentes,
+   tienedeposito, seguridadpropia, categoria, moneda, catalogo)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, DATE '2026-08-20', '14:00', 'abierta',    2, 'Salón Central', 100, true,  true,  'plata', 'ARS', 1),
+  (2, DATE '2026-08-25', '16:00', 'finalizada', 2, 'Salón Norte',    80, true,  false, 'oro',   'USD', 2),
+  (3, DATE '2026-09-10', '11:00', 'abierta',    2, 'Salón Sur',     120, false, true,  'comun', 'ARS', 3);
+
+UPDATE public.catalogos SET subasta = 1 WHERE identificador = 1;
+UPDATE public.catalogos SET subasta = 2 WHERE identificador = 2;
+UPDATE public.catalogos SET subasta = 3 WHERE identificador = 3;
+
+-- ─── 11) Items de catálogo (lote actual = primer no-subastado por id) ───────
+--  cat.1 (LIVE):  item1 en_puja (cierre futuro) · item2 pendiente
+--  cat.2 (ENDED): item3 vendido c/ganador · item4 vendido a la empresa (sin pujas)
+--  cat.3 (LIVE):  item5 en_puja · item6 propuesta pendiente · item7 aceptado (pendiente)
+INSERT INTO public.itemscatalogo
+  (identificador, catalogo, producto, numeropieza, preciobase, comision, subastado, estado_acuerdo, cierre_programado)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 1, 1, 1, 1000000, 100000, false, 'aceptado',  now() + interval '1 day'),
+  (2, 1, 2, 2,  500000,  50000, false, 'aceptado',  NULL),
+  (3, 2, 3, 1,    2000,    200, true,  'aceptado',  NULL),
+  (4, 2, 4, 2,    3000,    300, true,  'aceptado',  NULL),
+  (5, 3, 5, 1,   50000,   5000, false, 'aceptado',  now() + interval '1 day'),
+  (6, 3, 6, 2,   30000,   3000, false, 'propuesto', NULL),
+  (7, 3, 7, 3,   80000,   8000, false, 'aceptado',  NULL);
+
+-- ─── 12) Asistentes (postores conectados a cada subasta) ────────────────────
+INSERT INTO public.asistentes (identificador, numeropostor, cliente, subasta, rol, conectado, espectador)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 1, 12, 1, 'postor', true,  false),  -- plata  en subasta 1
+  (2, 2, 13, 1, 'postor', true,  false),  -- oro    en subasta 1
+  (3, 3, 14, 1, 'postor', true,  false),  -- platino en subasta 1
+  (4, 1, 13, 2, 'postor', false, false),  -- oro    en subasta 2 (ended)
+  (5, 2, 14, 2, 'postor', false, false),  -- platino en subasta 2
+  (6, 1, 10, 3, 'postor', true,  false),  -- comun  en subasta 3
+  (7, 2, 11, 3, 'postor', true,  false);  -- especial en subasta 3
+
+-- ─── 13) Pujas ──────────────────────────────────────────────────────────────
+--  item1 (LIVE): tres pujas, sin ganador todavía
+--  item3 (ENDED): oro (a4) gana en 2500
+--  item5 (LIVE): dos pujas, sin ganador
+INSERT INTO public.pujos (asistente, item, importe, ganador, fecha) VALUES
+  (1, 1, 1050000, false, now() - interval '30 min'),
+  (2, 1, 1100000, false, now() - interval '20 min'),
+  (3, 1, 1150000, false, now() - interval '10 min'),
+  (4, 3,    2100, false, now() - interval '3 day'),
+  (5, 3,    2300, false, now() - interval '3 day' + interval '5 min'),
+  (4, 3,    2500, true,  now() - interval '3 day' + interval '10 min'),
+  (6, 5,   55000, false, now() - interval '15 min'),
+  (7, 5,   60000, false, now() - interval '5 min');
+
+-- ─── 14) Registro de subasta (adjudicaciones de la subasta ENDED) ───────────
+INSERT INTO public.registrodesubasta (subasta, duenio, producto, cliente, comprador_empresa, importe, comision) VALUES
+  (2, 20, 3, 13,   false, 2500, 200),  -- item3 adjudicado a oro
+  (2, 20, 4, NULL, true,  3000, 300);  -- item4 sin pujas -> compra la empresa
+
+-- ─── 15) Medios de pago (los 3 tipos) ───────────────────────────────────────
+INSERT INTO public.medios_pago (identificador, cliente, tipo, moneda, internacional, verificado, vigente, detalle, banco)
+OVERRIDING SYSTEM VALUE VALUES
+  (100, 12, 'tarjeta_credito',    'ARS', false, true,  true, 'Visa ****4242',     NULL),
+  (101, 13, 'cuenta_bancaria',    'USD', true,  true,  true, 'Citi - ****1234',   'Citibank'),
+  (102, 13, 'tarjeta_credito',    'USD', false, true,  true, 'Mastercard ****5555', NULL),
+  (103, 14, 'cheque_certificado', 'USD', false, true,  true, 'Cheque Galicia',    'Galicia'),
+  (104, 10, 'tarjeta_credito',    'ARS', false, false, true, 'Visa ****0001',     NULL);
+
+INSERT INTO public.medios_tarjeta_credito (medio_pago, banco_emisor, ultimos_cuatro, titular, fecha_vencimiento) VALUES
+  (100, 'Santander', '4242', 'Paula Plata', DATE '2028-12-31'),
+  (102, 'Citi',      '5555', 'Oscar Oro',   DATE '2027-06-30'),
+  (104, 'BBVA',      '0001', 'Carla Comun', DATE '2029-01-31');
+
+INSERT INTO public.medios_cuenta_bancaria (medio_pago, banco, numero_cuenta, titular, monto_reservado) VALUES
+  (101, 'Citibank', '000111222333', 'Oscar Oro', 100000);
+
+INSERT INTO public.medios_cheque_certificado (medio_pago, banco, numero_cheque, monto_certificado, fecha_vencimiento) VALUES
+  (103, 'Galicia', 'CHQ-9001', 50000, DATE '2027-03-31');
+
+-- ─── 16) Direcciones ────────────────────────────────────────────────────────
+INSERT INTO public.direcciones (identificador, persona, nombre, calle, numero, ciudad, provincia, codigo_postal, pais, favorito)
+OVERRIDING SYSTEM VALUE VALUES
+  (200, 13, 'Casa',     'Av. Libertador', '1500', 'CABA',    'Buenos Aires', '1425', 32, true),
+  (201, 20, 'Depósito', 'Calle Falsa',    '123',  'CABA',    'Buenos Aires', '1000', 32, true),
+  (202, 10, 'Casa',     'San Martín',     '450',  'Córdoba', 'Córdoba',      '5000', 32, true);
+
+-- ─── 17) Cuenta de cobro del dueño ──────────────────────────────────────────
+INSERT INTO public.cuentas_cobro (duenio, banco, numero_cuenta, moneda, pais) VALUES
+  (20, 'Nación', '999888777', 'ARS', 'Argentina');
+
+-- ─── 18) Compra ganada (oro / item3), pendiente de pago ─────────────────────
+INSERT INTO public.compras (cliente, subasta, producto, medio_pago, importe, comision, costo_envio, total, retiro_personal, direccion_envio, estado_pago) VALUES
+  (13, 2, 3, 101, 2500, 200, 50, 2750, false, 200, 'pendiente');
+
+-- ─── 19) Multa pendiente (cliente comun) ────────────────────────────────────
+INSERT INTO public.multas (cliente, compra, importe_original, multa, estado, fecha_limite) VALUES
+  (10, NULL, 50000, 5000, 'pendiente', now() + interval '30 day');
+
+-- ─── 20) Notificaciones ─────────────────────────────────────────────────────
+INSERT INTO public.notificaciones (cliente, titulo, mensaje, leida, fecha_creacion) VALUES
+  (13, 'Ganaste la subasta',        'Adjudicaste "Óleo Abstracto" por USD 2500. Completá el pago.',          false, now() - interval '2 day'),
+  (20, 'Tu artículo fue aceptado',  'Tu bien "Moneda Antigua" fue aceptado. Revisá las condiciones propuestas.', false, now() - interval '1 day'),
+  (20, 'Tu artículo fue rechazado', 'Motivo: La pieza presenta daños no declarados y falta documentación de origen lícito. Se registró un cargo de devolución de $5000.', true, now() - interval '5 day'),
+  (10, 'Multa pendiente',           'Tenés una multa pendiente de $5000.',                                    false, now() - interval '1 day');
+
+-- ─── 21) Reset de secuencias de los IDs insertados a mano ───────────────────
+SELECT setval(pg_get_serial_sequence('public.personas',     'identificador'), (SELECT MAX(identificador) FROM public.personas));
+SELECT setval(pg_get_serial_sequence('public.sectores',     'identificador'), (SELECT MAX(identificador) FROM public.sectores));
+SELECT setval(pg_get_serial_sequence('public.productos',    'identificador'), (SELECT MAX(identificador) FROM public.productos));
+SELECT setval(pg_get_serial_sequence('public.catalogos',    'identificador'), (SELECT MAX(identificador) FROM public.catalogos));
+SELECT setval(pg_get_serial_sequence('public.subastas',     'identificador'), (SELECT MAX(identificador) FROM public.subastas));
+SELECT setval(pg_get_serial_sequence('public.itemscatalogo','identificador'), (SELECT MAX(identificador) FROM public.itemscatalogo));
+SELECT setval(pg_get_serial_sequence('public.asistentes',   'identificador'), (SELECT MAX(identificador) FROM public.asistentes));
+SELECT setval(pg_get_serial_sequence('public.medios_pago',  'identificador'), (SELECT MAX(identificador) FROM public.medios_pago));
+SELECT setval(pg_get_serial_sequence('public.direcciones',  'identificador'), (SELECT MAX(identificador) FROM public.direcciones));
+
+COMMIT;
