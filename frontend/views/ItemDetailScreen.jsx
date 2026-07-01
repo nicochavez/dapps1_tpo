@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 
 import Header from '../components/Header';
@@ -55,15 +55,23 @@ function CatalogItemDetail({
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bidTick, setBidTick] = useState(0);
+  const detailLoadedRef = useRef(false);
 
-  // ── Carga el detalle del item (solo al montar) ──────────────────────────────
+  // ── Carga el detalle del item: al montar y en cada tick de polling ──────────
+  // Re-fetchear en cada tick mantiene cierreProgramado y estadoLote frescos desde
+  // la BD compartida (Supabase). Es la única forma de sincronizar el countdown
+  // entre dos backends locales distintos: el WebSocket no cruza máquinas.
   useEffect(() => {
     let cancel = false;
     getItemCatalogoDetalle(catalogoId, itemId, currentUser?.token)
-      .then(d => { if (!cancel) { setDetail(d); setLoading(false); } })
-      .catch(err => { if (!cancel) { Alert.alert('No se pudo cargar el item', err.message); setLoading(false); } });
+      .then(d => { if (!cancel) { setDetail(d); setLoading(false); detailLoadedRef.current = true; } })
+      .catch(err => {
+        if (cancel) return;
+        // Solo alertar/cortar el spinner en la carga inicial; ignorar errores transitorios del polling.
+        if (!detailLoadedRef.current) { Alert.alert('No se pudo cargar el item', err.message); setLoading(false); }
+      });
     return () => { cancel = true; };
-  }, [catalogoId, itemId, currentUser?.token]);
+  }, [catalogoId, itemId, currentUser?.token, bidTick]);
 
   // ── Fetch de pujas: se ejecuta al montar, al pujar (bidTick) y cada 5s ─────
   const estadoLoteActual = detail?.estadoLote ?? estadoLoteHint;
