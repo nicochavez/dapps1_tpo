@@ -128,15 +128,31 @@ OVERRIDING SYSTEM VALUE VALUES
   (3, 'Coleccionables',      1, NULL),
   (4, 'Instrumentos Musicales', 1, NULL);
 
--- ─── 10) Subastas (fecha > hoy+10 por CHECK) ────────────────────────────────
+-- ─── 10) Subastas ───────────────────────────────────────────────────────────
+-- Fechas relativas para que los estados sean correctos al correr el script:
+--   #1 y #3: fecha = hoy, estado = programada, hora = próximo minuto → el scheduler las pasa a LIVE al llegar
+--   #2: finalizada (el estado es suficiente; fecha no importa para el scheduler)
+--   #4: fecha = hoy+14, estado = programada → UPCOMING
+-- Ampliar el CHECK de estado para incluir 'programada' (UPCOMING).
+ALTER TABLE subastas DROP CONSTRAINT IF EXISTS subastas_fecha_check;
+ALTER TABLE subastas DROP CONSTRAINT IF EXISTS subastas_estado_check;
+ALTER TABLE subastas ADD CONSTRAINT subastas_estado_check
+  CHECK (estado IN ('programada', 'abierta', 'finalizada', 'cerrada'));
+
+-- Variable de sesión: hora actual en Argentina (UTC-3). ON COMMIT DROP = se borra sola al final.
+CREATE TEMP TABLE _now ON COMMIT DROP AS
+  SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires') AS ts;
+
+-- Subastas 1 y 3: programada con hora = próximo minuto exacto (segundos truncados para que el
+-- minuto mostrado en la app coincida con el instante del flip). El scheduler las activa (LIVE) al llegar.
 INSERT INTO public.subastas
   (identificador, fecha, hora, estado, subastador, ubicacion, capacidadasistentes,
    tienedeposito, seguridadpropia, categoria, moneda, catalogo)
-OVERRIDING SYSTEM VALUE VALUES
-  (1, DATE '2026-08-20', '14:00', 'abierta',    2, 'Salón Central', 100, true,  true,  'plata',   'ARS', 1),
-  (2, DATE '2026-08-25', '16:00', 'finalizada', 2, 'Salón Norte',    80, true,  false, 'oro',     'USD', 2),
-  (3, DATE '2026-09-10', '11:00', 'abierta',    2, 'Salón Sur',     120, false, true,  'comun',   'ARS', 3),
-  (4, DATE '2026-10-15', '10:00', 'abierta',    2, 'Salón Este',     60, true,  true,  'especial','ARS', 4);
+OVERRIDING SYSTEM VALUE
+SELECT 1, ts::date,      date_trunc('minute', ts + interval '1 minute')::time, 'programada', 2, 'Salón Central', 100, true,  true,  'plata',   'ARS', 1 FROM _now UNION ALL
+SELECT 2, ts::date - 3,  '16:00',                                              'finalizada', 2, 'Salón Norte',    80, true,  false, 'oro',     'USD', 2 FROM _now UNION ALL
+SELECT 3, ts::date,      date_trunc('minute', ts + interval '1 minute')::time, 'programada', 2, 'Salón Sur',     120, false, true,  'comun',   'ARS', 3 FROM _now UNION ALL
+SELECT 4, ts::date + 14, '10:00',                                              'programada', 2, 'Salón Este',     60, true,  true,  'especial','ARS', 4 FROM _now;
 
 UPDATE public.catalogos SET subasta = 1 WHERE identificador = 1;
 UPDATE public.catalogos SET subasta = 2 WHERE identificador = 2;

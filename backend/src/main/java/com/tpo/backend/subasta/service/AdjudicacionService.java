@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -65,6 +66,23 @@ public class AdjudicacionService {
         this.registroRepository = registroRepository;
         this.eventPublisher = eventPublisher;
         this.notificacionService = notificacionService;
+    }
+
+    /**
+     * Transiciona subastas programadas a abierta cuando llega su fecha y hora.
+     * Invocado periodicamente por {@link SubastaSchedulerService}.
+     */
+    @Transactional
+    public void activarProgramadas() {
+        LocalDateTime ahora = LocalDateTime.now();
+        subastaRepository.findByEstado("programada").forEach(s -> {
+            if (s.getFecha() == null || s.getHora() == null) return;
+            if (!ahora.isBefore(LocalDateTime.of(s.getFecha(), s.getHora()))) {
+                s.setEstado("abierta");
+                subastaRepository.save(s);
+                log.info("[SCHEDULER] Subasta {} activada (LIVE).", s.getId());
+            }
+        });
     }
 
     /**

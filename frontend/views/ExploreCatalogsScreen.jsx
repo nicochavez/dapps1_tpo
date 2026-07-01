@@ -80,19 +80,28 @@ export default function ExploreCatalogsScreen({ navigation }) {
   const [activeUserCategory, setActiveUserCategory] = useState('All');
   const [openDropdown, setOpenDropdown] = useState(null);
 
-  const cargar = useCallback(async () => {
+  // silent=true: refresco de polling sin spinner ni alertas (no interrumpe la UI).
+  const cargar = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await getCatalogos(currentUser?.token);
       setCatalogs((data || []).map(mapCatalogo));
     } catch (error) {
-      Alert.alert('No se pudieron cargar los catálogos', error.message);
+      if (!silent) Alert.alert('No se pudieron cargar los catálogos', error.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [currentUser?.token]);
 
-  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
+  // Recarga al enfocar + polling cada 15s para reflejar transiciones UPCOMING→LIVE→ENDED
+  // que hace el scheduler del backend, sin tener que salir y volver a la pantalla.
+  useFocusEffect(
+    useCallback(() => {
+      cargar();
+      const intervalo = setInterval(() => cargar(true), 15000);
+      return () => clearInterval(intervalo);
+    }, [cargar])
+  );
 
   // EXTRACCIÓN DINÁMICA DE OPCIONES
   const itemCategories = ['All', ...new Set(catalogs.map(c => c.itemCategory).filter(Boolean))];
@@ -107,6 +116,7 @@ export default function ExploreCatalogsScreen({ navigation }) {
       case 'finalizada':
       case 'cerrada':
         return { label: 'ENDED', color: 'bg-slate-500', textColor: 'text-slate-700', icon: 'check-circle-outline' };
+      case 'programada':
       default:
         return { label: 'UPCOMING', color: 'bg-blue-500', textColor: 'text-blue-700', icon: 'clock-outline' };
     }
@@ -130,8 +140,9 @@ export default function ExploreCatalogsScreen({ navigation }) {
   // Formateador de fecha simple (ej: "OCT 24, 2026")
   const formatDate = (dateString) => {
     if (!dateString) return '';
+    const [year, month, day] = dateString.split('-').map(Number);
     const options = { month: 'short', day: 'numeric', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options).toUpperCase();
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', options).toUpperCase();
   };
 
   // Formateador de hora simple (ej: "2:00 PM")

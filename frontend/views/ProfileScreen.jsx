@@ -107,7 +107,7 @@ export default function ProfileScreen() {
   const subastasAsistidas = metrics?.subastasAsistidas ?? 0;
   const subastasGanadas   = metrics?.subastasGanadas ?? 0;
   const winRate = subastasAsistidas > 0
-    ? Math.round((subastasGanadas / subastasAsistidas) * 100)
+    ? Math.min(100, Math.round((subastasGanadas / subastasAsistidas) * 100))
     : 0;
 
   const initials = currentUser.nombre

@@ -124,7 +124,7 @@ public class SubastaService {
         SubastaEntity s = new SubastaEntity();
         s.setFecha(request.getFecha() != null ? LocalDate.parse(request.getFecha()) : null);
         s.setHora(LocalTime.parse(request.getHora()));
-        s.setEstado("abierta");
+        s.setEstado("programada");
         s.setUbicacion(request.getUbicacion());
         s.setCapacidadAsistentes(request.getCapacidadAsistentes());
         s.setTieneDeposito(request.getTieneDeposito());

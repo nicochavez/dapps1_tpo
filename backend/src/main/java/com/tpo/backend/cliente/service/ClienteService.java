@@ -15,6 +15,7 @@ import com.tpo.backend.common.repository.PaisRepository;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.persona.PersonaRepository;
 import com.tpo.backend.auth.security.SecurityUtils;
+import com.tpo.backend.puja.repository.PujaRepository;
 import com.tpo.backend.subasta.repository.AsistenteRepository;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
 import org.springframework.stereotype.Service;
@@ -33,19 +34,22 @@ public class ClienteService {
     private final AsistenteRepository asistenteRepository;
     private final RegistroDeSubastaRepository registroRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PujaRepository pujaRepository;
 
     public ClienteService(ClienteRepository clienteRepository,
                           PersonaRepository personaRepository,
                           PaisRepository paisRepository,
                           AsistenteRepository asistenteRepository,
                           RegistroDeSubastaRepository registroRepository,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          PujaRepository pujaRepository) {
         this.clienteRepository = clienteRepository;
         this.personaRepository = personaRepository;
         this.paisRepository = paisRepository;
         this.asistenteRepository = asistenteRepository;
         this.registroRepository = registroRepository;
         this.usuarioRepository = usuarioRepository;
+        this.pujaRepository = pujaRepository;
     }
 
     @Transactional
@@ -64,7 +68,8 @@ public class ClienteService {
     public MetricasDto getMetricas() {
         ClienteEntity cliente = currentClienteEntity();
 
-        int subastasAsistidas = asistenteRepository.findByClienteId(cliente.getId()).size();
+        // Items distintos en los que el cliente pujó (semántica correcta para "Attended").
+        int subastasAsistidas = (int) pujaRepository.countDistinctItemsByClienteId(cliente.getId());
 
         var registros = registroRepository.findByClienteId(cliente.getId());
         // Contar items ganados individualmente (cada adjudicación es una victoria).

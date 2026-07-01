@@ -30,6 +30,14 @@ public class SubastaSchedulerService {
 
     @Scheduled(fixedDelay = 5000)
     public void procesarSubastasAbiertas() {
+        // Activar subastas cuya fecha/hora ya pasó
+        try {
+            adjudicacionService.activarProgramadas();
+        } catch (RuntimeException e) {
+            log.error("Error activando subastas programadas: {}", e.getMessage(), e);
+        }
+
+        // Procesar items de las subastas activas
         List<SubastaEntity> abiertas = subastaRepository.findByEstado("abierta");
         for (SubastaEntity subasta : abiertas) {
             try {
