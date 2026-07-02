@@ -39,7 +39,7 @@ import java.util.List;
 public class ProductoService {
 
     /** Empleado del sistema que actua como verificador por defecto (ver AuthService). */
-    private static final Long VERIFICADOR_SISTEMA_ID = 2L;
+    private static final Long VERIFICADOR_SISTEMA_ID = 1L;
 
     private final ProductoRepository productoRepository;
     private final FotoRepository fotoRepository;
@@ -240,6 +240,11 @@ public class ProductoService {
         exigirEstado(prod, EstadoProducto.propuesta_enviada);
         prod.setEstado(EstadoProducto.aceptado_por_usuario);
         productoRepository.save(prod);
+        // Marca el item del catalogo como aceptado para que entre a la subasta (lo toma el scheduler).
+        itemCatalogoRepository.findByProductoId(productoId).ifPresent(item -> {
+            item.setEstadoAcuerdo("aceptado");
+            itemCatalogoRepository.save(item);
+        });
         return toDto(prod);
     }
 
@@ -250,6 +255,11 @@ public class ProductoService {
         exigirEstado(prod, EstadoProducto.propuesta_enviada);
         prod.setEstado(EstadoProducto.rechazado_por_usuario);
         productoRepository.save(prod);
+        // El item queda fuera de la subasta.
+        itemCatalogoRepository.findByProductoId(productoId).ifPresent(item -> {
+            item.setEstadoAcuerdo("rechazado");
+            itemCatalogoRepository.save(item);
+        });
         return toDto(prod);
     }
 

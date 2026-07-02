@@ -8,7 +8,7 @@ import ItemDetailUpcomingView from '../components/ItemDetailUpcomingView';
 import ItemDetailEndedView from '../components/ItemDetailEndedView';
 
 import { AuthContext } from '../context/AuthContext';
-import { getProductoById, getItemCatalogoDetalle, getHistorialPujas, buildImageUrl } from '../services/api';
+import { getProductoById, getItemCatalogoDetalle, getHistorialPujas, getMultas, buildImageUrl } from '../services/api';
 
 // ─── Regla de negocio de categorías ─────────────────────────────────────────
 // Misma tabla que CatalogItemsScreen — mantener sincronizadas.
@@ -55,6 +55,17 @@ function CatalogItemDetail({
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bidTick, setBidTick] = useState(0);
+  const [hasPendingMulta, setHasPendingMulta] = useState(false);
+
+  // ── Multas del usuario: si tiene alguna pendiente, no puede pujar (regla de negocio) ──
+  useEffect(() => {
+    if (!currentUser?.token) { setHasPendingMulta(false); return; }
+    let cancel = false;
+    getMultas(currentUser.token)
+      .then(ms => { if (!cancel) setHasPendingMulta((ms || []).some(m => m.estado === 'pendiente')); })
+      .catch(() => { if (!cancel) setHasPendingMulta(false); });
+    return () => { cancel = true; };
+  }, [currentUser?.token]);
   const detailLoadedRef = useRef(false);
 
   // ── Carga el detalle del item: al montar y en cada tick de polling ──────────
@@ -158,7 +169,7 @@ function CatalogItemDetail({
     item, parentCatalog, navigation,
     canAccessPrices: showPrices, lockReason, requiredLabel,
     currentUser, isOwner, bids, won: !!won,
-    subastaId, refreshBids,
+    subastaId, refreshBids, hasPendingMulta,
   };
 
   if (isLive) return <ItemDetailLiveView {...shared} />;

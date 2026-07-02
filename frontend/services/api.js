@@ -78,6 +78,13 @@ export function registerRequest({
   return apiRequest('/auth/register', { method: 'POST', body: form });
 }
 
+export function recuperarContrasenia(documento) {
+  return apiRequest('/auth/recuperar-contrasenia', {
+    method: 'POST',
+    body: JSON.stringify({ documento }),
+  });
+}
+
 export function cambiarContrasenia({ email, contrasenia, contraseniaActual }) {
   return apiRequest('/auth/cambiar-contrasenia', {
     method: 'POST',

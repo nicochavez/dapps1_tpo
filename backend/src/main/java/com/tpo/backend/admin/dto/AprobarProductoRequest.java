@@ -22,11 +22,8 @@ public class AprobarProductoRequest {
     @Positive
     private BigDecimal comision;
 
-    /** Fecha de la subasta (ISO yyyy-MM-dd). Opcional: si se informa, actualiza la subasta del catalogo. */
-    private String fecha;
-
-    /** Hora de la subasta (ISO HH:mm o HH:mm:ss). Opcional. */
-    private String hora;
+    // La fecha y hora de inicio NO se fijan aca: las define la subasta a la que
+    // pertenece el catalogo. El item hereda ese horario al asignarse.
 
     /** Ubicacion/lugar de la subasta. Opcional. */
     private String ubicacion;

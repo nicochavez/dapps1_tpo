@@ -7,23 +7,26 @@ import Footer from '../components/Footer';
 import { AuthContext } from '../context/AuthContext';
 import { getNotificaciones, marcarNotificacionLeida } from '../services/api';
 
-// El backend no tipa la notificación: inferimos el ícono a partir del título.
+// El backend no tipa la notificación: inferimos el ícono a partir del título (inglés).
 const getIconConfig = (titulo = '') => {
   const t = titulo.toLowerCase();
-  if (t.includes('acept')) {
+  if (t.includes('accept')) {
     return { bg: 'bg-emerald-100', icon: <Feather name="check" size={20} color="#10b981" /> };
   }
-  if (t.includes('rechaz')) {
+  if (t.includes('reject')) {
     return { bg: 'bg-red-100', icon: <Feather name="x" size={20} color="#dc2626" /> };
   }
-  if (t.includes('puja') || t.includes('subasta') || t.includes('oferta')) {
+  if (t.includes('won') || t.includes('bid') || t.includes('auction') || t.includes('offer')) {
     return { bg: 'bg-purple-100', icon: <MaterialCommunityIcons name="gavel" size={22} color="#7C3AED" /> };
   }
-  if (t.includes('pago') || t.includes('cargo') || t.includes('multa')) {
+  if (t.includes('payment') || t.includes('charge') || t.includes('fine') || t.includes('purchase')) {
     return { bg: 'bg-slate-100', icon: <Feather name="credit-card" size={20} color="#475569" /> };
   }
   return { bg: 'bg-slate-200', icon: <Feather name="bell" size={20} color="#475569" /> };
 };
+
+// Una notificación de puja ganada lleva al usuario a "Mis Pujas".
+const isWinNotification = (titulo = '') => titulo.toLowerCase().includes('won');
 
 function formatFecha(iso) {
   if (!iso) return '';
@@ -68,14 +71,14 @@ export default function NotificationsScreen({ navigation }) {
   if (!currentUser) return null;
 
   const handlePress = async (n) => {
-    if (n.leida) return;
-    // Optimista: marcamos en UI y avisamos al backend.
-    setNotifications(prev => prev.map(x => x.identificador === n.identificador ? { ...x, leida: true } : x));
-    try {
-      await marcarNotificacionLeida(n.identificador, currentUser.token);
-    } catch {
-      // Si falla, recargamos para reflejar el estado real.
-      cargar();
+    // Optimista: marcamos como leída en UI y avisamos al backend (si hacía falta).
+    if (!n.leida) {
+      setNotifications(prev => prev.map(x => x.identificador === n.identificador ? { ...x, leida: true } : x));
+      marcarNotificacionLeida(n.identificador, currentUser.token).catch(() => cargar());
+    }
+    // Si es una notificación de puja ganada, llevar a Mis Pujas para completar la compra.
+    if (isWinNotification(n.titulo)) {
+      navigation.navigate('Bids');
     }
   };
 

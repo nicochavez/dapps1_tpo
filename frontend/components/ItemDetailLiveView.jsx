@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert, Linking } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import ItemDetailBase from './ItemDetailBase';
 import BidHistorySection from './BidHistorySection';
@@ -38,7 +38,7 @@ function fmtCountdown(secs) {
 }
 
 export default function ItemDetailLiveView(props) {
-  const { item, canAccessPrices, currentUser, isOwner, subastaId, refreshBids } = props;
+  const { item, canAccessPrices, currentUser, isOwner, subastaId, refreshBids, hasPendingMulta } = props;
   const [bidAmount, setBidAmount] = useState('');
   const [placing, setPlacing]     = useState(false);
   const [numeroPostor, setNumeroPostor] = useState(null);
@@ -50,8 +50,17 @@ export default function ItemDetailLiveView(props) {
 
   const secsLeft = useCountdown(closesAt);
 
+  // Al llegar el countdown a 0, el backend cierra el lote en ~5s. Aceleramos el refresh
+  // del padre para que re-lea estadoLote y esta vista cambie a ItemDetailEndedView.
+  useEffect(() => {
+    if (secsLeft !== 0) return;
+    refreshBids?.();
+    const id = setInterval(() => refreshBids?.(), 2500);
+    return () => clearInterval(id);
+  }, [secsLeft === 0]);
+
   const lotState = item?.estadoLote || (item?.subastado === 'si' ? 'subastado' : 'pendiente');
-  const effectiveLotState = itemClosed ? 'subastado' : lotState;
+  const effectiveLotState = (itemClosed || secsLeft === 0) ? 'subastado' : lotState;
 
   const precioBase     = typeof item?.precioBase === 'number' ? item.precioBase : 0;
   const currentPriceNum = currentBid ?? (typeof item?.currentBid === 'number' ? item.currentBid : precioBase);
@@ -71,10 +80,17 @@ export default function ItemDetailLiveView(props) {
     return () => { cancelled = true; };
   }, [subastaId, currentUser?.token, isOwner, canAccessPrices]);
 
-  const handlePlaceBid = async () => {
+  // Puja mínima permitida, redondeada hacia arriba para no caer por debajo del límite.
+  const minBidAmount = Math.ceil(minBid);
+
+  // Núcleo de la puja: valida, llama al backend y actualiza countdown/historial.
+  const submitBid = async (amount) => {
     if (!canAccessPrices || effectiveLotState !== 'en_puja') return;
-    const amount = Number(bidAmount);
-    if (!bidAmount || isNaN(amount) || amount <= 0) {
+    if (hasPendingMulta) {
+      Alert.alert('Pending fines', 'You have pending fines. Pay them before placing a bid.');
+      return;
+    }
+    if (!amount || isNaN(amount) || amount <= 0) {
       Alert.alert('Importe inválido', 'Ingresá un monto mayor a 0.');
       return;
     }
@@ -91,7 +107,16 @@ export default function ItemDetailLiveView(props) {
     }
   };
 
-  const canBid = canAccessPrices && !isOwner && effectiveLotState === 'en_puja';
+  const handlePlaceBid = () => submitBid(Number(bidAmount));
+  const handleBidMinimum = () => submitBid(minBidAmount);
+
+  // Directo de la subasta (por ahora, YouTube genérico).
+  const openLiveStream = () => {
+    Linking.openURL('https://www.youtube.com').catch(() =>
+      Alert.alert('No se pudo abrir el directo', 'Intentá nuevamente más tarde.'));
+  };
+
+  const canBid = canAccessPrices && !isOwner && effectiveLotState === 'en_puja' && !hasPendingMulta;
 
   return (
     <ItemDetailBase {...props} badgeColor="bg-red-500/90" badgeLabel="Live Auction">
@@ -187,6 +212,17 @@ export default function ItemDetailLiveView(props) {
                 {placing ? 'Enviando...' : 'Place Bid'}
               </Text>
             </TouchableOpacity>
+
+            {/* Puja rápida por el mínimo permitido */}
+            <TouchableOpacity
+              onPress={handleBidMinimum}
+              disabled={placing}
+              className={`rounded-2xl py-3 items-center mt-2 border ${placing ? 'border-slate-200' : 'border-[#a78bfa] bg-purple-50'}`}
+            >
+              <Text className={`font-bold text-sm ${placing ? 'text-slate-300' : 'text-[#7C3AED]'}`}>
+                Bid minimum ({formatPrice(minBidAmount)})
+              </Text>
+            </TouchableOpacity>
           </>
         ) : (
           <View className="bg-slate-100 rounded-2xl py-4 items-center border border-slate-200 border-dashed mt-4">
@@ -196,11 +232,22 @@ export default function ItemDetailLiveView(props) {
                 ? 'You cannot bid on your own item'
                 : effectiveLotState === 'subastado'
                 ? 'This lot has closed'
+                : hasPendingMulta
+                ? 'You have pending fines. Pay them to bid.'
                 : 'Bidding restricted'}
             </Text>
           </View>
         )}
       </View>
+
+      {/* Directo de la subasta (YouTube) — visible para todos en la vista en vivo */}
+      <TouchableOpacity
+        onPress={openLiveStream}
+        className="flex-row items-center justify-center bg-red-600 rounded-2xl py-3.5 mb-6 shadow-sm shadow-red-200"
+      >
+        <Feather name="youtube" size={18} color="white" />
+        <Text className="text-white font-bold text-sm ml-2">Watch live stream</Text>
+      </TouchableOpacity>
 
       {/* Historial en tiempo real */}
       <BidHistorySection

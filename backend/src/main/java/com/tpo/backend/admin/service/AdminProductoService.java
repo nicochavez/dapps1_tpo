@@ -24,10 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
@@ -86,7 +83,8 @@ public class AdminProductoService {
         itemRequest.setComision(request.getComision());
         catalogoService.crearItem(itemRequest);
 
-        // El admin fija fecha/hora/lugar de la subasta desde Swagger (RF flujo vendedor).
+        // La fecha/hora de inicio la define la subasta del catalogo, no el producto.
+        // Solo se ajustan datos opcionales (ubicacion/categoria) si el admin los informa.
         aplicarDatosSubasta(request);
 
         producto.setEstado(EstadoProducto.propuesta_enviada);
@@ -97,26 +95,15 @@ public class AdminProductoService {
         return productoService.toDto(producto);
     }
 
-    /** Si el admin informo fecha/hora/ubicacion/categoria, las graba en la subasta del catalogo. */
+    /** Si el admin informo ubicacion/categoria, las graba en la subasta del catalogo.
+     *  La fecha/hora de inicio son propiedad de la subasta y no se tocan aca. */
     private void aplicarDatosSubasta(AprobarProductoRequest request) {
-        if (request.getFecha() == null && request.getHora() == null
-                && request.getUbicacion() == null && request.getCategoria() == null) {
+        if (request.getUbicacion() == null && request.getCategoria() == null) {
             return;
         }
         SubastaEntity subasta = subastaRepository.findByCatalogoId(request.getCatalogoId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No hay subasta asociada al catalogo " + request.getCatalogoId()));
-        try {
-            if (request.getFecha() != null && !request.getFecha().isBlank()) {
-                subasta.setFecha(LocalDate.parse(request.getFecha().trim()));
-            }
-            if (request.getHora() != null && !request.getHora().isBlank()) {
-                subasta.setHora(LocalTime.parse(request.getHora().trim()));
-            }
-        } catch (DateTimeParseException e) {
-            throw new UnprocessableEntityException(
-                    "Fecha u hora con formato invalido (esperado yyyy-MM-dd y HH:mm): " + e.getMessage());
-        }
         if (request.getUbicacion() != null && !request.getUbicacion().isBlank()) {
             subasta.setUbicacion(request.getUbicacion().trim());
         }
@@ -139,10 +126,10 @@ public class AdminProductoService {
         registrarDevolucionConCargo(producto, cargo);
 
         notificacionService.enviar(producto.getDuenio().getId(),
-                "Tu articulo fue rechazado",
-                "Motivo: " + request.getMotivo()
-                        + ". Se registro un cargo de devolucion de $" + cargo
-                        + " que debes abonar para retirar el bien.");
+                "Your item was rejected",
+                "Reason: " + request.getMotivo()
+                        + ". A return charge of $" + cargo
+                        + " was registered, payable to retrieve the item.");
         log.info("Producto {} rechazado. Cargo de devolucion ${} al dueno {}",
                 productoId, cargo, producto.getDuenio().getId());
         return productoService.toDto(producto);
@@ -160,15 +147,15 @@ public class AdminProductoService {
 
     private void notificarAceptacion(ProductoEntity producto, AprobarProductoRequest request) {
         SubastaEntity subasta = subastaRepository.findByCatalogoId(request.getCatalogoId()).orElse(null);
-        String fecha = subasta != null && subasta.getFecha() != null ? subasta.getFecha().toString() : "a confirmar";
-        String hora = subasta != null && subasta.getHora() != null ? subasta.getHora().toString() : "a confirmar";
-        String lugar = subasta != null && subasta.getUbicacion() != null ? subasta.getUbicacion() : "a confirmar";
+        String fecha = subasta != null && subasta.getFecha() != null ? subasta.getFecha().toString() : "TBD";
+        String hora = subasta != null && subasta.getHora() != null ? subasta.getHora().toString() : "TBD";
+        String lugar = subasta != null && subasta.getUbicacion() != null ? subasta.getUbicacion() : "TBD";
 
-        String mensaje = "Tu bien fue aceptado. Subasta: " + fecha + " " + hora + " en " + lugar
-                + ". Precio base por item: $" + request.getPrecioBase()
-                + ". Comision: $" + request.getComision()
-                + ". Ingresa a la app para aceptar o rechazar estas condiciones.";
-        notificacionService.enviar(producto.getDuenio().getId(), "Tu articulo fue aceptado", mensaje);
+        String mensaje = "Your item was accepted. Auction: " + fecha + " " + hora + " at " + lugar
+                + ". Base price per item: $" + request.getPrecioBase()
+                + ". Commission: $" + request.getComision()
+                + ". Open the app to accept or reject these conditions.";
+        notificacionService.enviar(producto.getDuenio().getId(), "Your item was accepted", mensaje);
     }
 
     private void registrarDevolucionConCargo(ProductoEntity producto, BigDecimal cargo) {

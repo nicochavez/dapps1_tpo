@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator,
   KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Logo from '../components/Logo';
+import { recuperarContrasenia } from '../services/api';
 
 export default function ForgotPasswordScreen({ navigation }) {
-  const [email, setEmail] = useState('');
+  const [documento, setDocumento] = useState('');
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!email.trim()) return;
-    setSent(true);
+  const handleSend = async () => {
+    if (!documento.trim() || loading) return;
+    try {
+      setLoading(true);
+      await recuperarContrasenia(documento.trim());
+      setSent(true);
+    } catch {
+      // No revelamos si el DNI existe: mostramos la misma confirmación igualmente.
+      setSent(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,8 +48,12 @@ export default function ForgotPasswordScreen({ navigation }) {
                 </View>
                 <Text className="text-xl font-bold text-slate-800 mb-2">Check your email</Text>
                 <Text className="text-slate-400 text-sm text-center px-4 leading-5">
-                  {'We sent a password reset link to\n'}
-                  <Text className="font-bold text-slate-600">{email}</Text>
+                  If an account exists for DNI{' '}
+                  <Text className="font-bold text-slate-600">{documento}</Text>
+                  , we emailed you a new temporary password.
+                </Text>
+                <Text className="text-slate-300 text-[11px] text-center px-4 mt-3 italic">
+                  (Demo: the new password is also printed to the backend console.)
                 </Text>
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
@@ -50,27 +65,30 @@ export default function ForgotPasswordScreen({ navigation }) {
             ) : (
               <>
                 <Text className="text-center text-slate-400 mb-8">
-                  Enter your email and we will send you a reset link
+                  Enter your DNI and we will email you a new temporary password
                 </Text>
 
-                <Text className="font-bold text-black mb-2 ml-1 text-sm">Email</Text>
+                <Text className="font-bold text-black mb-2 ml-1 text-sm">DNI</Text>
                 <View className="bg-slate-50 rounded-2xl mb-8 border border-transparent">
                   <TextInput
                     className="px-4 py-4 text-black"
-                    placeholder="your@email.com"
+                    placeholder="e.g. 40000010"
                     placeholderTextColor="#94a3b8"
-                    keyboardType="email-address"
+                    keyboardType="number-pad"
                     autoCapitalize="none"
-                    value={email}
-                    onChangeText={setEmail}
+                    value={documento}
+                    onChangeText={setDocumento}
                   />
                 </View>
 
                 <TouchableOpacity
                   onPress={handleSend}
-                  className="bg-[#7C3AED] rounded-2xl py-4 items-center justify-center shadow-md shadow-purple-200 mb-4"
+                  disabled={loading}
+                  className={`rounded-2xl py-4 items-center justify-center shadow-md shadow-purple-200 mb-4 ${loading ? 'bg-slate-300' : 'bg-[#7C3AED]'}`}
                 >
-                  <Text className="text-white font-bold text-lg">Send Reset Link</Text>
+                  {loading
+                    ? <ActivityIndicator color="white" />
+                    : <Text className="text-white font-bold text-lg">Reset Password</Text>}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => navigation.goBack()} className="items-center py-2">

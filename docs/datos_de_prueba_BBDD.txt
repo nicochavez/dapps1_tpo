@@ -264,13 +264,13 @@ INSERT INTO public.multas (cliente, compra, importe_original, multa, estado, fec
 
 -- ─── 20) Notificaciones ─────────────────────────────────────────────────────
 INSERT INTO public.notificaciones (cliente, titulo, mensaje, leida, fecha_creacion) VALUES
-  (13, 'Ganaste la subasta',        'Adjudicaste "Óleo Abstracto" por USD 2500. Completá el pago.',          false, now() - interval '2 day'),
-  (13, 'Compra confirmada',         'Tu compra de "Grabado Firmado" fue confirmada. Coordiná el retiro.',     true,  now() - interval '1 day'),
-  (14, 'Ganaste la subasta',        'Adjudicaste "Litografía Original" por USD 3200. Completá el pago.',      false, now() - interval '4 day'),
-  (14, 'Multa por mora',            'No pagaste "Litografía Original" en término. Se aplicó una multa por mora del 10% (USD 320) que deberás abonar junto con la compra.', false, now() - interval '1 day'),
-  (20, 'Tu artículo fue aceptado',  'Tu bien "Moneda Antigua" fue aceptado. Revisá las condiciones propuestas.', false, now() - interval '1 day'),
-  (20, 'Tu artículo fue rechazado', 'Motivo: La pieza presenta daños no declarados y falta documentación de origen lícito. Se registró un cargo de devolución de $5000.', true, now() - interval '5 day'),
-  (10, 'Multa pendiente',           'Tenés una multa pendiente de $5000.',                                    false, now() - interval '1 day');
+  (13, 'You won the bid',        'You won "Óleo Abstracto" for USD 2500. Complete the payment.',           false, now() - interval '2 day'),
+  (13, 'Purchase confirmed',     'Your purchase of "Grabado Firmado" was confirmed. Coordinate the pickup.', true,  now() - interval '1 day'),
+  (14, 'You won the bid',        'You won "Litografía Original" for USD 3200. Complete the payment.',       false, now() - interval '4 day'),
+  (14, 'Late payment fine',      'You did not pay "Litografía Original" on time. A 10% late fine (USD 320) was applied, payable together with the purchase.', false, now() - interval '1 day'),
+  (20, 'Your item was accepted', 'Your item "Moneda Antigua" was accepted. Review the proposed conditions.', false, now() - interval '1 day'),
+  (20, 'Your item was rejected', 'Reason: The piece has undeclared damage and lacks proof of lawful origin. A return charge of $5000 was registered.', true, now() - interval '5 day'),
+  (10, 'Pending fine',           'You have a pending fine of $5000.',                                      false, now() - interval '1 day');
 
 -- ─── 21) Reset de secuencias de los IDs insertados a mano ───────────────────
 SELECT setval(pg_get_serial_sequence('public.personas',     'identificador'), (SELECT MAX(identificador) FROM public.personas));

@@ -59,22 +59,31 @@ export default function CatalogItemsScreen({ route, navigation }) {
   const [activeCatalog, setActiveCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const cargar = useCallback(async () => {
+  // silent=true: refresco de polling sin spinner ni alertas (no interrumpe la UI).
+  const cargar = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await getCatalogos(currentUser?.token);
       const found = (data || []).find(c => String(c.identificador) === String(catalogId));
       setActiveCatalog(found
         ? { ...found, id: found.identificador, image: buildImageUrl(found.image), totalItems: found.cantidadItems }
         : null);
     } catch (error) {
-      Alert.alert('No se pudo cargar el catálogo', error.message);
+      if (!silent) Alert.alert('No se pudo cargar el catálogo', error.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [catalogId, currentUser?.token]);
 
-  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
+  // Recarga al enfocar + polling cada 5s para ver en tiempo real los cambios de lote
+  // (lote actual, vendidos, cierre) que hace el scheduler del backend.
+  useFocusEffect(
+    useCallback(() => {
+      cargar();
+      const intervalo = setInterval(() => cargar(true), 5000);
+      return () => clearInterval(intervalo);
+    }, [cargar])
+  );
 
   if (loading) {
     return (

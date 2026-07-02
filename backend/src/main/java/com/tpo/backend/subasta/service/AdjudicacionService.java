@@ -158,10 +158,10 @@ public class AdjudicacionService {
             pujaRepository.save(puja);
 
             if (ganadorCliente != null) {
-                String desc = producto != null ? producto.getDescripcionCatalogo() : "el item";
+                String desc = producto != null ? producto.getDescripcionCatalogo() : "the item";
                 notificacionService.enviar(ganadorCliente.getId(),
-                        "¡Ganaste la puja!",
-                        "Felicitaciones, ganaste \"" + desc + "\" por $" + importe + ". Completá la compra desde Mis Pujas.");
+                        "You won the bid!",
+                        "Congratulations, you won \"" + desc + "\" for $" + importe + ". Complete the purchase from My Bids.");
             }
 
             crearCompra(ganadorCliente, subasta, item.getProducto(), importe, comision);

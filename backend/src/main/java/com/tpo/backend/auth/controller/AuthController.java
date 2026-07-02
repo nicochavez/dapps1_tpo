@@ -34,4 +34,10 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/recuperar-contrasenia")
+    public ResponseEntity<Void> recuperarContrasenia(@Valid @RequestBody RecuperarContraseniaRequest request) {
+        authService.recuperarContrasenia(request);
+        return ResponseEntity.ok().build();
+    }
+
 }

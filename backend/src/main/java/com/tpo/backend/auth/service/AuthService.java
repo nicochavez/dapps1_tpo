@@ -3,6 +3,7 @@ package com.tpo.backend.auth.service;
 import com.tpo.backend.auth.dto.LoginRequest;
 import com.tpo.backend.auth.dto.LoginResponse;
 import com.tpo.backend.auth.dto.RegisterRequest;
+import com.tpo.backend.auth.dto.RecuperarContraseniaRequest;
 import com.tpo.backend.auth.dto.RegisterResponse;
 import com.tpo.backend.auth.dto.SetContraseniaRequest;
 import com.tpo.backend.auth.security.JwtService;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +38,11 @@ import java.util.List;
 @Service
 public class AuthService {
 
-    private static final Long VERIFICADOR_SISTEMA_ID = 2L;
+    private static final Long VERIFICADOR_SISTEMA_ID = 1L;
+
+    /** Alfabeto sin caracteres ambiguos para contrasenias temporales generadas. */
+    private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    private static final SecureRandom RNG = new SecureRandom();
 
     private final UsuarioRepository usuarioRepository;
     private final PersonaRepository personaRepository;
@@ -172,6 +178,41 @@ public class AuthService {
         List<String> roles = computeRoles(persona.getId());
         String token = jwtService.generateToken(persona.getId(), documento, usuario.getEmail(), roles);
         return new LoginResponse(token);
+    }
+
+    /**
+     * Recupero de contrasenia por DNI: genera una nueva contrasenia temporal, la persiste
+     * y la imprime por consola (igual que {@link com.tpo.backend.admin.service.AdminClienteService}
+     * al aprobar un cliente). No revela si el DNI existe para evitar enumeracion.
+     */
+    @Transactional
+    public void recuperarContrasenia(RecuperarContraseniaRequest request) {
+        String documento = request.getDocumento().trim();
+
+        PersonaEntity persona = personaRepository.findByDocumento(documento).orElse(null);
+        if (persona == null) {
+            System.out.println("Recupero de contrasenia: no existe usuario con DNI " + documento);
+            return;
+        }
+        UsuarioEntity usuario = usuarioRepository.findByPersonaId(persona.getId()).orElse(null);
+        if (usuario == null) {
+            System.out.println("Recupero de contrasenia: no existe usuario con DNI " + documento);
+            return;
+        }
+
+        String nuevaContrasenia = generarContrasenia(10);
+        System.out.println("Contraseña temporal generada para el DNI " + documento
+                + " (personaId " + persona.getId() + "): " + nuevaContrasenia);
+        usuario.setPasswordHash(passwordEncoder.encode(nuevaContrasenia));
+        usuarioRepository.save(usuario);
+    }
+
+    private String generarContrasenia(int longitud) {
+        StringBuilder sb = new StringBuilder(longitud);
+        for (int i = 0; i < longitud; i++) {
+            sb.append(CHARS.charAt(RNG.nextInt(CHARS.length())));
+        }
+        return sb.toString();
     }
 
     /** Roles del usuario segun las tablas de subtipo a las que pertenece su persona. */

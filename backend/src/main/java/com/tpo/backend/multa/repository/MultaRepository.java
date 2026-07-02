@@ -12,4 +12,6 @@ public interface MultaRepository extends JpaRepository<MultaEntity, Long> {
     List<MultaEntity> findByClienteIdAndEstado(Long clienteId, String estado);
 
     List<MultaEntity> findByClienteId(Long clienteId);
+
+    List<MultaEntity> findByCompraId(Long compraId);
 }

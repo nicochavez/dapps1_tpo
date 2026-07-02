@@ -96,9 +96,9 @@ public class AdminClienteService {
 
         NotificacionEntity notificacion = new NotificacionEntity();
         notificacion.setCliente(cliente);
-        notificacion.setTitulo("Registro aprobado");
-        notificacion.setMensaje("Tu registro fue aprobado en la categoria " + cliente.getCategoria() +
-                ". Revisá tu email para obtener tu contraseña temporal.");
+        notificacion.setTitulo("Registration approved");
+        notificacion.setMensaje("Your registration was approved in the " + cliente.getCategoria() +
+                " category. Check your email for your temporary password.");
         notificacion.setLeida(false);
         notificacion.setFechaCreacion(OffsetDateTime.now());
         notificacionRepository.save(notificacion);

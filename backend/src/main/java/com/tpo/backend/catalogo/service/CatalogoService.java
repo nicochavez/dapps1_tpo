@@ -135,9 +135,17 @@ public class CatalogoService {
 
         validarMinimoFotos(producto.getId());
 
+        // numeropieza por orden de llegada: siguiente al mayor ya asignado en el catalogo.
+        int siguientePieza = itemRepository.findByCatalogoId(catalogo.getId()).stream()
+                .map(ItemCatalogoEntity::getNumeroPieza)
+                .filter(java.util.Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
+
         ItemCatalogoEntity item = new ItemCatalogoEntity();
         item.setCatalogo(catalogo);
         item.setProducto(producto);
+        item.setNumeroPieza(siguientePieza);
         item.setPrecioBase(request.getPrecioBase());
         item.setComision(request.getComision());
         item.setSubastado(false);
