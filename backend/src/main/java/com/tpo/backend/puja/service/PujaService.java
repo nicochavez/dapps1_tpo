@@ -7,7 +7,9 @@ import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.common.ws.SubastaEventPublisher;
+import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import com.tpo.backend.catalogo.entity.CatalogoEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
@@ -45,6 +47,7 @@ public class PujaService {
     private final FotoRepository fotoRepository;
     private final ClienteService clienteService;
     private final SubastaEventPublisher eventPublisher;
+    private final MedioPagoRepository medioPagoRepository;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemRepository,
@@ -53,7 +56,8 @@ public class PujaService {
                        ProductoRepository productoRepository,
                        FotoRepository fotoRepository,
                        ClienteService clienteService,
-                       SubastaEventPublisher eventPublisher) {
+                       SubastaEventPublisher eventPublisher,
+                       MedioPagoRepository medioPagoRepository) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
@@ -62,6 +66,7 @@ public class PujaService {
         this.fotoRepository = fotoRepository;
         this.clienteService = clienteService;
         this.eventPublisher = eventPublisher;
+        this.medioPagoRepository = medioPagoRepository;
     }
 
     @Transactional
@@ -87,6 +92,13 @@ public class PujaService {
         // RF-21: los espectadores no pueden pujar.
         if (Boolean.TRUE.equals(asistente.getEspectador())) {
             throw new ForbiddenException("Esta conectado como espectador y no puede pujar.");
+        }
+
+        // Se exige un medio de pago verificado y vigente en la moneda de la subasta para poder pujar.
+        if (!medioPagoRepository.tieneMedioVerificadoEnMoneda(clienteId, subasta.getMoneda())) {
+            String moneda = subasta.getMoneda() != null ? subasta.getMoneda() : "";
+            throw new UnprocessableEntityException(
+                    ("Necesitas un medio de pago verificado en " + moneda + " para poder pujar.").trim());
         }
 
         BigDecimal mejorOferta = pujaRepository.findFirstByItemIdOrderByImporteDesc(itemId)

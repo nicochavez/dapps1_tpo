@@ -5,10 +5,13 @@ import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.dto.PagedResponse;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
+import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.compra.dto.CompraDto;
 import com.tpo.backend.compra.entity.CompraEntity;
 import com.tpo.backend.compra.repository.CompraRepository;
 import com.tpo.backend.historial.dto.HistorialSubastaDto;
+import com.tpo.backend.mediospago.entity.MedioPagoEntity;
+import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.subasta.entity.SubastaEntity;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
@@ -27,15 +30,18 @@ public class CompraService {
     private final RegistroDeSubastaRepository registroRepository;
     private final ItemCatalogoRepository itemRepository;
     private final ClienteService clienteService;
+    private final MedioPagoRepository medioPagoRepository;
 
     public CompraService(CompraRepository compraRepository,
                          RegistroDeSubastaRepository registroRepository,
                          ItemCatalogoRepository itemRepository,
-                         ClienteService clienteService) {
+                         ClienteService clienteService,
+                         MedioPagoRepository medioPagoRepository) {
         this.compraRepository = compraRepository;
         this.registroRepository = registroRepository;
         this.itemRepository = itemRepository;
         this.clienteService = clienteService;
+        this.medioPagoRepository = medioPagoRepository;
     }
 
     @Transactional
@@ -58,10 +64,30 @@ public class CompraService {
         compraRepository.save(compra);
     }
 
-    /** Marca la compra como pagada (RF pago del ganador). */
+    /** Marca la compra como pagada (RF pago del ganador). Exige un medio de pago verificado del cliente. */
     @Transactional
-    public void pagar(Long id) {
+    public void pagar(Long id, Long medioPagoId) {
         CompraEntity compra = findOrThrow(id);
+        Long clienteId = clienteService.currentClienteEntity().getId();
+
+        MedioPagoEntity medio = medioPagoRepository.findById(medioPagoId)
+                .orElseThrow(() -> new UnprocessableEntityException("Medio de pago invalido."));
+        boolean esDelCliente = medio.getCliente() != null && clienteId.equals(medio.getCliente().getId());
+        if (!esDelCliente
+                || !Boolean.TRUE.equals(medio.getVerificado())
+                || !Boolean.TRUE.equals(medio.getVigente())) {
+            throw new UnprocessableEntityException(
+                    "El medio de pago no esta verificado o no es valido para pagar.");
+        }
+
+        // La compra se paga en la moneda de la subasta: el medio debe coincidir.
+        String monedaSubasta = compra.getSubasta() != null ? compra.getSubasta().getMoneda() : null;
+        if (monedaSubasta != null && !monedaSubasta.equalsIgnoreCase(medio.getMoneda())) {
+            throw new UnprocessableEntityException(
+                    "El medio de pago debe estar en " + monedaSubasta + " para pagar esta compra.");
+        }
+
+        compra.setMedioPago(medio);
         compra.setEstadoPago("pagado");
         compraRepository.save(compra);
     }
@@ -115,7 +141,8 @@ public class CompraService {
                 Boolean.TRUE.equals(compra.getRetiroPersonal()),
                 compra.getEstadoPago() != null ? compra.getEstadoPago() : "pendiente",
                 catalogoId,
-                itemId
+                itemId,
+                s.getMoneda()
         );
     }
 }

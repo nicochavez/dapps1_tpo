@@ -30,5 +30,7 @@ public class PropuestaDto {
         private String fecha;
         private String hora;
         private String lugar;
+        /** Moneda de la subasta (ARS | USD): aclara en qué moneda está el precio base. */
+        private String moneda;
     }
 }

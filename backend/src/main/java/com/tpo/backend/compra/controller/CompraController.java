@@ -2,8 +2,10 @@ package com.tpo.backend.compra.controller;
 
 import com.tpo.backend.common.dto.PagedResponse;
 import com.tpo.backend.compra.dto.CompraDto;
+import com.tpo.backend.compra.dto.PagarCompraRequest;
 import com.tpo.backend.compra.service.CompraService;
 import com.tpo.backend.historial.dto.HistorialSubastaDto;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,8 +46,9 @@ public class CompraController {
     }
 
     @PostMapping("/compras/{id}/pagar")
-    public ResponseEntity<Void> pagar(@PathVariable Long id) {
-        compraService.pagar(id);
+    public ResponseEntity<Void> pagar(@PathVariable Long id,
+                                      @Valid @RequestBody PagarCompraRequest request) {
+        compraService.pagar(id, request.getMedioPagoId());
         return ResponseEntity.ok().build();
     }
 

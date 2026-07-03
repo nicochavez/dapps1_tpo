@@ -205,6 +205,8 @@ public class AuthService {
                 + " (personaId " + persona.getId() + "): " + nuevaContrasenia);
         usuario.setPasswordHash(passwordEncoder.encode(nuevaContrasenia));
         usuarioRepository.save(usuario);
+
+        emailService.enviarNuevaContrasenia(usuario.getEmail(), persona.getNombre(), nuevaContrasenia);
     }
 
     private String generarContrasenia(int longitud) {

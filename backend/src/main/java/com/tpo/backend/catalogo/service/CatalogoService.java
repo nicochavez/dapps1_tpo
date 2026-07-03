@@ -287,7 +287,7 @@ public class CatalogoService {
                         producto.getDuenio() != null ? producto.getDuenio().getId() : null,
                         producto.getDescripcionCatalogo(), producto.getDescripcionCompleta(),
                         producto.getArtista(),
-                        producto.getFecha() != null ? producto.getFecha().toString() : null,
+                        producto.getFechaObra(),
                         producto.getResenia(),
                         fotos)
         );

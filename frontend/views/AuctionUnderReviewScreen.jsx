@@ -138,8 +138,9 @@ export default function AuctionUnderReviewScreen({ route, navigation }) {
               </Text>
               <View className="bg-white rounded-3xl p-4 mb-8 border border-slate-100 shadow-sm shadow-slate-100">
                 <DetailRow label="Item" value={propuesta?.titulo} />
-                <DetailRow label="Base price" value={propuesta?.precioBase != null ? `$${propuesta.precioBase}` : null} />
-                <DetailRow label="Commission" value={propuesta?.comision != null ? `$${propuesta.comision}` : null} />
+                <DetailRow label="Currency" value={propuesta?.subasta?.moneda} />
+                <DetailRow label="Base price" value={propuesta?.precioBase != null ? `${propuesta?.subasta?.moneda ? propuesta.subasta.moneda + ' ' : ''}$${propuesta.precioBase}` : null} />
+                <DetailRow label="Commission" value={propuesta?.comision != null ? `${propuesta?.subasta?.moneda ? propuesta.subasta.moneda + ' ' : ''}$${propuesta.comision}` : null} />
                 <DetailRow label="Date" value={propuesta?.subasta?.fecha} />
                 <DetailRow label="Time" value={propuesta?.subasta?.hora} />
                 <DetailRow label="Location" value={propuesta?.subasta?.lugar} />

@@ -93,9 +93,8 @@
 		</dependency>
 
 		<dependency>
-			<groupId>io.mailtrap</groupId>
-			<artifactId>mailtrap-java</artifactId>
-			<version>1.0.0</version>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 	</dependencies>
 

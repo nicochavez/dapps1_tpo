@@ -6,6 +6,7 @@ import com.tpo.backend.catalogo.dto.ItemCatalogoNewRequest;
 import com.tpo.backend.catalogo.service.CatalogoService;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
+import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.multa.entity.MultaEntity;
@@ -83,8 +84,8 @@ public class AdminProductoService {
         itemRequest.setComision(request.getComision());
         catalogoService.crearItem(itemRequest);
 
-        // La fecha/hora de inicio la define la subasta del catalogo, no el producto.
-        // Solo se ajustan datos opcionales (ubicacion/categoria) si el admin los informa.
+        // La fecha/hora de inicio y la categoria las define la subasta del catalogo, no el producto.
+        // Solo se ajusta la ubicacion (opcional) si el admin la informa.
         aplicarDatosSubasta(request);
 
         producto.setEstado(EstadoProducto.propuesta_enviada);
@@ -95,20 +96,26 @@ public class AdminProductoService {
         return productoService.toDto(producto);
     }
 
-    /** Si el admin informo ubicacion/categoria, las graba en la subasta del catalogo.
-     *  La fecha/hora de inicio son propiedad de la subasta y no se tocan aca. */
+    /** Graba en la subasta del catalogo la ubicacion y/o la moneda si el admin las informa.
+     *  La fecha/hora de inicio y la categoria son propiedad de la subasta y no se tocan aca. */
     private void aplicarDatosSubasta(AprobarProductoRequest request) {
-        if (request.getUbicacion() == null && request.getCategoria() == null) {
+        boolean tieneUbicacion = request.getUbicacion() != null && !request.getUbicacion().isBlank();
+        boolean tieneMoneda = request.getMoneda() != null && !request.getMoneda().isBlank();
+        if (!tieneUbicacion && !tieneMoneda) {
             return;
         }
         SubastaEntity subasta = subastaRepository.findByCatalogoId(request.getCatalogoId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No hay subasta asociada al catalogo " + request.getCatalogoId()));
-        if (request.getUbicacion() != null && !request.getUbicacion().isBlank()) {
+        if (tieneUbicacion) {
             subasta.setUbicacion(request.getUbicacion().trim());
         }
-        if (request.getCategoria() != null && !request.getCategoria().isBlank()) {
-            subasta.setCategoria(request.getCategoria().trim().toLowerCase());
+        if (tieneMoneda) {
+            String moneda = request.getMoneda().trim().toUpperCase();
+            if (!moneda.equals("ARS") && !moneda.equals("USD")) {
+                throw new BadRequestException("Moneda invalida. Debe ser ARS o USD.");
+            }
+            subasta.setMoneda(moneda);
         }
         subastaRepository.save(subasta);
     }
@@ -150,10 +157,11 @@ public class AdminProductoService {
         String fecha = subasta != null && subasta.getFecha() != null ? subasta.getFecha().toString() : "TBD";
         String hora = subasta != null && subasta.getHora() != null ? subasta.getHora().toString() : "TBD";
         String lugar = subasta != null && subasta.getUbicacion() != null ? subasta.getUbicacion() : "TBD";
+        String moneda = subasta != null && subasta.getMoneda() != null ? subasta.getMoneda() : "ARS";
 
         String mensaje = "Your item was accepted. Auction: " + fecha + " " + hora + " at " + lugar
-                + ". Base price per item: $" + request.getPrecioBase()
-                + ". Commission: $" + request.getComision()
+                + ". Base price per item: " + moneda + " $" + request.getPrecioBase()
+                + ". Commission: " + moneda + " $" + request.getComision()
                 + ". Open the app to accept or reject these conditions.";
         notificacionService.enviar(producto.getDuenio().getId(), "Your item was accepted", mensaje);
     }

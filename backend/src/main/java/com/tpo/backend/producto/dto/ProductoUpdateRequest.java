@@ -14,6 +14,7 @@ public class ProductoUpdateRequest {
     private String categoria;
     private String subcategoria;
     private String artista;
+    private String fechaObra;
     private String resenia;
     private EstadoProducto estado;
 }

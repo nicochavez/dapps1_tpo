@@ -89,6 +89,8 @@ public class ProductoService {
 
     @Transactional
     public List<ProductoDto> listarPorDuenio(Long personaId) {
+        // Filtra por consignante original (productos.duenio). Los bienes vendidos se conservan
+        // aca como historial (duenio no cambia; el ganador queda en productos.nuevo_duenio).
         return productoRepository.findByDuenioId(personaId).stream().map(this::toDto).toList();
     }
 
@@ -121,6 +123,7 @@ public class ProductoService {
         if (request.getCategoria() != null) prod.setCategoria(request.getCategoria());
         if (request.getSubcategoria() != null) prod.setSubcategoria(request.getSubcategoria());
         if (request.getArtista() != null) prod.setArtista(request.getArtista());
+        if (request.getFechaObra() != null) prod.setFechaObra(request.getFechaObra());
         if (request.getResenia() != null) prod.setResenia(request.getResenia());
         if (request.getEstado() != null) prod.setEstado(request.getEstado());
         productoRepository.save(prod);
@@ -165,6 +168,7 @@ public class ProductoService {
         prod.setCategoria(request.getCategoria());
         prod.setSubcategoria(request.getSubcategoria());
         prod.setArtista(request.getArtista());
+        prod.setFechaObra(request.getFechaObra());
         prod.setResenia(request.getResenia());
         prod.setEstado(request.getEstado() != null ? request.getEstado() : EstadoProducto.en_revision);
         prod.setDuenio(duenio);
@@ -225,7 +229,8 @@ public class ProductoService {
                 subastaInfo = new PropuestaDto.SubastaInfo(
                         subasta.getFecha() != null ? subasta.getFecha().toString() : null,
                         subasta.getHora() != null ? subasta.getHora().toString() : null,
-                        subasta.getUbicacion());
+                        subasta.getUbicacion(),
+                        subasta.getMoneda());
             }
         }
         return new PropuestaDto(prod.getId(), prod.getEstado().name(),
@@ -241,11 +246,44 @@ public class ProductoService {
         prod.setEstado(EstadoProducto.aceptado_por_usuario);
         productoRepository.save(prod);
         // Marca el item del catalogo como aceptado para que entre a la subasta (lo toma el scheduler).
-        itemCatalogoRepository.findByProductoId(productoId).ifPresent(item -> {
+        ItemCatalogoEntity item = itemCatalogoRepository.findByProductoId(productoId).orElse(null);
+        if (item != null) {
             item.setEstadoAcuerdo("aceptado");
             itemCatalogoRepository.save(item);
-        });
+        }
+        // Aprobado por ambas partes: si el precio supera el umbral (>10M ARS / >10k USD segun la
+        // moneda de la subasta), se le asigna un seguro al bien.
+        asignarSeguroSiCorresponde(prod, item);
         return toDto(prod);
+    }
+
+    /** Asigna un seguro al bien de alto valor (RF): &gt;10.000.000 ARS o &gt;10.000 USD, segun la
+     *  moneda de la subasta. No hace nada si el bien ya tiene seguro o no supera el umbral. */
+    private void asignarSeguroSiCorresponde(ProductoEntity prod, ItemCatalogoEntity item) {
+        if (prod.getSeguro() != null || item == null || item.getPrecioBase() == null
+                || item.getCatalogo() == null) {
+            return;
+        }
+        SubastaEntity subasta = subastaRepository.findByCatalogoId(item.getCatalogo().getId()).orElse(null);
+        String moneda = subasta != null && subasta.getMoneda() != null
+                ? subasta.getMoneda().toUpperCase() : "ARS";
+        BigDecimal umbral = "USD".equals(moneda)
+                ? new BigDecimal("10000") : new BigDecimal("10000000");
+        if (item.getPrecioBase().compareTo(umbral) <= 0) {
+            return;
+        }
+
+        String nroPoliza = "POL-AUTO-" + prod.getId();
+        SeguroEntity seguro = seguroRepository.findById(nroPoliza).orElseGet(() -> {
+            SeguroEntity s = new SeguroEntity();
+            s.setNroPoliza(nroPoliza);
+            s.setCompania("La Seguridad");
+            s.setPolizaCombinada(false);
+            s.setImporte(item.getPrecioBase());
+            return seguroRepository.save(s);
+        });
+        prod.setSeguro(seguro);
+        productoRepository.save(prod);
     }
 
     /** El dueno rechaza las condiciones propuestas. */

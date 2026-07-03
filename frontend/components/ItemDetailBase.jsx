@@ -143,6 +143,44 @@ export default function ItemDetailBase({
         <Text className="text-slate-500 leading-6 text-sm">{description}</Text>
       </View>
 
+      {/* Datos de arte/diseño (RF-15): artista/diseñador, fecha de la obra y reseña histórica.
+          Solo se muestra si el producto tiene alguno de estos datos cargados. */}
+      {(item?.producto?.artista || item?.producto?.fechaObra || item?.producto?.resenia) && (
+        <View className="bg-white rounded-3xl p-6 mb-6 shadow-sm shadow-slate-200">
+          <Text className="text-lg font-light text-slate-800 mb-4">Artwork details</Text>
+
+          {item?.producto?.artista ? (
+            <View className="flex-row items-start mb-3">
+              <Feather name="user" size={15} color="#7C3AED" style={{ marginTop: 2 }} />
+              <View className="ml-3 flex-1">
+                <Text className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Artist / Designer</Text>
+                <Text className="text-slate-700 text-sm">{item.producto.artista}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {item?.producto?.fechaObra ? (
+            <View className="flex-row items-start mb-3">
+              <Feather name="calendar" size={15} color="#7C3AED" style={{ marginTop: 2 }} />
+              <View className="ml-3 flex-1">
+                <Text className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Date</Text>
+                <Text className="text-slate-700 text-sm">{item.producto.fechaObra}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {item?.producto?.resenia ? (
+            <View className="flex-row items-start">
+              <Feather name="book-open" size={15} color="#7C3AED" style={{ marginTop: 2 }} />
+              <View className="ml-3 flex-1">
+                <Text className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Historical review</Text>
+                <Text className="text-slate-600 text-sm leading-6">{item.producto.resenia}</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Banner de acceso restringido */}
       {lockReason && (
         <View className="mb-6 rounded-2xl overflow-hidden">
@@ -178,7 +216,7 @@ export default function ItemDetailBase({
                   <Text className="font-bold">({currentUser?.category ?? '\u2014'})</Text>
                   {' '}doesn't meet the minimum to bid. Upgrade to{' '}
                   <Text className="font-bold">{requiredLabel}</Text>
-                  {' '}or above to unlock prices and bidding.
+                  {' '}or above to unlock bidding.
                 </Text>
               </View>
             </View>

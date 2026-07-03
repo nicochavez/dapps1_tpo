@@ -23,6 +23,8 @@ public class CompraDto {
     /** Item de catálogo del producto, para abrir su detalle (cuando ya está pagado). */
     private Long catalogoId;
     private Long itemId;
+    /** Moneda de la subasta (ARS | USD): el medio de pago debe coincidir. */
+    private String moneda;
 
     @Data
     @AllArgsConstructor

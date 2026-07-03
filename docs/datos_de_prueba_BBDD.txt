@@ -213,19 +213,43 @@ INSERT INTO public.registrodesubasta (subasta, duenio, producto, cliente, compra
   (2, 20, 10, 13,   false, 1800, 180),  -- item8 adjudicado a oro (lo pagará)
   (2, 20, 11, 14,   false, 3200, 320);  -- item9 adjudicado a platino (mora)
 
+-- ─── 14b) Nuevo dueño tras la adjudicación (productos.nuevo_duenio) ──────────
+-- Guarda el ID DE PERSONA del ganador (o del admin, persona 1, si no hubo pujas). NO es FK a
+-- 'duenios': el comprador no necesita ser dueño, se traza directo con personas. El consignante
+-- original (productos.duenio = 20) se conserva para la vista "My Items".
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS nuevo_duenio bigint;
+-- Si una corrida previa (mapeo viejo @ManyToOne DuenioEntity) dejó una FK a 'duenios' sobre esta
+-- columna, se elimina: bloquearía guardar compradores que no son dueños (ej. persona 12).
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = ANY (con.conkey)
+    WHERE con.conrelid = 'public.productos'::regclass
+      AND con.contype = 'f'
+      AND att.attname = 'nuevo_duenio'
+  LOOP
+    EXECUTE 'ALTER TABLE public.productos DROP CONSTRAINT ' || quote_ident(r.conname);
+  END LOOP;
+END $$;
+UPDATE public.productos SET nuevo_duenio = 13 WHERE identificador = 3;   -- Óleo Abstracto  -> oro (persona 13)
+UPDATE public.productos SET nuevo_duenio = 1  WHERE identificador = 4;   -- Escultura (sin pujas) -> admin (persona 1)
+UPDATE public.productos SET nuevo_duenio = 13 WHERE identificador = 10;  -- Grabado Firmado -> oro (persona 13)
+UPDATE public.productos SET nuevo_duenio = 14 WHERE identificador = 11;  -- Litografía      -> platino (persona 14)
+
 -- ─── 15) Medios de pago (los 3 tipos) ───────────────────────────────────────
 INSERT INTO public.medios_pago (identificador, cliente, tipo, moneda, internacional, verificado, vigente, detalle, banco)
 OVERRIDING SYSTEM VALUE VALUES
   (100, 12, 'tarjeta_credito',    'ARS', false, true,  true, 'Visa ****4242',     NULL),
   (101, 13, 'cuenta_bancaria',    'USD', true,  true,  true, 'Citi - ****1234',   'Citibank'),
   (102, 13, 'tarjeta_credito',    'USD', false, true,  true, 'Mastercard ****5555', NULL),
-  (103, 14, 'cheque_certificado', 'USD', false, true,  true, 'Cheque Galicia',    'Galicia'),
-  (104, 10, 'tarjeta_credito',    'ARS', false, false, true, 'Visa ****0001',     NULL);
+  (103, 14, 'cheque_certificado', 'USD', false, true,  true, 'Cheque Galicia',    'Galicia');
 
 INSERT INTO public.medios_tarjeta_credito (medio_pago, banco_emisor, ultimos_cuatro, titular, fecha_vencimiento) VALUES
   (100, 'Santander', '4242', 'Paula Plata', DATE '2028-12-31'),
-  (102, 'Citi',      '5555', 'Oscar Oro',   DATE '2027-06-30'),
-  (104, 'BBVA',      '0001', 'Carla Comun', DATE '2029-01-31');
+  (102, 'Citi',      '5555', 'Oscar Oro',   DATE '2027-06-30');
 
 INSERT INTO public.medios_cuenta_bancaria (medio_pago, banco, numero_cuenta, titular, monto_reservado) VALUES
   (101, 'Citibank', '000111222333', 'Oscar Oro', 100000);
@@ -259,7 +283,6 @@ INSERT INTO public.compras (cliente, subasta, producto, medio_pago, importe, com
 --   - platino: multa POR MORA por no pagar en término la Litografía (10% del importe),
 --     ligada a su compra -> se muestra sumada en CompletePurchase.
 INSERT INTO public.multas (cliente, compra, importe_original, multa, estado, fecha_limite) VALUES
-  (10, NULL, 50000, 5000, 'pendiente', now() + interval '30 day'),
   (14, (SELECT identificador FROM public.compras WHERE producto = 11), 3200, 320, 'pendiente', now() + interval '7 day');
 
 -- ─── 20) Notificaciones ─────────────────────────────────────────────────────
@@ -267,10 +290,10 @@ INSERT INTO public.notificaciones (cliente, titulo, mensaje, leida, fecha_creaci
   (13, 'You won the bid',        'You won "Óleo Abstracto" for USD 2500. Complete the payment.',           false, now() - interval '2 day'),
   (13, 'Purchase confirmed',     'Your purchase of "Grabado Firmado" was confirmed. Coordinate the pickup.', true,  now() - interval '1 day'),
   (14, 'You won the bid',        'You won "Litografía Original" for USD 3200. Complete the payment.',       false, now() - interval '4 day'),
-  (14, 'Late payment fine',      'You did not pay "Litografía Original" on time. A 10% late fine (USD 320) was applied, payable together with the purchase.', false, now() - interval '1 day'),
+  (14, 'Late payment fine',      'You did not pay "Litografía Original" on time. A 10% late fine (USD 320) was applied, payable together with the purchase. If you don''t resolve it within 72hrs, your access to the app will be disabled and the case will be referred to the courts.', false, now() - interval '1 day'),
   (20, 'Your item was accepted', 'Your item "Moneda Antigua" was accepted. Review the proposed conditions.', false, now() - interval '1 day'),
   (20, 'Your item was rejected', 'Reason: The piece has undeclared damage and lacks proof of lawful origin. A return charge of $5000 was registered.', true, now() - interval '5 day'),
-  (10, 'Pending fine',           'You have a pending fine of $5000.',                                      false, now() - interval '1 day');
+  (10, 'Pending fine',           'You have a pending fine of $5000. If you don''t resolve it within 72hrs, your access to the app will be disabled and the case will be referred to the courts.', false, now() - interval '1 day');
 
 -- ─── 21) Reset de secuencias de los IDs insertados a mano ───────────────────
 SELECT setval(pg_get_serial_sequence('public.personas',     'identificador'), (SELECT MAX(identificador) FROM public.personas));

@@ -28,6 +28,9 @@ public class AprobarProductoRequest {
     /** Ubicacion/lugar de la subasta. Opcional. */
     private String ubicacion;
 
-    /** Categoria minima de usuario que puede pujar (comun, especial, plata, oro, platino). Opcional. */
-    private String categoria;
+    /** Moneda en la que se publica el precio base: ARS | USD. Se graba en la subasta del catalogo. */
+    private String moneda;
+
+    // La categoria (comun/especial/plata/oro/platino) NO se define por item: es propiedad de la
+    // subasta a la que pertenece el catalogo. Se setea al crear la subasta, no al aprobar el bien.
 }

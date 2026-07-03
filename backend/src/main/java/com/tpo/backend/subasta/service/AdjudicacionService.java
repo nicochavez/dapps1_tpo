@@ -11,6 +11,7 @@ import com.tpo.backend.compra.entity.CompraEntity;
 import com.tpo.backend.compra.repository.CompraRepository;
 import com.tpo.backend.duenio.entity.DuenioEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
+import com.tpo.backend.producto.repository.ProductoRepository;
 import com.tpo.backend.puja.entity.PujaEntity;
 import com.tpo.backend.puja.repository.PujaRepository;
 import com.tpo.backend.subasta.entity.AsistenteEntity;
@@ -44,6 +45,9 @@ public class AdjudicacionService {
     /** Ventana de inactividad tras la cual se cierra el item en curso (segundos). */
     public static final long VENTANA_PUJA_SEGUNDOS = 60;
 
+    /** Persona/empleado admin del sistema (dueno por defecto de los items sin pujas). */
+    private static final Long ADMIN_PERSONA_ID = 1L;
+
     private final SubastaRepository subastaRepository;
     private final ItemCatalogoRepository itemRepository;
     private final PujaRepository pujaRepository;
@@ -51,6 +55,7 @@ public class AdjudicacionService {
     private final RegistroDeSubastaRepository registroRepository;
     private final SubastaEventPublisher eventPublisher;
     private final NotificacionService notificacionService;
+    private final ProductoRepository productoRepository;
 
     public AdjudicacionService(SubastaRepository subastaRepository,
                                ItemCatalogoRepository itemRepository,
@@ -58,7 +63,8 @@ public class AdjudicacionService {
                                CompraRepository compraRepository,
                                RegistroDeSubastaRepository registroRepository,
                                SubastaEventPublisher eventPublisher,
-                               NotificacionService notificacionService) {
+                               NotificacionService notificacionService,
+                               ProductoRepository productoRepository) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
@@ -66,6 +72,7 @@ public class AdjudicacionService {
         this.registroRepository = registroRepository;
         this.eventPublisher = eventPublisher;
         this.notificacionService = notificacionService;
+        this.productoRepository = productoRepository;
     }
 
     /**
@@ -166,9 +173,16 @@ public class AdjudicacionService {
 
             crearCompra(ganadorCliente, subasta, item.getProducto(), importe, comision);
             // RF-35/36: el ganador queda registrado como adjudicatario en registrodesubasta.
-            // No se reasigna productos.duenio porque esa FK apunta a 'duenios' (rol consignante),
-            // no a 'clientes'; el nuevo titular se desprende del registro de adjudicacion.
             crearRegistro(subasta, duenioActual, item.getProducto(), ganadorCliente, importe, comision, false);
+
+            // El producto pasa a ser propiedad del ganador: se guarda su id de persona en
+            // nuevo_duenio (duenio se conserva como el consignante original para "My Items").
+            if (producto != null && ganadorCliente != null) {
+                producto.setNuevoDuenio(ganadorCliente.getId());
+                productoRepository.save(producto);
+                log.info("[ADJUDICACION] Producto {} adjudicado: nuevo dueno = persona {}.",
+                        producto.getId(), ganadorCliente.getId());
+            }
 
             payload.put("resultado", "vendido");
             payload.put("ganadorCliente", ganadorCliente != null ? ganadorCliente.getId() : null);
@@ -181,6 +195,14 @@ public class AdjudicacionService {
             BigDecimal importe = item.getPrecioBase();
             crearRegistro(subasta, duenioActual, item.getProducto(),
                     null, importe, comision, true);
+
+            // Sin pujas: el producto pasa a ser propiedad del admin del sistema (nuevo_duenio).
+            if (producto != null) {
+                producto.setNuevoDuenio(ADMIN_PERSONA_ID);
+                productoRepository.save(producto);
+                log.info("[ADJUDICACION] Producto {} sin pujas: nuevo dueno = admin (persona {}).",
+                        producto.getId(), ADMIN_PERSONA_ID);
+            }
 
             payload.put("resultado", "empresa");
             payload.put("importe", importe);

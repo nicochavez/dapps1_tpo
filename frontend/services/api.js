@@ -148,8 +148,12 @@ export function setRetiroPersonal(id, token) {
   return apiRequest(`/clientes/me/compras/${id}/retiro-personal`, { method: 'PUT', token });
 }
 
-export function pagarCompra(id, token) {
-  return apiRequest(`/clientes/me/compras/${id}/pagar`, { method: 'POST', token });
+export function pagarCompra(id, medioPagoId, token) {
+  return apiRequest(`/clientes/me/compras/${id}/pagar`, {
+    method: 'POST',
+    token,
+    body: JSON.stringify({ medioPagoId }),
+  });
 }
 
 // ── Multas ────────────────────────────────────────────────────────────────────
@@ -242,6 +246,7 @@ export function createProducto(itemData, photos, token) {
   if (itemData.category) form.append('categoria', itemData.category);
   if (itemData.subCategory) form.append('subcategoria', itemData.subCategory);
   if (itemData.artistName) form.append('artista', itemData.artistName);
+  if (itemData.itemDate) form.append('fechaObra', itemData.itemDate);
   if (itemData.itemHistory) form.append('resenia', itemData.itemHistory);
 
   Object.entries(photos || {}).forEach(([key, uri], index) => {

@@ -1,10 +1,13 @@
 package com.tpo.backend.admin.service;
 
 import com.tpo.backend.admin.dto.AprobarClienteRequest;
+import com.tpo.backend.admin.dto.CambiarCategoriaRequest;
 import com.tpo.backend.cliente.dto.ClienteDto;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
 import com.tpo.backend.cliente.service.ClienteService;
+import com.tpo.backend.common.exception.BadRequestException;
+import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.email.EmailService;
 import com.tpo.backend.notificacion.entity.NotificacionEntity;
@@ -29,6 +32,9 @@ public class AdminClienteService {
     private static final Logger log = LoggerFactory.getLogger(AdminClienteService.class);
     private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
     private static final SecureRandom RNG = new SecureRandom();
+
+    /** Categorias validas, de menor a mayor (RF de rango de usuario). */
+    private static final List<String> CATEGORIAS = List.of("comun", "especial", "plata", "oro", "platino");
 
     private final ClienteRepository clienteRepository;
     private final PersonaRepository personaRepository;
@@ -102,6 +108,38 @@ public class AdminClienteService {
         notificacion.setLeida(false);
         notificacion.setFechaCreacion(OffsetDateTime.now());
         notificacionRepository.save(notificacion);
+    }
+
+    /** Cambia la categoria de un cliente ya admitido (backoffice). */
+    @Transactional
+    public ClienteDto cambiarCategoria(Long clienteId, CambiarCategoriaRequest request) {
+        String categoria = request.getCategoria() != null ? request.getCategoria().trim().toLowerCase() : null;
+        if (categoria == null || !CATEGORIAS.contains(categoria)) {
+            throw new BadRequestException("Categoria invalida. Debe ser una de: " + String.join(", ", CATEGORIAS) + ".");
+        }
+
+        ClienteEntity cliente = clienteRepository.findById(clienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado: " + clienteId));
+
+        if (!Boolean.TRUE.equals(cliente.getAdmitido())) {
+            throw new ConflictException("El cliente no esta admitido; aprobalo antes de cambiar su categoria.");
+        }
+
+        String anterior = cliente.getCategoria();
+        cliente.setCategoria(categoria);
+        cliente = clienteRepository.save(cliente);
+
+        NotificacionEntity notificacion = new NotificacionEntity();
+        notificacion.setCliente(cliente);
+        notificacion.setTitulo("Category updated");
+        notificacion.setMensaje("Your category was changed to \"" + categoria + "\".");
+        notificacion.setLeida(false);
+        notificacion.setFechaCreacion(OffsetDateTime.now());
+        notificacionRepository.save(notificacion);
+
+        log.info("[ADMIN] Cliente {} cambio de categoria: {} -> {}.", clienteId, anterior, categoria);
+
+        return clienteService.toDto(cliente);
     }
 
     @Transactional

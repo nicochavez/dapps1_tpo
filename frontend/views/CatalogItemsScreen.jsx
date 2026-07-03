@@ -108,7 +108,8 @@ export default function CatalogItemsScreen({ route, navigation }) {
   const requiredCategory = activeCatalog.subasta?.categoria;
   const isLoggedIn       = !!currentUser;
   const categoryOk       = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
-  const canAccessPrices  = isLoggedIn && categoryOk;
+  // Los precios se ven con solo estar registrado; la categoria solo limita el pujar.
+  const canAccessPrices  = isLoggedIn;
   const lockReason       = !isLoggedIn ? 'sign-in' : !categoryOk ? 'category' : null;
   const requiredLabel    = requiredCategory
     ? requiredCategory.charAt(0).toUpperCase() + requiredCategory.slice(1)
@@ -242,7 +243,7 @@ export default function CatalogItemsScreen({ route, navigation }) {
                     <Text className="font-bold">({currentUser?.category ?? '\u2014'})</Text>
                     {' '}doesn't meet the minimum to bid. Upgrade to{' '}
                     <Text className="font-bold">{requiredLabel}</Text>
-                    {' '}or above to unlock prices and bidding.
+                    {' '}or above to unlock bidding.
                   </Text>
                 </View>
               </View>

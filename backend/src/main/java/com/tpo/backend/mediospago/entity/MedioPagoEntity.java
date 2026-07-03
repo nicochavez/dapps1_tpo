@@ -28,8 +28,9 @@ public abstract class MedioPagoEntity {
     @Column(name = "internacional")
     private Boolean internacional = false;
 
+    // Nace pendiente de verificacion; un empleado lo habilita desde el backoffice.
     @Column(name = "verificado")
-    private Boolean verificado = true;
+    private Boolean verificado = false;
 
     @Column(name = "vigente")
     private Boolean vigente = true;

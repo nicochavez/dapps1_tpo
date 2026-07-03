@@ -38,7 +38,7 @@ function fmtCountdown(secs) {
 }
 
 export default function ItemDetailLiveView(props) {
-  const { item, canAccessPrices, currentUser, isOwner, subastaId, refreshBids, hasPendingMulta } = props;
+  const { item, canAccessPrices, bidEligible, currentUser, isOwner, subastaId, refreshBids, hasPendingMulta, hasVerifiedPayment } = props;
   const [bidAmount, setBidAmount] = useState('');
   const [placing, setPlacing]     = useState(false);
   const [numeroPostor, setNumeroPostor] = useState(null);
@@ -65,12 +65,16 @@ export default function ItemDetailLiveView(props) {
   const precioBase     = typeof item?.precioBase === 'number' ? item.precioBase : 0;
   const currentPriceNum = currentBid ?? (typeof item?.currentBid === 'number' ? item.currentBid : precioBase);
 
-  const minBid = currentPriceNum + precioBase * 0.01;
-  const maxBid = currentPriceNum + precioBase * 0.20;
+  // Las subastas oro/platino no aplican los límites de +1%/+20%: basta con superar la oferta actual.
+  const categoria = (props.parentCatalog?.subasta?.categoria || '').toLowerCase();
+  const sinLimites = categoria === 'oro' || categoria === 'platino';
+
+  const minBid = sinLimites ? currentPriceNum : currentPriceNum + precioBase * 0.01;
+  const maxBid = sinLimites ? null : currentPriceNum + precioBase * 0.20;
 
   // Conectar a la subasta al montar (para poder pujar)
   useEffect(() => {
-    if (!subastaId || !currentUser?.token || isOwner || !canAccessPrices) return;
+    if (!subastaId || !currentUser?.token || isOwner || !bidEligible) return;
     let cancelled = false;
     conectarASubasta(subastaId, currentUser.token)
       .then(res => {
@@ -78,16 +82,22 @@ export default function ItemDetailLiveView(props) {
       })
       .catch(() => {}); // ya conectado o espectador — no bloquear
     return () => { cancelled = true; };
-  }, [subastaId, currentUser?.token, isOwner, canAccessPrices]);
+  }, [subastaId, currentUser?.token, isOwner, bidEligible]);
 
-  // Puja mínima permitida, redondeada hacia arriba para no caer por debajo del límite.
-  const minBidAmount = Math.ceil(minBid);
+  // Puja mínima permitida. En oro/platino solo hay que superar la oferta actual (+1 mínimo);
+  // en el resto, redondeada hacia arriba para no caer por debajo del límite +1%.
+  const minBidAmount = sinLimites ? Math.floor(currentPriceNum) + 1 : Math.ceil(minBid);
 
   // Núcleo de la puja: valida, llama al backend y actualiza countdown/historial.
   const submitBid = async (amount) => {
-    if (!canAccessPrices || effectiveLotState !== 'en_puja') return;
+    if (!bidEligible || effectiveLotState !== 'en_puja') return;
     if (hasPendingMulta) {
       Alert.alert('Pending fines', 'You have pending fines. Pay them before placing a bid.');
+      return;
+    }
+    if (!hasVerifiedPayment) {
+      Alert.alert('Payment method required',
+        'You need a verified payment method in this auction’s currency to place a bid.');
       return;
     }
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -116,7 +126,8 @@ export default function ItemDetailLiveView(props) {
       Alert.alert('No se pudo abrir el directo', 'Intentá nuevamente más tarde.'));
   };
 
-  const canBid = canAccessPrices && !isOwner && effectiveLotState === 'en_puja' && !hasPendingMulta;
+  const canBid = bidEligible && !isOwner && effectiveLotState === 'en_puja'
+    && !hasPendingMulta && hasVerifiedPayment;
 
   return (
     <ItemDetailBase {...props} badgeColor="bg-red-500/90" badgeLabel="Live Auction">
@@ -179,15 +190,24 @@ export default function ItemDetailLiveView(props) {
 
         {canBid ? (
           <>
-            {/* Rango sugerido */}
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-[9px] text-slate-400">
-                Mín: <Text className="font-bold text-slate-600">{formatPrice(minBid)}</Text>
-              </Text>
-              <Text className="text-[9px] text-slate-400">
-                Máx: <Text className="font-bold text-slate-600">{formatPrice(maxBid)}</Text>
-              </Text>
-            </View>
+            {/* Rango sugerido. En oro/platino no hay límites: solo superar la oferta actual. */}
+            {sinLimites ? (
+              <View className="mb-2">
+                <Text className="text-[9px] text-slate-400">
+                  Subasta <Text className="font-bold text-slate-600">{categoria}</Text>: sin límites.
+                  {' '}Puja mayor a <Text className="font-bold text-slate-600">{formatPrice(currentPriceNum)}</Text>.
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-[9px] text-slate-400">
+                  Mín: <Text className="font-bold text-slate-600">{formatPrice(minBid)}</Text>
+                </Text>
+                <Text className="text-[9px] text-slate-400">
+                  Máx: <Text className="font-bold text-slate-600">{formatPrice(maxBid)}</Text>
+                </Text>
+              </View>
+            )}
 
             <Text className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-2">Set Amount</Text>
             <View className="bg-slate-200/60 rounded-xl px-4 py-3 mb-4 flex-row items-center">
@@ -213,16 +233,18 @@ export default function ItemDetailLiveView(props) {
               </Text>
             </TouchableOpacity>
 
-            {/* Puja rápida por el mínimo permitido */}
-            <TouchableOpacity
-              onPress={handleBidMinimum}
-              disabled={placing}
-              className={`rounded-2xl py-3 items-center mt-2 border ${placing ? 'border-slate-200' : 'border-[#a78bfa] bg-purple-50'}`}
-            >
-              <Text className={`font-bold text-sm ${placing ? 'text-slate-300' : 'text-[#7C3AED]'}`}>
-                Bid minimum ({formatPrice(minBidAmount)})
-              </Text>
-            </TouchableOpacity>
+            {/* Puja rápida por el mínimo permitido. No aplica en oro/platino (sin límites). */}
+            {!sinLimites && (
+              <TouchableOpacity
+                onPress={handleBidMinimum}
+                disabled={placing}
+                className={`rounded-2xl py-3 items-center mt-2 border ${placing ? 'border-slate-200' : 'border-[#a78bfa] bg-purple-50'}`}
+              >
+                <Text className={`font-bold text-sm ${placing ? 'text-slate-300' : 'text-[#7C3AED]'}`}>
+                  Bid minimum ({formatPrice(minBidAmount)})
+                </Text>
+              </TouchableOpacity>
+            )}
           </>
         ) : (
           <View className="bg-slate-100 rounded-2xl py-4 items-center border border-slate-200 border-dashed mt-4">
@@ -234,6 +256,8 @@ export default function ItemDetailLiveView(props) {
                 ? 'This lot has closed'
                 : hasPendingMulta
                 ? 'You have pending fines. Pay them to bid.'
+                : bidEligible && !hasVerifiedPayment
+                ? 'You need a verified payment method to bid.'
                 : 'Bidding restricted'}
             </Text>
           </View>

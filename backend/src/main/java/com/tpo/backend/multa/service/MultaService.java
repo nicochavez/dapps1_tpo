@@ -45,8 +45,16 @@ public class MultaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Multa no encontrada: " + id));
 
         MedioPagoEntity medioPago = medioPagoRepository.findById(request.getMedioPagoId())
-                .filter(m -> Boolean.TRUE.equals(m.getVerificado()))
+                .filter(m -> Boolean.TRUE.equals(m.getVerificado()) && Boolean.TRUE.equals(m.getVigente()))
                 .orElseThrow(() -> new UnprocessableEntityException("Fondos insuficientes o medio de pago invalido."));
+
+        // La multa se paga en la moneda de la subasta de origen: el medio debe coincidir.
+        String monedaSubasta = (multa.getCompra() != null && multa.getCompra().getSubasta() != null)
+                ? multa.getCompra().getSubasta().getMoneda() : null;
+        if (monedaSubasta != null && !monedaSubasta.equalsIgnoreCase(medioPago.getMoneda())) {
+            throw new UnprocessableEntityException(
+                    "El medio de pago debe estar en " + monedaSubasta + " para pagar esta multa.");
+        }
 
         multa.setEstado("pagada");
         multaRepository.save(multa);

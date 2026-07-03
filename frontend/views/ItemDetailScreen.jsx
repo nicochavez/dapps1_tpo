@@ -8,7 +8,7 @@ import ItemDetailUpcomingView from '../components/ItemDetailUpcomingView';
 import ItemDetailEndedView from '../components/ItemDetailEndedView';
 
 import { AuthContext } from '../context/AuthContext';
-import { getProductoById, getItemCatalogoDetalle, getHistorialPujas, getMultas, buildImageUrl } from '../services/api';
+import { getProductoById, getItemCatalogoDetalle, getHistorialPujas, getMultas, getMediosPago, buildImageUrl } from '../services/api';
 
 // ─── Regla de negocio de categorías ─────────────────────────────────────────
 // Misma tabla que CatalogItemsScreen — mantener sincronizadas.
@@ -56,6 +56,7 @@ function CatalogItemDetail({
   const [loading, setLoading] = useState(true);
   const [bidTick, setBidTick] = useState(0);
   const [hasPendingMulta, setHasPendingMulta] = useState(false);
+  const [hasVerifiedPayment, setHasVerifiedPayment] = useState(false);
 
   // ── Multas del usuario: si tiene alguna pendiente, no puede pujar (regla de negocio) ──
   useEffect(() => {
@@ -66,6 +67,24 @@ function CatalogItemDetail({
       .catch(() => { if (!cancel) setHasPendingMulta(false); });
     return () => { cancel = true; };
   }, [currentUser?.token]);
+
+  // ── Medios de pago: para pujar se necesita al menos uno verificado y vigente en la
+  //    moneda de la subasta (si se conoce la moneda). Espeja la regla del backend. ──
+  const subastaMoneda = subastaInfo?.moneda;
+  useEffect(() => {
+    if (!currentUser?.token) { setHasVerifiedPayment(false); return; }
+    let cancel = false;
+    getMediosPago(currentUser.token)
+      .then(ms => {
+        if (cancel) return;
+        const ok = (ms || []).some(m =>
+          m.verificado && m.vigente !== false &&
+          (!subastaMoneda || (m.moneda || '').toUpperCase() === subastaMoneda.toUpperCase()));
+        setHasVerifiedPayment(ok);
+      })
+      .catch(() => { if (!cancel) setHasVerifiedPayment(false); });
+    return () => { cancel = true; };
+  }, [currentUser?.token, subastaMoneda]);
   const detailLoadedRef = useRef(false);
 
   // ── Carga el detalle del item: al montar y en cada tick de polling ──────────
@@ -137,7 +156,9 @@ function CatalogItemDetail({
   const isOwner = isLoggedIn && String(currentUser.id) === String(detail.producto?.duenioId);
   const requiredCategory = subastaInfo?.categoria;
   const categoryOk = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
-  const showPrices = isOwner || (isLoggedIn && categoryOk);
+  // Ver precios: cualquier usuario registrado (incluye al dueño). La categoria solo limita el pujar.
+  const showPrices = isLoggedIn;
+  const bidEligible = isLoggedIn && categoryOk;
   const lockReason = isOwner ? null : !isLoggedIn ? 'sign-in' : !categoryOk ? 'category' : null;
   const requiredLabel = requiredCategory
     ? requiredCategory.charAt(0).toUpperCase() + requiredCategory.slice(1)
@@ -156,6 +177,9 @@ function CatalogItemDetail({
     producto: {
       descripcionCatalogo: detail.producto?.descripcionCatalogo,
       descripcionCompleta: detail.producto?.descripcionCompleta,
+      artista: detail.producto?.artista,
+      fechaObra: detail.producto?.fecha,
+      resenia: detail.producto?.resenia,
       image: images[0],
       images,
     },
@@ -167,9 +191,9 @@ function CatalogItemDetail({
   };
   const shared = {
     item, parentCatalog, navigation,
-    canAccessPrices: showPrices, lockReason, requiredLabel,
+    canAccessPrices: showPrices, bidEligible, lockReason, requiredLabel,
     currentUser, isOwner, bids, won: !!won,
-    subastaId, refreshBids, hasPendingMulta,
+    subastaId, refreshBids, hasPendingMulta, hasVerifiedPayment,
   };
 
   if (isLive) return <ItemDetailLiveView {...shared} />;

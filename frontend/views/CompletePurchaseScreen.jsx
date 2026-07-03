@@ -61,7 +61,12 @@ export default function CompletePurchaseScreen({ route, navigation }) {
         getMultas(token).catch(() => []),
       ]);
       setMethods(Array.isArray(medios) ? medios : []);
-      if (Array.isArray(medios) && medios.length) setSelectedPayment(medios[0].identificador);
+      // Solo se puede pagar con un medio verificado, vigente y en la moneda de la compra.
+      const monedaCompra = theCompra?.moneda;
+      const payables = (Array.isArray(medios) ? medios : []).filter(m =>
+        m.verificado && m.vigente !== false &&
+        (!monedaCompra || (m.moneda || '').toUpperCase() === monedaCompra.toUpperCase()));
+      setSelectedPayment(payables[0]?.identificador ?? null);
       const dirs = Array.isArray(direcciones) ? direcciones : [];
       setAddress(dirs.find(d => d.favorito) ?? dirs[0] ?? null);
       setMultas(Array.isArray(fines) ? fines.filter(m => m.estado === 'pendiente') : []);
@@ -100,9 +105,24 @@ export default function CompletePurchaseScreen({ route, navigation }) {
   const finesTotal = multas.reduce((s, m) => s + num(m.multa), 0);
   const grandTotal = winningBid + commission + shippingCost + finesTotal;
 
+  // Un medio es válido para esta compra si está verificado, vigente y en su misma moneda.
+  const compraMoneda = compra.moneda;
+  const isPayable = (pm) =>
+    pm.verificado && pm.vigente !== false &&
+    (!compraMoneda || (pm.moneda || '').toUpperCase() === compraMoneda.toUpperCase());
+
   const handleConfirmPay = async () => {
     if (!selectedPayment) {
-      Alert.alert('Falta el medio de pago', 'Seleccioná un medio de pago para continuar.');
+      Alert.alert('Falta el medio de pago',
+        compraMoneda
+          ? `Necesitás un medio de pago verificado en ${compraMoneda} para continuar.`
+          : 'Seleccioná un medio de pago verificado para continuar.');
+      return;
+    }
+    const selected = methods.find(m => m.identificador === selectedPayment);
+    if (!selected || !isPayable(selected)) {
+      Alert.alert('Medio de pago inválido',
+        'El medio seleccionado no está verificado o no coincide con la moneda de la compra.');
       return;
     }
     setSubmitting(true);
@@ -115,7 +135,7 @@ export default function CompletePurchaseScreen({ route, navigation }) {
       for (const m of multas) {
         await pagarMulta(m.identificador, selectedPayment, token);
       }
-      await pagarCompra(compra.identificador, token);
+      await pagarCompra(compra.identificador, selectedPayment, token);
       Alert.alert('Payment successful!', 'Tu compra fue confirmada.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -215,11 +235,19 @@ export default function CompletePurchaseScreen({ route, navigation }) {
           <View className="bg-white rounded-3xl p-2 shadow-sm shadow-slate-200">
             {methods.length === 0 ? (
               <Text className="text-slate-400 text-sm p-4">No payment methods. Add one to continue.</Text>
-            ) : methods.map((pm, index) => (
+            ) : methods.map((pm, index) => {
+              const payable = isPayable(pm);
+              const reason = !pm.verificado
+                ? 'Pending verification'
+                : (compraMoneda && (pm.moneda || '').toUpperCase() !== compraMoneda.toUpperCase())
+                ? `Wrong currency (needs ${compraMoneda})`
+                : null;
+              return (
               <TouchableOpacity
                 key={pm.identificador}
+                disabled={!payable}
                 onPress={() => setSelectedPayment(pm.identificador)}
-                className={`flex-row items-center p-4 ${index !== methods.length - 1 ? 'border-b border-slate-100' : ''}`}
+                className={`flex-row items-center p-4 ${index !== methods.length - 1 ? 'border-b border-slate-100' : ''} ${payable ? '' : 'opacity-50'}`}
               >
                 <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-4 ${selectedPayment === pm.identificador ? 'border-[#7C3AED]' : 'border-slate-300'}`}>
                   {selectedPayment === pm.identificador && <View className="w-2.5 h-2.5 bg-[#7C3AED] rounded-full" />}
@@ -228,11 +256,13 @@ export default function CompletePurchaseScreen({ route, navigation }) {
                   <Text className="font-bold text-slate-800 text-sm">{PM_LABEL[pm.tipo] || 'Payment'} {pmSubtitle(pm)}</Text>
                   <Text className="text-[10px] text-slate-400 font-bold tracking-wider uppercase mt-0.5">
                     {pm.moneda || ''} · {pm.verificado ? 'Verified' : 'Pending'}
+                    {reason ? ` · ${reason}` : ''}
                   </Text>
                 </View>
                 <Feather name={pm.tipo === 'tarjeta_credito' ? 'credit-card' : 'briefcase'} size={20} color="#94a3b8" />
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         </View>
 

@@ -12,6 +12,7 @@ import java.util.List;
  * Backoffice de pagos y multas (solo empleados; ver SecurityConfig {@code /api/v1/admin/**}).
  * - GET  /pagos-pendientes            : usuarios con compras impagas.
  * - POST /compras/{compraId}/multa    : aplica una multa del 10% al deudor y lo notifica.
+ * - POST /usuarios/{clienteId}/bloquear : deshabilita el acceso de un usuario a la app.
  */
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -31,5 +32,11 @@ public class AdminPagoController {
     @PostMapping("/compras/{compraId}/multa")
     public ResponseEntity<MultaDto> asignarMulta(@PathVariable Long compraId) {
         return ResponseEntity.ok(adminPagoService.asignarMulta(compraId));
+    }
+
+    @PostMapping("/usuarios/{clienteId}/bloquear")
+    public ResponseEntity<Void> bloquearUsuario(@PathVariable Long clienteId) {
+        adminPagoService.bloquearUsuario(clienteId);
+        return ResponseEntity.ok().build();
     }
 }

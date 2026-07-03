@@ -13,6 +13,8 @@ import com.tpo.backend.multa.repository.MultaRepository;
 import com.tpo.backend.notificacion.service.NotificacionService;
 import com.tpo.backend.persona.PersonaEntity;
 import com.tpo.backend.producto.entity.ProductoEntity;
+import com.tpo.backend.usuario.entity.UsuarioEntity;
+import com.tpo.backend.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,13 +43,16 @@ public class AdminPagoService {
     private final CompraRepository compraRepository;
     private final MultaRepository multaRepository;
     private final NotificacionService notificacionService;
+    private final UsuarioRepository usuarioRepository;
 
     public AdminPagoService(CompraRepository compraRepository,
                             MultaRepository multaRepository,
-                            NotificacionService notificacionService) {
+                            NotificacionService notificacionService,
+                            UsuarioRepository usuarioRepository) {
         this.compraRepository = compraRepository;
         this.multaRepository = multaRepository;
         this.notificacionService = notificacionService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     /** Compras con estado_pago = 'pendiente' (usuarios que deben pagar). */
@@ -92,7 +97,9 @@ public class AdminPagoService {
         notificacionService.enviar(compra.getCliente().getId(),
                 "Fine applied",
                 "A fine of $" + valorMulta + " (10%) was applied for the unpaid purchase of \""
-                        + nombreProducto + "\". Pay it to keep participating in auctions.");
+                        + nombreProducto + "\". Pay it to keep participating in auctions. "
+                        + "If you don't resolve it within 72hrs, your access to the app will be "
+                        + "disabled and the case will be referred to the courts.");
 
         log.info("[ADMIN] Multa de {} asignada al cliente {} por la compra {} impaga.",
                 valorMulta, compra.getCliente().getId(), compraId);
@@ -104,6 +111,21 @@ public class AdminPagoService {
                 multa.getEstado(),
                 multa.getFechaLimite() != null ? multa.getFechaLimite().toString() : null,
                 new MultaDto.CompraRefDto(compra.getId(), nombreProducto));
+    }
+
+    /** Bloquea el acceso de un usuario a la app (deshabilita su login). El identificador es el de la persona/cliente. */
+    @Transactional
+    public void bloquearUsuario(Long personaId) {
+        UsuarioEntity usuario = usuarioRepository.findByPersonaId(personaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para persona: " + personaId));
+
+        if (!Boolean.TRUE.equals(usuario.getActivo())) {
+            throw new ConflictException("El usuario ya estaba bloqueado.");
+        }
+
+        usuario.setActivo(false);
+        usuarioRepository.save(usuario);
+        log.info("[ADMIN] Usuario de la persona {} bloqueado (sin acceso a la app).", personaId);
     }
 
     private PagoPendienteDto toDto(CompraEntity compra) {

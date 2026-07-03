@@ -46,6 +46,14 @@ public class ProductoEntity {
     @JoinColumn(name = "duenio", nullable = false)
     private DuenioEntity duenio;
 
+    /**
+     * Nuevo propietario tras adjudicarse el item: id de la PERSONA ganadora (o del admin si no
+     * hubo pujas). Se guarda el id de persona directo (no FK a 'duenios') para no exigir que el
+     * comprador sea dueno; {@code duenio} se conserva como el consignante original ("My Items").
+     */
+    @Column(name = "nuevo_duenio")
+    private Long nuevoDuenio;
+
     @ManyToOne
     @JoinColumn(name = "seguro")
     private SeguroEntity seguro;
@@ -53,6 +61,10 @@ public class ProductoEntity {
     /** Metadatos de arte/diseno (RF-15). */
     @Column(name = "artista")
     private String artista;
+
+    /** Fecha/epoca de la obra. Texto libre ("1960", "Siglo XV", etc.). */
+    @Column(name = "fecha_obra")
+    private String fechaObra;
 
     @Column(name = "resena_historica")
     private String resenia;
