@@ -35,4 +35,5 @@ build/
 ./.env
 /src/main/resources/application.properties
 /src/main/resources/application-dev.properties
-/src/main/resources/application-prod.properties
+# application-prod.properties is committed on purpose: it holds NO secrets,
+# only ${ENV_VAR} references resolved at runtime (Railway Variables).
