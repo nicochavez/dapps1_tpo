@@ -1,0 +1,12 @@
+{
+  "name": "bidflow-reseed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Re-siembra la base de Railway con los datos de prueba (reset de subastas para la demo).",
+  "scripts": {
+    "seed": "node reseed.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
