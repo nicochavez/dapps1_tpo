@@ -59,8 +59,6 @@ public class SecurityConfig {
                         // Productos requieren autenticacion (todos los endpoints usan @AuthenticationPrincipal)
                         .requestMatchers(HttpMethod.GET, "/api/v1/catalogos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/paises/**").permitAll()
-                        // Fotos de productos: las carga el <Image> de RN sin Authorization header
-                        .requestMatchers(HttpMethod.GET, "/api/v1/productos/*/fotos/**").permitAll()
                         // Backoffice: solo empleados
                         .requestMatchers("/api/v1/admin/**").hasRole("EMPLEADO")
                         // Todo lo demas requiere autenticacion

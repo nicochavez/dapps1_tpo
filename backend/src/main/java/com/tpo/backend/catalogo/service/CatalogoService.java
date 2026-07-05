@@ -12,6 +12,7 @@ import com.tpo.backend.cliente.service.ClienteService;
 import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
+import com.tpo.backend.common.storage.StorageService;
 import com.tpo.backend.producto.entity.ProductoEntity;
 import com.tpo.backend.producto.repository.FotoRepository;
 import com.tpo.backend.producto.repository.ProductoRepository;
@@ -41,6 +42,7 @@ public class CatalogoService {
     private final EmpleadoRepository empleadoRepository;
     private final SubastaRepository subastaRepository;
     private final PujaRepository pujaRepository;
+    private final StorageService storageService;
 
     public CatalogoService(CatalogoRepository catalogoRepository,
                            ItemCatalogoRepository itemRepository,
@@ -49,7 +51,8 @@ public class CatalogoService {
                            ClienteService clienteService,
                            EmpleadoRepository empleadoRepository,
                            SubastaRepository subastaRepository,
-                           PujaRepository pujaRepository) {
+                           PujaRepository pujaRepository,
+                           StorageService storageService) {
         this.catalogoRepository = catalogoRepository;
         this.itemRepository = itemRepository;
         this.productoRepository = productoRepository;
@@ -58,6 +61,7 @@ public class CatalogoService {
         this.empleadoRepository = empleadoRepository;
         this.subastaRepository = subastaRepository;
         this.pujaRepository = pujaRepository;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -224,7 +228,7 @@ public class CatalogoService {
         String descripcion = prod != null ? prod.getDescripcionCatalogo() : "";
         var fotos = fotoRepository.findByProductoId(item.getProducto().getId());
         String imagenPrincipal = fotos.isEmpty() ? null
-                : "/api/v1/productos/" + item.getProducto().getId() + "/fotos/" + fotos.get(0).getId();
+                : storageService.presignGet(fotos.get(0).getUrl());
 
         boolean subastado = Boolean.TRUE.equals(item.getSubastado());
         BigDecimal mejorOferta = pujaRepository.findFirstByItemIdOrderByImporteDesc(item.getId())
@@ -262,8 +266,7 @@ public class CatalogoService {
     private ItemCatalogoDetailDto toDetailDto(ItemCatalogoEntity item) {
         ProductoEntity producto = item.getProducto();
         List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProductoId(producto.getId()).stream()
-                .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
-                        "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
+                .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(), storageService.presignGet(f.getUrl())))
                 .toList();
 
         // Mismo estado del lote que en el listado, para que ambas vistas sean consistentes.

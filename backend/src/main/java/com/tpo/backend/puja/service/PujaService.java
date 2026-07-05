@@ -8,6 +8,7 @@ import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
+import com.tpo.backend.common.storage.StorageService;
 import com.tpo.backend.common.ws.SubastaEventPublisher;
 import com.tpo.backend.mediospago.repository.MedioPagoRepository;
 import com.tpo.backend.catalogo.entity.CatalogoEntity;
@@ -48,6 +49,7 @@ public class PujaService {
     private final ClienteService clienteService;
     private final SubastaEventPublisher eventPublisher;
     private final MedioPagoRepository medioPagoRepository;
+    private final StorageService storageService;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemRepository,
@@ -57,7 +59,8 @@ public class PujaService {
                        FotoRepository fotoRepository,
                        ClienteService clienteService,
                        SubastaEventPublisher eventPublisher,
-                       MedioPagoRepository medioPagoRepository) {
+                       MedioPagoRepository medioPagoRepository,
+                       StorageService storageService) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
@@ -67,6 +70,7 @@ public class PujaService {
         this.clienteService = clienteService;
         this.eventPublisher = eventPublisher;
         this.medioPagoRepository = medioPagoRepository;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -242,8 +246,7 @@ public class PujaService {
     private String firstFotoUrl(ProductoEntity prod) {
         if (prod == null) return null;
         var fotos = fotoRepository.findByProductoId(prod.getId());
-        return fotos.isEmpty() ? null
-                : "/api/v1/productos/" + prod.getId() + "/fotos/" + fotos.get(0).getId();
+        return fotos.isEmpty() ? null : storageService.presignGet(fotos.get(0).getUrl());
     }
 
     @Transactional
