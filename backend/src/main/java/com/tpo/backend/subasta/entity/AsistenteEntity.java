@@ -30,4 +30,12 @@ public class AsistenteEntity {
     /** true = espectador (no puede pujar); false/null = postor habilitado. */
     @Column(name = "espectador")
     private Boolean espectador;
+
+    /** Rol declarado del asistente en la subasta: 'postor' o 'espectador'. */
+    @Column(name = "rol")
+    private String rol;
+
+    /** true mientras el asistente mantiene la conexion activa a la subasta. */
+    @Column(name = "conectado")
+    private Boolean conectado;
 }

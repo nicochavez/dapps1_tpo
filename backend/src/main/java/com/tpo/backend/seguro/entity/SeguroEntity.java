@@ -19,6 +19,12 @@ public class SeguroEntity {
     @Column(name = "compania", nullable = false)
     private String compania;
 
+    @Column(name = "contacto")
+    private String contacto;
+
+    @Column(name = "telefono")
+    private String telefono;
+
     @Column(name = "polizacombinada")
     private Boolean polizaCombinada;
 

@@ -72,6 +72,13 @@ public class ProductoEntity {
     @Column(name = "motivo_rechazo")
     private String motivoRechazo;
 
+    /**
+     * Estado de revision coarse-grained del bien (en_revision / aceptado / rechazado).
+     * Convive con {@link #estado}, que traza el ciclo de vida fino del flujo vendedor.
+     */
+    @Column(name = "estado_revision")
+    private String estadoRevision;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false)
     private EstadoProducto estado;

@@ -37,4 +37,12 @@ public abstract class MedioPagoEntity {
 
     @Column(name = "detalle")
     private String detalle;
+
+    /**
+     * Banco a nivel del medio (denormalizado en {@code medios_pago}, ver newErd.sql). Se nombra
+     * distinto del atributo {@code banco} de las subclases (cuenta bancaria / cheque) para no
+     * colisionar en la jerarquia JOINED: alli cada subtabla tiene su propia columna {@code banco}.
+     */
+    @Column(name = "banco")
+    private String bancoResumen;
 }
