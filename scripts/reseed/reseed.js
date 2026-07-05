@@ -41,6 +41,12 @@ const seedFile = path.join(__dirname, '..', '..', 'docs', 'datos_de_prueba_BBDD.
       ALTER TABLE public.medios_pago ADD COLUMN IF NOT EXISTS banco           varchar;
     `);
 
+    // FotoEntity dejó de mapear el bytea `foto` (ahora guarda el object key en `url`),
+    // pero Hibernate (ddl-auto=update) nunca DROPea columnas: el viejo `foto` NOT NULL
+    // sigue en la tabla y rompería el INSERT del seed (que ya no lo provee). Lo sacamos.
+    // IF EXISTS => idempotente.
+    await client.query(`ALTER TABLE public.fotos DROP COLUMN IF EXISTS foto;`);
+
     // TRUNCATE dinámico sobre las tablas que existen (a prueba de drift de esquema).
     const tbls = (await client.query(
       "SELECT tablename FROM pg_tables WHERE schemaname='public'"
