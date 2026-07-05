@@ -19,7 +19,8 @@ public class FotoEntity {
     @JoinColumn(name = "producto", nullable = false)
     private ProductoEntity producto;
 
-    // byte[] sin @Lob mapea a bytea (coincide con el ERD); con @Lob Hibernate usaria oid.
-    @Column(name = "foto", nullable = false)
-    private byte[] foto;
+    // Object key within the Railway bucket (e.g. "fotos/uuid.jpg"); render URL is a
+    // presigned GET derived from this per response.
+    @Column(name = "url", nullable = false)
+    private String url;
 }

@@ -3,6 +3,8 @@ package com.tpo.backend.producto.dto;
 import com.tpo.backend.producto.entity.EstadoProducto;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class ProductoUpdateRequest {
     private String fecha;
@@ -17,4 +19,6 @@ public class ProductoUpdateRequest {
     private String fechaObra;
     private String resenia;
     private EstadoProducto estado;
+    /** Object keys de fotos nuevas a agregar, ya subidas al bucket via presigned PUT. */
+    private List<String> fotos;
 }

@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.0.165:8080/api/v1';
 
 export async function apiRequest(path, options = {}) {
@@ -232,29 +234,53 @@ export function createChequeCertificado(body, token) {
   });
 }
 
+// ── Upload de fotos (Railway Storage Bucket) ──────────────────────────────────
+
+function presignUpload(contentType, token) {
+  return apiRequest('/uploads/presign', {
+    method: 'POST',
+    token,
+    body: JSON.stringify({ contentType }),
+  });
+}
+
+async function uploadToBucket(uploadUrl, uri, contentType) {
+  await FileSystem.uploadAsync(uploadUrl, uri, {
+    httpMethod: 'PUT',
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { 'Content-Type': contentType },
+  });
+}
+
 // ── Productos (flujo vendedor) ─────────────────────────────────────────────────
 
-// Mapea el itemData del formulario (CreateObjectStep1/2) al ProductoNewRequest (@ModelAttribute).
-export function createProducto(itemData, photos, token) {
+// Mapea el itemData del formulario (CreateObjectStep1/2) al ProductoNewRequest (JSON).
+export async function createProducto(itemData, photos, token) {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  const form = new FormData();
-  form.append('fecha', today);
-  form.append('disponible', 'false');
-  form.append('descripcionCatalogo', itemData.title ?? '');
-  form.append('descripcionCompleta', itemData.description ?? '');
-  if (itemData.category) form.append('categoria', itemData.category);
-  if (itemData.subCategory) form.append('subcategoria', itemData.subCategory);
-  if (itemData.artistName) form.append('artista', itemData.artistName);
-  if (itemData.itemDate) form.append('fechaObra', itemData.itemDate);
-  if (itemData.itemHistory) form.append('resenia', itemData.itemHistory);
+  const keys = [];
+  for (const uri of Object.values(photos || {})) {
+    if (!uri) continue;
+    const contentType = 'image/jpeg';
+    const { key, uploadUrl } = await presignUpload(contentType, token);
+    await uploadToBucket(uploadUrl, uri, contentType);
+    keys.push(key);
+  }
 
-  Object.entries(photos || {}).forEach(([key, uri], index) => {
-    if (!uri) return;
-    form.append('fotos', { uri, name: `foto_${key}_${index}.jpg`, type: 'image/jpeg' });
-  });
+  const body = {
+    fecha: today,
+    disponible: false,
+    descripcionCatalogo: itemData.title ?? '',
+    descripcionCompleta: itemData.description ?? '',
+    categoria: itemData.category,
+    subcategoria: itemData.subCategory,
+    artista: itemData.artistName,
+    fechaObra: itemData.itemDate,
+    resenia: itemData.itemHistory,
+    fotos: keys,
+  };
 
-  return apiRequest('/productos', { method: 'POST', body: form, token });
+  return apiRequest('/productos', { method: 'POST', body: JSON.stringify(body), token });
 }
 
 export function getMisProductos(token) {

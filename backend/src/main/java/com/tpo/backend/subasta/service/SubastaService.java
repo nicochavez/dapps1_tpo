@@ -13,6 +13,7 @@ import com.tpo.backend.common.exception.ConflictException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
+import com.tpo.backend.common.storage.StorageService;
 import com.tpo.backend.common.util.CategoriaUtil;
 import com.tpo.backend.mediospago.entity.MedioPagoEntity;
 import com.tpo.backend.mediospago.repository.MedioPagoRepository;
@@ -52,6 +53,7 @@ public class SubastaService {
     private final MedioPagoRepository medioPagoRepository;
     private final PujaRepository pujaRepository;
     private final ClienteService clienteService;
+    private final StorageService storageService;
 
     public SubastaService(SubastaRepository subastaRepository,
                           SubastadorRepository subastadorRepository,
@@ -62,7 +64,8 @@ public class SubastaService {
                           FotoRepository fotoRepository,
                           MedioPagoRepository medioPagoRepository,
                           PujaRepository pujaRepository,
-                          ClienteService clienteService) {
+                          ClienteService clienteService,
+                          StorageService storageService) {
         this.subastaRepository = subastaRepository;
         this.subastadorRepository = subastadorRepository;
         this.asistenteRepository = asistenteRepository;
@@ -73,6 +76,7 @@ public class SubastaService {
         this.medioPagoRepository = medioPagoRepository;
         this.pujaRepository = pujaRepository;
         this.clienteService = clienteService;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -267,8 +271,7 @@ public class SubastaService {
         item = itemRepository.save(item);
 
         List<ItemCatalogoDetailDto.FotoDto> fotos = fotoRepository.findByProductoId(producto.getId()).stream()
-                .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(),
-                        "/api/v1/productos/" + producto.getId() + "/fotos/" + f.getId()))
+                .map(f -> new ItemCatalogoDetailDto.FotoDto(f.getId(), storageService.presignGet(f.getUrl())))
                 .toList();
         return new ItemCatalogoDetailDto(item.getId(), item.getPrecioBase(), item.getComision(), "no", "pendiente", null,
                 new ItemCatalogoDetailDto.ProductoRefDto(producto.getId(),
@@ -367,8 +370,7 @@ public class SubastaService {
 
     private List<FotoRefDto> buildFotoRefs(Long productoId) {
         return fotoRepository.findByProductoId(productoId).stream()
-                .map(f -> new FotoRefDto(f.getId(),
-                        "/api/v1/productos/" + productoId + "/fotos/" + f.getId()))
+                .map(f -> new FotoRefDto(f.getId(), storageService.presignGet(f.getUrl())))
                 .toList();
     }
 }

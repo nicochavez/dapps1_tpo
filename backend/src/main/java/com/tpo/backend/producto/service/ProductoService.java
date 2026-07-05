@@ -5,6 +5,7 @@ import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
+import com.tpo.backend.common.storage.StorageService;
 import com.tpo.backend.duenio.entity.DuenioEntity;
 import com.tpo.backend.duenio.repository.DuenioRepository;
 import com.tpo.backend.empleado.entity.EmpleadoEntity;
@@ -28,9 +29,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -49,6 +47,7 @@ public class ProductoService {
     private final EmpleadoRepository empleadoRepository;
     private final ItemCatalogoRepository itemCatalogoRepository;
     private final SubastaRepository subastaRepository;
+    private final StorageService storageService;
 
     public ProductoService(ProductoRepository productoRepository,
                            FotoRepository fotoRepository,
@@ -57,7 +56,8 @@ public class ProductoService {
                            DuenioRepository duenioRepository,
                            EmpleadoRepository empleadoRepository,
                            ItemCatalogoRepository itemCatalogoRepository,
-                           SubastaRepository subastaRepository) {
+                           SubastaRepository subastaRepository,
+                           StorageService storageService) {
         this.productoRepository = productoRepository;
         this.fotoRepository = fotoRepository;
         this.personaRepository = personaRepository;
@@ -66,6 +66,7 @@ public class ProductoService {
         this.empleadoRepository = empleadoRepository;
         this.itemCatalogoRepository = itemCatalogoRepository;
         this.subastaRepository = subastaRepository;
+        this.storageService = storageService;
     }
 
     private EmpleadoEntity findEmpleado(Long id) {
@@ -101,17 +102,8 @@ public class ProductoService {
         return toDto(prod);
     }
 
-    /** Bytes de una foto que pertenece al producto indicado (para servirla por HTTP). */
-    @Transactional(readOnly = true)
-    public byte[] getFotoBytes(Long productoId, Long fotoId) {
-        return fotoRepository.findById(fotoId)
-                .filter(f -> f.getProducto().getId().equals(productoId))
-                .map(FotoEntity::getFoto)
-                .orElseThrow(() -> new ResourceNotFoundException("Foto no encontrada: " + fotoId));
-    }
-
     @Transactional
-    public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<MultipartFile> fotos) {
+    public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<String> fotos) {
         ProductoEntity prod = productoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + id));
         if (request.getFecha() != null) prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -132,7 +124,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public ProductoDto agregarFotos(Long productoId, List<MultipartFile> fotos) {
+    public ProductoDto agregarFotos(Long productoId, List<String> fotos) {
         ProductoEntity prod = productoRepository.findById(productoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
         saveFotos(prod, fotos);
@@ -148,13 +140,14 @@ public class ProductoService {
             FotoEntity foto = fotoRepository.findById(fotoId)
                     .filter(f -> f.getProducto().getId().equals(productoId))
                     .orElseThrow(() -> new ResourceNotFoundException("Foto no encontrada: " + fotoId));
+            storageService.delete(foto.getUrl());
             fotoRepository.delete(foto);
         });
         return toDto(productoRepository.findById(productoId).get());
     }
 
     @Transactional
-    public ProductoDto crear(Long duenioId, ProductoNewRequest request, List<MultipartFile> fotos) {
+    public ProductoDto crear(Long duenioId, ProductoNewRequest request, List<String> fotos) {
         DuenioEntity duenio = ensureDuenio(duenioId);
         ProductoEntity prod = new ProductoEntity();
         prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -196,17 +189,13 @@ public class ProductoService {
         });
     }
 
-    private void saveFotos(ProductoEntity prod, List<MultipartFile> fotos) {
-        if (fotos == null) return;
-        fotos.forEach(file -> {
-            try {
-                FotoEntity foto = new FotoEntity();
-                foto.setProducto(prod);
-                foto.setFoto(file.getBytes());
-                fotoRepository.save(foto);
-            } catch (IOException e) {
-                throw new RuntimeException("Error al procesar foto: " + file.getOriginalFilename(), e);
-            }
+    private void saveFotos(ProductoEntity prod, List<String> keys) {
+        if (keys == null) return;
+        keys.forEach(key -> {
+            FotoEntity foto = new FotoEntity();
+            foto.setProducto(prod);
+            foto.setUrl(key);
+            fotoRepository.save(foto);
         });
     }
 
@@ -325,8 +314,7 @@ public class ProductoService {
         );
 
         List<ProductoDto.FotoDto> fotos = fotoRepository.findByProductoId(prod.getId()).stream()
-                .map(f -> new ProductoDto.FotoDto(f.getId(),
-                        "/api/v1/productos/" + prod.getId() + "/fotos/" + f.getId()))
+                .map(f -> new ProductoDto.FotoDto(f.getId(), storageService.presignGet(f.getUrl())))
                 .toList();
 
         ProductoDto.SeguroDto seguroDto = null;
