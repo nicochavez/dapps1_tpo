@@ -1,6 +1,6 @@
 # Endpoints del Backend y Requerimientos que resuelven
 
-Mapa de los endpoints REST (y el canal WebSocket) del backend contra los requerimientos funcionales (**RF**) e historias de usuario (**HU**) de [`RequerimientosYFeatures.md`](./RequerimientosYFeatures.md). Las features del [MVP](./mvp_requerimientos_y_features.md) están marcadas con ✅; lo que excede el MVP, con ➕.
+Mapa de los endpoints REST (y el canal WebSocket) del backend contra los requerimientos funcionales (**RF**) e historias de usuario (**HU**) de [`RequerimientosYFeatures.md`](../requerimientos/RequerimientosYFeatures.md). Las features del [MVP](../requerimientos/mvp_requerimientos_y_features.md) están marcadas con ✅; lo que excede el MVP, con ➕.
 
 Convenciones:
 - Base URL: `/api/v1`. Documentación viva en `/swagger-ui.html`.

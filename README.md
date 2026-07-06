@@ -6,21 +6,21 @@ REST API for an online auction platform that integrates with an existing on-prem
 
 | Deliverable                | Location                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| API Spec (Swagger/OpenAPI) | [`docs/swagger.yaml`](docs/swagger.yaml)                                                            |
+| API Spec (Swagger/OpenAPI) | [`docs/arquitectura/swagger.yaml`](docs/arquitectura/swagger.yaml)                                                            |
 | Figma Workspace            | [BidFlow — Figma](https://www.figma.com/design/37w5bak9cnELI1c5UNrcEF/BidFlow?t=Fab6gcKx8vtaq7sA-1) |
-| Figma Export (PDF)         | [`docs/figma-export.pdf`](docs/BidFlow.pdf.pdf)                                                     |
+| Figma Export (PDF)         | [`docs/figma-export.pdf`](docs/requerimientos/BidFlow.pdf)                                                     |
 | Source Repository          | This repo                                                                                           |
 
 ---
 
 ## How to Read the API Spec (Swagger)
 
-The API is documented using **OpenAPI 3.0.3** and lives at [`docs/swagger.yaml`](docs/swagger.yaml).
+The API is documented using **OpenAPI 3.0.3** and lives at [`docs/arquitectura/swagger.yaml`](docs/arquitectura/swagger.yaml).
 
 ### Option 1 — Swagger UI (recommended)
 
 1. Go to [https://editor.swagger.io](https://editor.swagger.io).
-2. Click **File → Import file** and select `docs/swagger.yaml`.
+2. Click **File → Import file** and select `docs/arquitectura/swagger.yaml`.
 3. The interactive UI will render all endpoints, request/response schemas, and let you try calls directly.
 
 ### Option 2 — Swagger UI via Docker
@@ -28,7 +28,7 @@ The API is documented using **OpenAPI 3.0.3** and lives at [`docs/swagger.yaml`]
 ```bash
 docker run -p 8080:8080 \
   -e SWAGGER_JSON=/api/swagger.yaml \
-  -v $(pwd)/docs:/api \
+  -v $(pwd)/docs/arquitectura:/api \
   swaggerapi/swagger-ui
 ```
 
@@ -36,7 +36,7 @@ Then open [http://localhost:8080](http://localhost:8080).
 
 ### Option 3 — VS Code extension
 
-Install the **OpenAPI (Swagger) Editor** extension (`42Crunch.vscode-openapi`), then open `docs/swagger.yaml` directly in VS Code for inline preview and validation.
+Install the **OpenAPI (Swagger) Editor** extension (`42Crunch.vscode-openapi`), then open `docs/arquitectura/swagger.yaml` directly in VS Code for inline preview and validation.
 
 ---
 

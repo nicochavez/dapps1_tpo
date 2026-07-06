@@ -1,6 +1,6 @@
 # Flujo Frontend → Backend por Requerimiento / Historia de Usuario
 
-Este documento traza, para cada requerimiento funcional (RF) e historia de usuario (HU) de [`RequerimientosYFeatures.md`](./RequerimientosYFeatures.md), el flujo real implementado: qué pantalla del frontend lo dispara, qué endpoint del backend consume, con qué método/payload y cuál es el resultado esperado.
+Este documento traza, para cada requerimiento funcional (RF) e historia de usuario (HU) de [`RequerimientosYFeatures.md`](../requerimientos/RequerimientosYFeatures.md), el flujo real implementado: qué pantalla del frontend lo dispara, qué endpoint del backend consume, con qué método/payload y cuál es el resultado esperado.
 
 ## Convenciones
 

@@ -2,8 +2,8 @@
 
 Estrategia para recorrer los **flujos principales** de la app validando las **reglas de negocio** clave.
 Basado en el estado real del código (backend Spring + WebSocket + scheduler) y en la seed
-[`datos_de_prueba_BBDD.txt`](./datos_de_prueba_BBDD.txt). Los requerimientos están trazados contra
-[`RequerimientosYFeatures.md`](./RequerimientosYFeatures.md).
+[`datos_de_prueba_BBDD.sql`](../base-de-datos/datos_de_prueba_BBDD.sql). Los requerimientos están trazados contra
+[`RequerimientosYFeatures.md`](../requerimientos/RequerimientosYFeatures.md).
 
 > **Regla de oro de la demo:** mostrar solo lo ✅ y lo 🟡 (con su parche). Evitar los ❌ (ver §7).
 

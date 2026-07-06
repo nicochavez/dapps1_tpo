@@ -96,7 +96,7 @@ Reusable components are in `frontend/components/` (`Header`, `Footer`, `CardForm
 
 ## API Reference
 
-The canonical contract is `docs/swagger.yaml` (OpenAPI 3.0.3). Import it at [editor.swagger.io](https://editor.swagger.io) or run the Docker command from the README.
+The canonical contract is `docs/arquitectura/swagger.yaml` (OpenAPI 3.0.3). Import it at [editor.swagger.io](https://editor.swagger.io) or run the Docker command from the README.
 
 | Module | Base Path |
 |---|---|

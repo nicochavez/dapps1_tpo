@@ -213,7 +213,7 @@ un usuario se le otorga un rol nuevo, lo verá reflejado al volver a iniciar ses
 
 Los endpoints `/api/v1/admin/**` requieren `ROLE_EMPLEADO`, pero el alta de usuarios solo
 crea **clientes**. El empleado administrador se siembra manualmente con
-[`docs/seed.sql`](./seed.sql): el empleado verificador (`identificador = 2`) ya otorga
+[`docs/base-de-datos/seed.sql`](../base-de-datos/seed.sql): el empleado verificador (`identificador = 2`) ya otorga
 `ROLE_EMPLEADO`; solo se le agrega una fila en `usuarios` con credenciales de login.
 
 `password_hash` **debe** ser un hash **BCrypt** (`$2a/$2b/$2y...`), porque el backend valida
