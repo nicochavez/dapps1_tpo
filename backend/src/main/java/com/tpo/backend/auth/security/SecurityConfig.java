@@ -54,7 +54,7 @@ public class SecurityConfig {
                         // Endpoints publicos
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/ws/**", "/ws-native/**", "/ws-native").permitAll()
                         // Browse publico: catalogos y paises (RF-12/RF-13)
                         // Productos requieren autenticacion (todos los endpoints usan @AuthenticationPrincipal)
                         .requestMatchers(HttpMethod.GET, "/api/v1/catalogos/**").permitAll()
