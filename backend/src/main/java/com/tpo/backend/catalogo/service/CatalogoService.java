@@ -203,7 +203,8 @@ public class CatalogoService {
                         subasta.getCategoria(),
                         subasta.getFecha() != null ? subasta.getFecha().toString() : null,
                         subasta.getHora() != null ? subasta.getHora().toString() : null,
-                        enVivo);
+                        enVivo,
+                        subasta.getMoneda());
 
         return new CatalogoListDto(cat.getId(), cat.getDescripcion(), items.size(),
                 image, itemCategory, subastaDto, items);

@@ -269,10 +269,19 @@ export default function ExploreCatalogsScreen({ navigation }) {
                                 {catalog.totalItems} Items
                               </Text>
                             </View>
-                            <View className="bg-amber-100 px-2 py-0.5 rounded">
-                              <Text className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                                {catalog.subasta?.categoria}
-                              </Text>
+                            <View className="flex-row items-center gap-1.5">
+                              {catalog.subasta?.moneda && (
+                                <View className="bg-slate-100 px-2 py-0.5 rounded">
+                                  <Text className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                                    {catalog.subasta.moneda}
+                                  </Text>
+                                </View>
+                              )}
+                              <View className="bg-amber-100 px-2 py-0.5 rounded">
+                                <Text className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                                  {catalog.subasta?.categoria}
+                                </Text>
+                              </View>
                             </View>
                           </View>
                         </View>

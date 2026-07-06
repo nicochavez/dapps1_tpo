@@ -194,6 +194,8 @@ function CatalogItemDetail({
     canAccessPrices: showPrices, bidEligible, lockReason, requiredLabel,
     currentUser, isOwner, bids, won: !!won,
     subastaId, refreshBids, hasPendingMulta, hasVerifiedPayment,
+    // Moneda real de la subasta (ARS/USD). Antes las vistas hardcodeaban "USD".
+    moneda: (subastaInfo?.moneda || '').toUpperCase() || null,
   };
 
   if (isLive) return <ItemDetailLiveView {...shared} />;

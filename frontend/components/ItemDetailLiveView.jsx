@@ -38,7 +38,7 @@ function fmtCountdown(secs) {
 }
 
 export default function ItemDetailLiveView(props) {
-  const { item, canAccessPrices, bidEligible, currentUser, isOwner, subastaId, refreshBids, hasPendingMulta, hasVerifiedPayment } = props;
+  const { item, canAccessPrices, bidEligible, currentUser, isOwner, subastaId, refreshBids, hasPendingMulta, hasVerifiedPayment, moneda } = props;
   const [bidAmount, setBidAmount] = useState('');
   const [placing, setPlacing]     = useState(false);
   const [numeroPostor, setNumeroPostor] = useState(null);
@@ -191,7 +191,7 @@ export default function ItemDetailLiveView(props) {
           <Text className={`text-4xl font-bold ${canAccessPrices ? 'text-slate-800' : 'text-slate-300'}`}>
             {formatPrice(currentBid ?? item?.currentBid ?? item?.precioBase)}
           </Text>
-          {canAccessPrices && <Text className="text-xs text-slate-400 font-bold ml-2">USD</Text>}
+          {canAccessPrices && moneda && <Text className="text-xs text-slate-400 font-bold ml-2">{moneda}</Text>}
         </View>
 
         {/* Countdown prominente — visible para todos (postor, dueño, espectador) */}

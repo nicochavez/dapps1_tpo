@@ -9,7 +9,7 @@ const formatPrice = (value) => {
 };
 
 export default function ItemDetailUpcomingView(props) {
-  const { item, canAccessPrices } = props;
+  const { item, canAccessPrices, moneda } = props;
 
   return (
     <ItemDetailBase {...props} badgeColor="bg-blue-500/90" badgeLabel="Upcoming Auction">
@@ -27,7 +27,7 @@ export default function ItemDetailUpcomingView(props) {
           <Text className={`text-4xl font-bold ${canAccessPrices ? 'text-slate-800' : 'text-slate-300'}`}>
             {formatPrice(item?.precioBase)}
           </Text>
-          {canAccessPrices && <Text className="text-xs text-slate-400 font-bold ml-2">USD</Text>}
+          {canAccessPrices && moneda && <Text className="text-xs text-slate-400 font-bold ml-2">{moneda}</Text>}
         </View>
 
         <View className="rounded-2xl bg-blue-50 border border-blue-100 p-4">

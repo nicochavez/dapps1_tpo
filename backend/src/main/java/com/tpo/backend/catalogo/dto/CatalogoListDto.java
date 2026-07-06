@@ -33,6 +33,8 @@ public class CatalogoListDto {
         private String hora;
         /** true = el scheduler ya arrancó al menos un lote; false = upcoming (abierta pero sin actividad). */
         private Boolean enVivo;
+        /** Moneda en la que corre la subasta (ARS | USD). Define el símbolo/etiqueta de todos los precios. */
+        private String moneda;
     }
 
     @Data

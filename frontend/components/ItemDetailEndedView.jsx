@@ -10,7 +10,7 @@ const formatPrice = (value) => {
 };
 
 export default function ItemDetailEndedView(props) {
-  const { item, canAccessPrices, currentUser } = props;
+  const { item, canAccessPrices, currentUser, moneda } = props;
 
   // Historial de pujas real (viene del backend por props), ordenado descendente.
   const bids = [...(props.bids ?? [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
@@ -31,7 +31,7 @@ export default function ItemDetailEndedView(props) {
           <Text className={`text-4xl font-bold ${canAccessPrices ? 'text-slate-800' : 'text-slate-300'}`}>
             {formatPrice(item?.importeAdjudicado ?? item?.currentBid ?? item?.precioBase)}
           </Text>
-          {canAccessPrices && <Text className="text-xs text-slate-400 font-bold ml-2">USD</Text>}
+          {canAccessPrices && moneda && <Text className="text-xs text-slate-400 font-bold ml-2">{moneda}</Text>}
         </View>
 
         <View className="rounded-2xl bg-slate-50 border border-slate-200 p-4">

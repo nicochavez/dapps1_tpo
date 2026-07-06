@@ -20,7 +20,7 @@ function getConnectionString() {
   process.exit(1);
 }
 
-const seedFile = path.join(__dirname, '..', '..', 'docs', 'datos_de_prueba_BBDD.txt');
+const seedFile = path.join(__dirname, '..', '..', 'docs', 'datos_de_prueba_BBDD.sql');
 
 (async () => {
   const client = new Client({ connectionString: getConnectionString() });

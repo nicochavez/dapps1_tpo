@@ -106,6 +106,7 @@ export default function CatalogItemsScreen({ route, navigation }) {
 
   // ── Evaluación de acceso ─────────────────────────────────────────────────
   const requiredCategory = activeCatalog.subasta?.categoria;
+  const moneda           = (activeCatalog.subasta?.moneda || '').toUpperCase() || null;
   const isLoggedIn       = !!currentUser;
   const categoryOk       = isLoggedIn && hasEnoughCategory(currentUser.category, requiredCategory);
   // Los precios se ven con solo estar registrado; la categoria solo limita el pujar.
@@ -350,13 +351,18 @@ export default function CatalogItemsScreen({ route, navigation }) {
                       <Text className="text-[10px] text-slate-400 font-medium mb-0.5 uppercase tracking-wider">
                         {priceLabel}
                       </Text>
-                      <Text className={`font-bold ${
-                        canAccessPrices
-                          ? isActive ? 'text-lg text-[#7C3AED]' : isSold ? 'text-sm text-slate-600' : 'text-sm text-slate-800'
-                          : 'text-sm text-slate-300'
-                      }`}>
-                        {displayPrice}
-                      </Text>
+                      <View className="flex-row items-baseline">
+                        <Text className={`font-bold ${
+                          canAccessPrices
+                            ? isActive ? 'text-lg text-[#7C3AED]' : isSold ? 'text-sm text-slate-600' : 'text-sm text-slate-800'
+                            : 'text-sm text-slate-300'
+                        }`}>
+                          {displayPrice}
+                        </Text>
+                        {canAccessPrices && moneda && (
+                          <Text className="text-[10px] text-slate-400 font-bold ml-1">{moneda}</Text>
+                        )}
+                      </View>
                     </View>
 
                     <View className={`px-3 py-1.5 rounded-lg border ${
