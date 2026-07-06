@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import ItemDetailBase from './ItemDetailBase';
 import BidHistorySection from './BidHistorySection';
 import useLiveBids from '../hooks/useLiveBids';
-import { conectarASubasta, realizarPuja, nuevaIdempotencyKey } from '../services/api';
+import { conectarASubasta, desconectarDeSubasta, miConexionSubasta, realizarPuja, nuevaIdempotencyKey } from '../services/api';
 
 const formatPrice = (value) => {
   if (value === null || value === undefined) return '$ —,—';
@@ -44,6 +44,8 @@ export default function ItemDetailLiveView(props) {
   const [numeroPostor, setNumeroPostor] = useState(null);
   // true una vez que el usuario aceptó unirse y quedó conectado a esta subasta.
   const [joined, setJoined] = useState(false);
+  // id de otra subasta viva donde el usuario ya está conectado (bloquea unirse acá), o null.
+  const [otraSubastaId, setOtraSubastaId] = useState(null);
   // Motivo por el que no quedamos conectados (ej: ya conectado a otra subasta, o canceló el
   // alistamiento). Lo mostramos al pujar en vez del genérico "Debe conectarse antes de pujar".
   const [connectError, setConnectError] = useState(null);
@@ -97,6 +99,7 @@ export default function ItemDetailLiveView(props) {
       .then(res => {
         setNumeroPostor(res?.asistente?.numeroPostor ?? null);
         setJoined(true);
+        setOtraSubastaId(null);
       })
       .catch(e => {
         // Ej: "Ya esta conectado a otra subasta". Guardamos el motivo real para mostrarlo al pujar.
@@ -121,15 +124,62 @@ export default function ItemDetailLiveView(props) {
     );
   }, [joinAuction]);
 
-  // Al entrar a la subasta en vivo (una vez por subasta), mostramos el alert de alistamiento.
+  // Avisa que ya está conectado a OTRA subasta viva y ofrece salir de esa para unirse a ésta.
+  const promptSwitch = useCallback((otraSubastaId) => {
+    Alert.alert(
+      'Ya estás en otra subasta',
+      `Estás conectado a la subasta #${otraSubastaId}. Sólo podés participar en una a la vez.\n\n¿Querés salir de esa y unirte a ésta?`,
+      [
+        {
+          text: 'No, seguir en la otra',
+          style: 'cancel',
+          onPress: () => setConnectError(`Estás conectado a la subasta #${otraSubastaId}. Salí de esa para pujar acá.`),
+        },
+        {
+          text: 'Salir y unirme',
+          onPress: () => desconectarDeSubasta(otraSubastaId, currentUser.token)
+            .then(joinAuction)
+            .catch(e => setConnectError(e?.message || 'No se pudo cambiar de subasta.')),
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [currentUser?.token, joinAuction]);
+
+  // Al entrar a la subasta en vivo (una vez por subasta), consultamos el estado real de conexión
+  // y sólo entonces decidimos: entrar directo si ya estamos unidos, ofrecer cambiar si estamos
+  // en otra, o preguntar si queremos unirnos. Así el alert no sale de más.
   useEffect(() => {
     if (!subastaId || !currentUser?.token || isOwner || !bidEligible) return;
-    if (promptedForRef.current === subastaId) return; // ya preguntamos para esta subasta
+    if (promptedForRef.current === subastaId) return; // ya resolvimos el estado para esta subasta
     promptedForRef.current = subastaId;
+
+    let cancelled = false;
     setJoined(false);
     setNumeroPostor(null);
-    promptJoin();
-  }, [subastaId, currentUser?.token, isOwner, bidEligible, promptJoin]);
+    setConnectError(null);
+
+    miConexionSubasta(subastaId, currentUser.token)
+      .then(estado => {
+        if (cancelled) return;
+        if (estado?.conectadoAqui) {
+          // Ya estamos conectados a esta subasta: entramos directo, sin preguntar.
+          setNumeroPostor(estado.numeroPostor ?? null);
+          setJoined(true);
+        } else if (estado?.conectadoEnOtra) {
+          setOtraSubastaId(estado.conectadoEnOtra);
+          promptSwitch(estado.conectadoEnOtra);
+        } else {
+          promptJoin();
+        }
+      })
+      .catch(() => {
+        // Si no pudimos leer el estado, caemos al comportamiento anterior: preguntar.
+        if (!cancelled) promptJoin();
+      });
+
+    return () => { cancelled = true; };
+  }, [subastaId, currentUser?.token, isOwner, bidEligible, promptJoin, promptSwitch]);
 
   // Puja mínima permitida. En oro/platino solo hay que superar la oferta actual (+1 mínimo);
   // en el resto, redondeada hacia arriba para no caer por debajo del límite +1%.
@@ -152,10 +202,11 @@ export default function ItemDetailLiveView(props) {
       Alert.alert('Importe inválido', 'Ingresá un monto mayor a 0.');
       return;
     }
-    // Si no estamos unidos a la subasta: si el backend nos bloqueó (ya conectado a otra),
-    // mostramos ese motivo; si sólo fue que cancelamos el alistamiento, lo volvemos a ofrecer.
+    // Si no estamos unidos a la subasta: si estamos conectados a otra, re-ofrecemos el cambio;
+    // si el backend nos bloqueó por otro motivo, lo mostramos; si sólo cancelamos, re-preguntamos.
     if (!joined) {
-      if (connectError) Alert.alert('No se pudo pujar', connectError);
+      if (otraSubastaId) promptSwitch(otraSubastaId);
+      else if (connectError) Alert.alert('No se pudo pujar', connectError);
       else promptJoin();
       return;
     }

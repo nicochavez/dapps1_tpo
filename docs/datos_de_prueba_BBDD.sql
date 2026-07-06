@@ -24,12 +24,14 @@
 --   • ORO (40000013):     ganada SIN PAGAR (Óleo Abstracto)  +  ganada PAGADA (Grabado)
 --   • PLATINO (40000014): ganada SIN PAGAR + MULTA POR MORA  (Litografía Original)
 --
--- DEMO EN VIVO (recomendado, para no chocar con las reglas de negocio):
---   • Subasta #1 (plata, ARS): conectarse como 40000012 (plata) — tiene medio ARS y
---     no está conectado a otra subasta.
---   • Subasta #3 (comun, ARS): conectarse como 40000010 (comun) o 40000011 (especial)
---     — ahora tienen medio de pago ARS verificado para poder pujar.
---   Nota: cada cliente puede estar conectado a UNA sola subasta a la vez.
+-- DEMO EN VIVO:
+--   Ningún cliente arranca conectado (ver sección 12). Al entrar a una subasta en vivo, la
+--   app pregunta "¿unirse?"; al aceptar, el cliente queda ligado a esa subasta.
+--   • Subasta #1 (plata, ARS): unirse como 40000012 (plata) — tiene medio ARS verificado.
+--   • Subasta #3 (comun, ARS): unirse como 40000010 (comun) o 40000011 (especial) — tienen
+--     medio de pago ARS verificado para poder pujar.
+--   Nota: cada cliente puede estar conectado a UNA sola subasta a la vez. El bloqueo sólo
+--   cuenta subastas ABIERTAS; al finalizar una, el backend desconecta y libera al cliente.
 -- ============================================================================
 
 BEGIN;
@@ -249,16 +251,22 @@ OVERRIDING SYSTEM VALUE VALUES
   (9, 2, 11, 4,     3500,     350, true,  'aceptado',  NULL),  -- Litografía Original (USD)
   (10, 4, 12, 1, 1800000,  180000, false, 'aceptado',  NULL);  -- Guitarra Eléctrica (ARS, subasta #4 UPCOMING)
 
--- ─── 12) Asistentes (postores conectados a cada subasta) ────────────────────
+-- ─── 12) Asistentes (numeropostor + historial de pujas por subasta) ─────────
+-- Se siembran con conectado=false a propósito: las filas existen para dar numeroPostor a
+-- las pujas históricas de abajo, pero NINGÚN cliente arranca "conectado activamente". Así
+-- la app (con su alert de "unirse") es la única fuente de verdad y cualquier usuario puede
+-- unirse a la subasta en vivo que elija sin chocar con el bloqueo "una subasta a la vez".
+-- (Antes venían con conectado=true en las subastas LIVE #1 y #3, lo que bloqueaba a esos
+--  clientes de pujar en la otra subasta en vivo.)
 INSERT INTO public.asistentes (identificador, numeropostor, cliente, subasta, rol, conectado, espectador)
 OVERRIDING SYSTEM VALUE VALUES
-  (1, 1, 12, 1, 'postor', true,  false),  -- plata  en subasta 1
-  (2, 2, 13, 1, 'postor', true,  false),  -- oro    en subasta 1
-  (3, 3, 14, 1, 'postor', true,  false),  -- platino en subasta 1
+  (1, 1, 12, 1, 'postor', false, false),  -- plata  en subasta 1
+  (2, 2, 13, 1, 'postor', false, false),  -- oro    en subasta 1
+  (3, 3, 14, 1, 'postor', false, false),  -- platino en subasta 1
   (4, 1, 13, 2, 'postor', false, false),  -- oro    en subasta 2 (ended)
   (5, 2, 14, 2, 'postor', false, false),  -- platino en subasta 2
-  (6, 1, 10, 3, 'postor', true,  false),  -- comun  en subasta 3
-  (7, 2, 11, 3, 'postor', true,  false);  -- especial en subasta 3
+  (6, 1, 10, 3, 'postor', false, false),  -- comun  en subasta 3
+  (7, 2, 11, 3, 'postor', false, false);  -- especial en subasta 3
 
 -- ─── 13) Pujas ──────────────────────────────────────────────────────────────
 --  item1 (LIVE): tres pujas, sin ganador todavía
@@ -351,7 +359,9 @@ OVERRIDING SYSTEM VALUE VALUES
   (200, 13, 'Casa',     'Av. Libertador', '1500', 'CABA',    'Buenos Aires', '1425', 32, true),
   (201, 20, 'Depósito', 'Calle Falsa',    '123',  'CABA',    'Buenos Aires', '1000', 32, true),
   (202, 10, 'Casa',     'San Martín',     '450',  'Córdoba', 'Córdoba',      '5000', 32, true),
-  (203, 14, 'Casa',     'Av. Cabildo',    '2200', 'CABA',    'Buenos Aires', '1428', 32, true);
+  (203, 14, 'Casa',     'Av. Cabildo',    '2200', 'CABA',    'Buenos Aires', '1428', 32, true),
+  (204, 11, 'Casa',     'Corrientes',     '3400', 'CABA',    'Buenos Aires', '1194', 32, true),  -- especial (Esteban)
+  (205, 12, 'Casa',     'Av. Rivadavia',  '6800', 'CABA',    'Buenos Aires', '1406', 32, true);  -- plata (Paula)
 
 -- ─── 17) Cuenta de cobro del dueño ──────────────────────────────────────────
 INSERT INTO public.cuentas_cobro (duenio, banco, numero_cuenta, moneda, pais) VALUES

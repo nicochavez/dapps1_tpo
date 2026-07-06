@@ -222,6 +222,29 @@ public class SubastaService {
 
         return new ConectarResponse(new AsistenteDto(asistente.getCliente().getId(), asistente.getNumeroPostor()));
     }
+    /**
+     * Estado de conexion del cliente respecto de esta subasta. La app lo consulta al entrar
+     * para no volver a preguntar si ya esta conectado, ni ofrecer unirse si esta en otra.
+     */
+    @Transactional(readOnly = true)
+    public MiConexionDto miConexion(Long subastaId) {
+        findOrThrow(subastaId);
+        Long clienteId = clienteService.currentClienteEntity().getId();
+
+        AsistenteEntity aqui = asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId).orElse(null);
+        boolean conectadoAqui = aqui != null && Boolean.TRUE.equals(aqui.getConectado());
+        Integer numeroPostor = aqui != null ? aqui.getNumeroPostor() : null;
+
+        Long conectadoEnOtra = asistenteRepository.findByClienteId(clienteId).stream()
+                .filter(a -> a.getSubasta() != null && !a.getSubasta().getId().equals(subastaId))
+                .filter(a -> Boolean.TRUE.equals(a.getConectado()))
+                .filter(a -> "abierta".equalsIgnoreCase(a.getSubasta().getEstado()))
+                .map(a -> a.getSubasta().getId())
+                .findFirst().orElse(null);
+
+        return new MiConexionDto(conectadoAqui, numeroPostor, conectadoEnOtra);
+    }
+
     @Transactional
     public void desconectar(Long subastaId) {
         findOrThrow(subastaId);

@@ -68,6 +68,11 @@ public class SubastaController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/{subastaId}/mi-conexion")
+    public ResponseEntity<MiConexionDto> miConexion(@PathVariable Long subastaId) {
+        return ResponseEntity.ok(subastaService.miConexion(subastaId));
+    }
+
     @GetMapping("/{subastaId}/item-actual")
     public ResponseEntity<ItemActualDto> getItemActual(@PathVariable Long subastaId) {
         return ResponseEntity.ok(subastaService.getItemActual(subastaId));

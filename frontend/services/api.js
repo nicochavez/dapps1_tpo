@@ -345,6 +345,16 @@ export function conectarASubasta(subastaId, token) {
   return apiRequest(`/subastas/${subastaId}/conectar`, { method: 'POST', token });
 }
 
+export function desconectarDeSubasta(subastaId, token) {
+  return apiRequest(`/subastas/${subastaId}/desconectar`, { method: 'POST', token });
+}
+
+// Estado de conexión del cliente respecto de esta subasta (conectadoAqui, numeroPostor,
+// conectadoEnOtra). La vista lo consulta al entrar para no re-preguntar si ya está unido.
+export function miConexionSubasta(subastaId, token) {
+  return apiRequest(`/subastas/${subastaId}/mi-conexion`, { token });
+}
+
 export function getItemCatalogoDetalle(catalogoId, itemId, token) {
   return apiRequest(`/catalogos/${catalogoId}/items/${itemId}`, token ? { token } : {});
 }
