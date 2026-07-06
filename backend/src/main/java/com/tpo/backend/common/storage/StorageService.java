@@ -111,6 +111,12 @@ public class StorageService {
      * instead of re-downloading the same photo every response.
      */
     public String presignGet(String key) {
+        // Las semillas de prueba pueden guardar en fotos.url una URL pública absoluta
+        // (una imagen en internet) en lugar de un object key del bucket. En ese caso no
+        // hay nada que presignar: se devuelve tal cual para que el cliente la cargue directo.
+        if (key != null && (key.startsWith("http://") || key.startsWith("https://"))) {
+            return key;
+        }
         CachedUrl cached = urlCache.get(key);
         if (cached != null && cached.expiresAt().isAfter(Instant.now().plusSeconds(URL_REFRESH_MARGIN_SECONDS))) {
             return cached.url();

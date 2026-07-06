@@ -28,9 +28,9 @@ public class AprobarProductoRequest {
     /** Ubicacion/lugar de la subasta. Opcional. */
     private String ubicacion;
 
-    /** Moneda en la que se publica el precio base: ARS | USD. Se graba en la subasta del catalogo. */
-    private String moneda;
-
-    // La categoria (comun/especial/plata/oro/platino) NO se define por item: es propiedad de la
+    // La MONEDA de las pujas NO se define aca: la fija la subasta a la que pertenece el
+    // catalogo (columna subastas.moneda). El item la hereda al asignarse; el admin no la elige.
+    //
+    // La categoria (comun/especial/plata/oro/platino) tampoco se define por item: es propiedad de la
     // subasta a la que pertenece el catalogo. Se setea al crear la subasta, no al aprobar el bien.
 }

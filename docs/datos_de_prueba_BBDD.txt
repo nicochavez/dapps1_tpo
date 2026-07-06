@@ -128,14 +128,26 @@ UPDATE public.productos SET artista='Luis Ortega',     fecha_obra=DATE '1975-09-
 UPDATE public.productos SET artista='Ana Belmonte',    fecha_obra=DATE '1982-03-20', resena_historica='Litografía original sobre papel de algodón, tirada limitada y numerada.'               WHERE identificador=11;
 
 -- ─── 8) Fotos: 6 por producto ──────────────────────────────────────────────
--- El schema cambió (ver FotoEntity): antes se guardaba el JPEG completo (bytea) en la
--- columna `foto`. Ahora `fotos.url` guarda el OBJECT KEY dentro del bucket de Railway
--- (S3-compatible, privado), y el backend deriva una URL presigned GET por respuesta
--- (StorageService.presignGet). El seed solo inserta las keys; los objetos deben existir
--- en el bucket para que las imágenes rendericen (si no, la presigned GET devuelve 404).
+-- Para la demo, `fotos.url` apunta a imágenes públicas en internet relacionadas con
+-- cada producto (LoremFlickr: fotos Creative Commons de Flickr filtradas por palabras
+-- clave). `?lock=<n>` fija una imagen distinta y estable por posición, así el mismo
+-- lote muestra siempre las mismas 6 fotos. No requiere subir nada al bucket.
 INSERT INTO public.fotos (producto, url)
-SELECT p.identificador, 'fotos/seed-producto-' || p.identificador || '-' || g || '.jpg'
-FROM public.productos p
+SELECT t.producto,
+       'https://loremflickr.com/800/600/' || t.tags || '/all?lock=' || g
+FROM (VALUES
+  (1,  'rolex,watch'),              -- Rolex Submariner
+  (2,  'omega,speedmaster,watch'),  -- Omega Speedmaster
+  (3,  'abstract,oil,painting'),    -- Óleo Abstracto
+  (4,  'bronze,sculpture'),         -- Escultura de bronce
+  (5,  'collectible,figure,toy'),   -- Figura coleccionable
+  (6,  'ancient,silver,coin'),      -- Moneda antigua
+  (7,  'vintage,comic,book'),       -- Cómic de colección
+  (8,  'vinyl,record'),             -- Vinilo 70s
+  (9,  'vintage,camera'),           -- Cámara antigua
+  (10, 'engraving,art,print'),      -- Grabado firmado
+  (11, 'lithography,art,print')     -- Litografía original
+) AS t(producto, tags)
 CROSS JOIN generate_series(1, 6) AS g;
 
 -- ─── 9) Catálogos (subasta se setea luego para evitar FK circular) ──────────
@@ -186,15 +198,15 @@ UPDATE public.catalogos SET subasta = 4 WHERE identificador = 4;
 INSERT INTO public.itemscatalogo
   (identificador, catalogo, producto, numeropieza, preciobase, comision, subastado, estado_acuerdo, cierre_programado)
 OVERRIDING SYSTEM VALUE VALUES
-  (1, 1, 1,  1, 1000000, 100000, false, 'aceptado',  NULL),
-  (2, 1, 2,  2,  500000,  50000, false, 'aceptado',  NULL),
-  (3, 2, 3,  1,    2000,    200, true,  'aceptado',  NULL),
-  (4, 2, 4,  2,    3000,    300, true,  'aceptado',  NULL),
-  (5, 3, 5,  1,   50000,   5000, false, 'aceptado',  NULL),
-  (6, 3, 6,  2,   30000,   3000, false, 'propuesto', NULL),
-  (7, 3, 7,  3,   80000,   8000, false, 'aceptado',  NULL),
-  (8, 2, 10, 3,    1800,    180, true,  'aceptado',  NULL),
-  (9, 2, 11, 4,    3200,    320, true,  'aceptado',  NULL);
+  (1, 1, 1,  1, 15000000, 1500000, false, 'aceptado',  NULL),  -- Rolex Submariner (ARS)
+  (2, 1, 2,  2,  7500000,  750000, false, 'aceptado',  NULL),  -- Omega Speedmaster (ARS)
+  (3, 2, 3,  1,     8000,     800, true,  'aceptado',  NULL),  -- Óleo Abstracto (USD)
+  (4, 2, 4,  2,    12000,    1200, true,  'aceptado',  NULL),  -- Escultura Bronce (USD)
+  (5, 3, 5,  1,   150000,   15000, false, 'aceptado',  NULL),  -- Figura Coleccionable (ARS)
+  (6, 3, 6,  2,   200000,   20000, false, 'propuesto', NULL),  -- Moneda Antigua (ARS)
+  (7, 3, 7,  3,   500000,   50000, false, 'aceptado',  NULL),  -- Cómic de Colección (ARS)
+  (8, 2, 10, 3,     2500,     250, true,  'aceptado',  NULL),  -- Grabado Firmado (USD)
+  (9, 2, 11, 4,     3500,     350, true,  'aceptado',  NULL);  -- Litografía Original (USD)
 
 -- ─── 12) Asistentes (postores conectados a cada subasta) ────────────────────
 INSERT INTO public.asistentes (identificador, numeropostor, cliente, subasta, rol, conectado, espectador)
@@ -209,27 +221,27 @@ OVERRIDING SYSTEM VALUE VALUES
 
 -- ─── 13) Pujas ──────────────────────────────────────────────────────────────
 --  item1 (LIVE): tres pujas, sin ganador todavía
---  item3 (ENDED): oro (a4) gana en 2500
+--  item3 (ENDED): oro (a4) gana en 10000
 --  item5 (LIVE): dos pujas, sin ganador
 INSERT INTO public.pujos (asistente, item, importe, ganador, fecha) VALUES
-  (1, 1, 1050000, false, now() - interval '30 min'),
-  (2, 1, 1100000, false, now() - interval '20 min'),
-  (3, 1, 1150000, false, now() - interval '10 min'),
-  (4, 3,    2100, false, now() - interval '3 day'),
-  (5, 3,    2300, false, now() - interval '3 day' + interval '5 min'),
-  (4, 3,    2500, true,  now() - interval '3 day' + interval '10 min'),
-  (4, 8,    1800, true,  now() - interval '3 day' + interval '20 min'),  -- oro gana item8
-  (4, 9,    3000, false, now() - interval '3 day' + interval '25 min'),  -- oro puja item9
-  (5, 9,    3200, true,  now() - interval '3 day' + interval '30 min'),  -- platino gana item9
-  (6, 5,   55000, false, now() - interval '15 min'),
-  (7, 5,   60000, false, now() - interval '5 min');
+  (1, 1, 15300000, false, now() - interval '30 min'),
+  (2, 1, 15900000, false, now() - interval '20 min'),
+  (3, 1, 16500000, false, now() - interval '10 min'),
+  (4, 3,     8400, false, now() - interval '3 day'),
+  (5, 3,     9200, false, now() - interval '3 day' + interval '5 min'),
+  (4, 3,    10000, true,  now() - interval '3 day' + interval '10 min'),
+  (4, 8,     2800, true,  now() - interval '3 day' + interval '20 min'),  -- oro gana item8
+  (4, 9,     3800, false, now() - interval '3 day' + interval '25 min'),  -- oro puja item9
+  (5, 9,     4200, true,  now() - interval '3 day' + interval '30 min'),  -- platino gana item9
+  (6, 5,   157000, false, now() - interval '15 min'),
+  (7, 5,   168000, false, now() - interval '5 min');
 
 -- ─── 14) Registro de subasta (adjudicaciones de la subasta ENDED) ───────────
 INSERT INTO public.registrodesubasta (subasta, duenio, producto, cliente, comprador_empresa, importe, comision) VALUES
-  (2, 20, 3,  13,   false, 2500, 200),  -- item3 adjudicado a oro
-  (2, 20, 4,  NULL, true,  3000, 300),  -- item4 sin pujas -> compra la empresa
-  (2, 20, 10, 13,   false, 1800, 180),  -- item8 adjudicado a oro (lo pagará)
-  (2, 20, 11, 14,   false, 3200, 320);  -- item9 adjudicado a platino (mora)
+  (2, 20, 3,  13,   false, 10000,  800),  -- item3 adjudicado a oro
+  (2, 20, 4,  NULL, true,  12000, 1200),  -- item4 sin pujas -> compra la empresa
+  (2, 20, 10, 13,   false,  2800,  250),  -- item8 adjudicado a oro (lo pagará)
+  (2, 20, 11, 14,   false,  4200,  350);  -- item9 adjudicado a platino (mora)
 
 -- ─── 14b) Nuevo dueño tras la adjudicación (productos.nuevo_duenio) ──────────
 -- Guarda el ID DE PERSONA del ganador (o del admin, persona 1, si no hubo pujas). NO es FK a
@@ -309,23 +321,23 @@ INSERT INTO public.cuentas_cobro (duenio, banco, numero_cuenta, moneda, pais) VA
 --   B) oro / Grabado Firmado -> GANADA Y PAGADA (retiro personal)
 --   C) platino / Litografía  -> GANADA SIN PAGAR + MULTA POR MORA
 INSERT INTO public.compras (cliente, subasta, producto, medio_pago, importe, comision, costo_envio, total, retiro_personal, direccion_envio, estado_pago) VALUES
-  (13, 2, 3,  101, 2500, 200, 50, 2750, false, 200,  'pendiente'),   -- A) sin pagar
-  (13, 2, 10, 101, 1800, 180,  0, 1980, true,  NULL, 'pagado'),      -- B) pagada (pickup)
-  (14, 2, 11, 103, 3200, 320, 50, 3570, false, 203,  'pendiente');   -- C) sin pagar (con mora)
+  (13, 2, 3,  101, 10000, 800, 50, 10850, false, 200,  'pendiente'),   -- A) sin pagar
+  (13, 2, 10, 101,  2800, 250,  0,  3050, true,  NULL, 'pagado'),      -- B) pagada (pickup)
+  (14, 2, 11, 103,  4200, 350, 50,  4600, false, 203,  'pendiente');   -- C) sin pagar (con mora)
 
 -- ─── 19) Multas ─────────────────────────────────────────────────────────────
 --   - comun: multa suelta (bloquea participación)
 --   - platino: multa POR MORA por no pagar en término la Litografía (10% del importe),
 --     ligada a su compra -> se muestra sumada en CompletePurchase.
 INSERT INTO public.multas (cliente, compra, importe_original, multa, estado, fecha_limite) VALUES
-  (14, (SELECT identificador FROM public.compras WHERE producto = 11), 3200, 320, 'pendiente', now() + interval '7 day');
+  (14, (SELECT identificador FROM public.compras WHERE producto = 11), 4200, 420, 'pendiente', now() + interval '7 day');
 
 -- ─── 20) Notificaciones ─────────────────────────────────────────────────────
 INSERT INTO public.notificaciones (cliente, titulo, mensaje, leida, fecha_creacion) VALUES
-  (13, 'You won the bid',        'You won "Óleo Abstracto" for USD 2500. Complete the payment.',           false, now() - interval '2 day'),
+  (13, 'You won the bid',        'You won "Óleo Abstracto" for USD 10000. Complete the payment.',          false, now() - interval '2 day'),
   (13, 'Purchase confirmed',     'Your purchase of "Grabado Firmado" was confirmed. Coordinate the pickup.', true,  now() - interval '1 day'),
-  (14, 'You won the bid',        'You won "Litografía Original" for USD 3200. Complete the payment.',       false, now() - interval '4 day'),
-  (14, 'Late payment fine',      'You did not pay "Litografía Original" on time. A 10% late fine (USD 320) was applied, payable together with the purchase. If you don''t resolve it within 72hrs, your access to the app will be disabled and the case will be referred to the courts.', false, now() - interval '1 day'),
+  (14, 'You won the bid',        'You won "Litografía Original" for USD 4200. Complete the payment.',       false, now() - interval '4 day'),
+  (14, 'Late payment fine',      'You did not pay "Litografía Original" on time. A 10% late fine (USD 420) was applied, payable together with the purchase. If you don''t resolve it within 72hrs, your access to the app will be disabled and the case will be referred to the courts.', false, now() - interval '1 day'),
   (20, 'Your item was accepted', 'Your item "Moneda Antigua" was accepted. Review the proposed conditions.', false, now() - interval '1 day'),
   (20, 'Your item was rejected', 'Reason: The piece has undeclared damage and lacks proof of lawful origin. A return charge of $5000 was registered.', true, now() - interval '5 day'),
   (10, 'Pending fine',           'You have a pending fine of $5000. If you don''t resolve it within 72hrs, your access to the app will be disabled and the case will be referred to the courts.', false, now() - interval '1 day');

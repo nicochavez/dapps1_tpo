@@ -6,7 +6,6 @@ import com.tpo.backend.catalogo.dto.ItemCatalogoNewRequest;
 import com.tpo.backend.catalogo.service.CatalogoService;
 import com.tpo.backend.cliente.entity.ClienteEntity;
 import com.tpo.backend.cliente.repository.ClienteRepository;
-import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
 import com.tpo.backend.multa.entity.MultaEntity;
@@ -96,27 +95,17 @@ public class AdminProductoService {
         return productoService.toDto(producto);
     }
 
-    /** Graba en la subasta del catalogo la ubicacion y/o la moneda si el admin las informa.
-     *  La fecha/hora de inicio y la categoria son propiedad de la subasta y no se tocan aca. */
+    /** Graba en la subasta del catalogo la ubicacion si el admin la informa. La moneda de las
+     *  pujas, la fecha/hora de inicio y la categoria son propiedad de la subasta y no se tocan
+     *  aca: la moneda la fija la subasta a la que pertenece el catalogo (subastas.moneda). */
     private void aplicarDatosSubasta(AprobarProductoRequest request) {
-        boolean tieneUbicacion = request.getUbicacion() != null && !request.getUbicacion().isBlank();
-        boolean tieneMoneda = request.getMoneda() != null && !request.getMoneda().isBlank();
-        if (!tieneUbicacion && !tieneMoneda) {
+        if (request.getUbicacion() == null || request.getUbicacion().isBlank()) {
             return;
         }
         SubastaEntity subasta = subastaRepository.findByCatalogoId(request.getCatalogoId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No hay subasta asociada al catalogo " + request.getCatalogoId()));
-        if (tieneUbicacion) {
-            subasta.setUbicacion(request.getUbicacion().trim());
-        }
-        if (tieneMoneda) {
-            String moneda = request.getMoneda().trim().toUpperCase();
-            if (!moneda.equals("ARS") && !moneda.equals("USD")) {
-                throw new BadRequestException("Moneda invalida. Debe ser ARS o USD.");
-            }
-            subasta.setMoneda(moneda);
-        }
+        subasta.setUbicacion(request.getUbicacion().trim());
         subastaRepository.save(subasta);
     }
 
