@@ -1,4 +1,6 @@
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.0.165:8080/api/v1';
+// La URL sale de frontend/.env (EXPO_PUBLIC_API_BASE_URL). El fallback apunta a prod
+// para no caer nunca a una IP local muerta si la env no está definida en un build.
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://dapps1tpo-production.up.railway.app/api/v1';
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, ...fetchOptions } = options;
@@ -30,11 +32,13 @@ export async function apiRequest(path, options = {}) {
     const fieldErrors = data?.errors
       ? Object.values(data.errors).join(', ')
       : null;
-    throw new Error(
+    const err = new Error(
       typeof data === 'string'
         ? data
         : fieldErrors || data?.error || data?.mensaje || data?.message || `Error HTTP ${response.status}`
     );
+    err.status = response.status; // permite a los callers distinguir 400/409/422/etc.
+    throw err;
   }
 
   return data;
@@ -312,10 +316,19 @@ export function getHistorialPujas(subastaId, itemId, token) {
   return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`, token ? { token } : {});
 }
 
-export function realizarPuja(subastaId, itemId, importe, medioPagoId, token) {
+// UUID v4 simple (no criptográfico; alcanza para deduplicar reintentos de puja).
+// Hermes/Expo Go no siempre expone crypto.randomUUID, así que no dependemos de él.
+export function nuevaIdempotencyKey() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+export function realizarPuja(subastaId, itemId, importe, medioPagoId, token, idempotencyKey) {
   return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`, {
     method: 'POST',
     token,
-    body: JSON.stringify({ importe: Number(importe), medioPagoId }),
+    body: JSON.stringify({ importe: Number(importe), medioPagoId, idempotencyKey }),
   });
 }

@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import ItemDetailBase from './ItemDetailBase';
 import BidHistorySection from './BidHistorySection';
 import useLiveBids from '../hooks/useLiveBids';
-import { conectarASubasta, realizarPuja } from '../services/api';
+import { conectarASubasta, realizarPuja, nuevaIdempotencyKey } from '../services/api';
 
 const formatPrice = (value) => {
   if (value === null || value === undefined) return '$ —,—';
@@ -42,6 +42,9 @@ export default function ItemDetailLiveView(props) {
   const [bidAmount, setBidAmount] = useState('');
   const [placing, setPlacing]     = useState(false);
   const [numeroPostor, setNumeroPostor] = useState(null);
+  // Piso optimista: tras un 201 propio subimos el precio local sin esperar el WS,
+  // así el próximo mínimo ya refleja nuestra puja y no se manda un importe viejo (→ 400).
+  const [optimisticBid, setOptimisticBid] = useState(null);
 
   // bids viene del padre (gestiona fetch + polling); hook solo maneja WS para precios y countdown.
   const bids = props.bids ?? [];
@@ -63,7 +66,13 @@ export default function ItemDetailLiveView(props) {
   const effectiveLotState = (itemClosed || secsLeft === 0) ? 'subastado' : lotState;
 
   const precioBase     = typeof item?.precioBase === 'number' ? item.precioBase : 0;
-  const currentPriceNum = currentBid ?? (typeof item?.currentBid === 'number' ? item.currentBid : precioBase);
+  const wsPrice = currentBid ?? (typeof item?.currentBid === 'number' ? item.currentBid : precioBase);
+  // El mayor entre el precio del WS y nuestro piso optimista: si el WS aún no llegó
+  // usamos nuestra última puja; si otro postor pujó más alto, gana el valor del WS.
+  const currentPriceNum = Math.max(wsPrice, optimisticBid ?? 0);
+
+  // Al cambiar de lote, descartar el piso optimista del item anterior.
+  useEffect(() => { setOptimisticBid(null); }, [item?.id]);
 
   // Las subastas oro/platino no aplican los límites de +1%/+20%: basta con superar la oferta actual.
   const categoria = (props.parentCatalog?.subasta?.categoria || '').toLowerCase();
@@ -90,6 +99,7 @@ export default function ItemDetailLiveView(props) {
 
   // Núcleo de la puja: valida, llama al backend y actualiza countdown/historial.
   const submitBid = async (amount) => {
+    if (placing) return; // evita doble envío con el mismo importe (→ 400)
     if (!bidEligible || effectiveLotState !== 'en_puja') return;
     if (hasPendingMulta) {
       Alert.alert('Pending fines', 'You have pending fines. Pay them before placing a bid.');
@@ -104,14 +114,41 @@ export default function ItemDetailLiveView(props) {
       Alert.alert('Importe inválido', 'Ingresá un monto mayor a 0.');
       return;
     }
+    // Misma key para el intento y su reintento: si el primero sí entró pese al corte,
+    // el backend devuelve la misma puja en vez de duplicarla (idempotencia).
+    const idemKey = nuevaIdempotencyKey();
+    const enviarPuja = () =>
+      realizarPuja(subastaId, item.id, amount, null, currentUser.token, idemKey);
+
     try {
       setPlacing(true);
-      await realizarPuja(subastaId, item.id, amount, null, currentUser.token);
+      try {
+        await enviarPuja();
+      } catch (e1) {
+        // Corte de red (fetch rechazó sin respuesta HTTP → status undefined): reintentamos
+        // UNA vez. Es seguro gracias a la idempotencia. Otros errores (400/etc.) se propagan.
+        if (e1?.status === undefined) await enviarPuja();
+        else throw e1;
+      }
       setBidAmount('');
+      setOptimisticBid(amount); // sube el piso local ya, sin esperar el WS
       resetTimer();        // countdown optimista a 60s sin esperar el WS
       refreshBids?.();     // dispara re-fetch de historial en el padre
     } catch (e) {
-      Alert.alert('Error al pujar', e.message);
+      // 400 = el importe quedó por debajo del mínimo (te superaron entre leer y pujar).
+      if (e?.status === 400 || /importe|mínimo|minimo/i.test(e?.message || '')) {
+        refreshBids?.();
+        Alert.alert('Puja superada',
+          'Otro postor pujó más alto o el mínimo cambió. Revisá el precio actual y volvé a intentar.');
+      } else if (e?.status === undefined) {
+        // Falló el request original Y el reintento: probablemente sin conexión real.
+        // Reintentar a mano es seguro (misma pantalla, nueva key) gracias a la idempotencia.
+        refreshBids?.();
+        Alert.alert('Sin conexión',
+          'No pudimos enviar tu puja. Verificá tu conexión e intentá de nuevo.');
+      } else {
+        Alert.alert('Error al pujar', e.message);
+      }
     } finally {
       setPlacing(false);
     }

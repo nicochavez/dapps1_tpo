@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class PujaService {
@@ -75,6 +76,19 @@ public class PujaService {
 
     @Transactional
     public PujaResponse realizarPuja(Long subastaId, Long itemId, PujaRequest request) {
+        // Idempotencia: si esta key ya se procesó (reintento tras corte de red), devolvemos
+        // la puja original SIN revalidar. Debe ir antes de la validación de importe, porque
+        // mejorOferta ya incluiría esta puja y el rango +1%/+20% la rechazaría (falso 400).
+        String idemKey = request.getIdempotencyKey();
+        if (idemKey != null && !idemKey.isBlank()) {
+            Optional<PujaEntity> existente = pujaRepository.findByIdempotencyKey(idemKey);
+            if (existente.isPresent()) {
+                PujaEntity p = existente.get();
+                return new PujaResponse(p.getId(), p.getImporte(),
+                        Boolean.TRUE.equals(p.getGanador()) ? "si" : "no", true);
+            }
+        }
+
         SubastaEntity subasta = subastaRepository.findById(subastaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subasta no encontrada: " + subastaId));
 
@@ -131,6 +145,9 @@ public class PujaService {
         nueva.setImporte(request.getImporte());
         nueva.setFecha(OffsetDateTime.now());
         nueva.setGanador(false);
+        // El chequeo temprano de idempotencia cubre el reintento secuencial del cliente;
+        // el unique constraint de la columna es la red de seguridad a nivel DB.
+        nueva.setIdempotencyKey(idemKey != null && !idemKey.isBlank() ? idemKey : null);
         nueva = pujaRepository.save(nueva);
 
         // Mantiene el item "en vivo": reinicia la ventana de cierre con cada puja (RF-25/RF-35).

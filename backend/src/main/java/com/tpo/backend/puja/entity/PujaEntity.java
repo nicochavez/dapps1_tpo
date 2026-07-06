@@ -36,4 +36,12 @@ public class PujaEntity {
 
     @Column(name = "ganador")
     private Boolean ganador;
+
+    /**
+     * Clave de idempotencia enviada por el cliente. Permite reintentar una puja tras un
+     * corte de red sin duplicarla: si la key ya existe, se devuelve la puja original.
+     * Único (múltiples NULL permitidos en Postgres para pujas viejas sin key).
+     */
+    @Column(name = "idempotency_key", unique = true, length = 64)
+    private String idempotencyKey;
 }

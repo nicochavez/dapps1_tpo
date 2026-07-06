@@ -10,4 +10,6 @@ public class PujaRequest {
     @NotNull
     private BigDecimal importe;
     private Long medioPagoId;
+    /** Clave de idempotencia (UUID) para reintentar sin duplicar la puja ante cortes de red. */
+    private String idempotencyKey;
 }

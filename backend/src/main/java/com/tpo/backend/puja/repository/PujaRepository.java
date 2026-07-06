@@ -20,6 +20,8 @@ public interface PujaRepository extends JpaRepository<PujaEntity, Long> {
 
     Optional<PujaEntity> findFirstByItemIdOrderByImporteDesc(Long itemId);
 
+    Optional<PujaEntity> findByIdempotencyKey(String idempotencyKey);
+
     /** Cantidad de items distintos en los que el cliente ha pujado (= "Attended"). */
     @Query("SELECT COUNT(DISTINCT p.item.id) FROM PujaEntity p WHERE p.asistente.cliente.id = :clienteId")
     long countDistinctItemsByClienteId(@Param("clienteId") Long clienteId);
