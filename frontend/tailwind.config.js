@@ -5,6 +5,7 @@ module.exports = {
     "./views/**/*.{js,jsx,ts,tsx}",// <-- Chequeá que diga "views" y tenga los asteriscos correctos
     "./components/**/*.{js,jsx,ts,tsx}" // <-- Agregué esta línea para incluir los componentes
   ],
+  presets: [require("nativewind/preset")],
   theme: {
     extend: {},
   },

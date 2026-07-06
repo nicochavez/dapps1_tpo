@@ -1,3 +1,4 @@
+import './global.css';
 import * as React from 'react';
 import { useEffect } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';

@@ -1,31 +1,29 @@
 {
   "expo": {
-    "name": "frontend",
+    "name": "BidFlow",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.tpo.bidflow",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-foreground.png",
+        "backgroundColor": "#7C3AED"
       },
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "c836265b-74f4-4255-aeed-63b33c33e60d"
+      }
     }
   }
 }

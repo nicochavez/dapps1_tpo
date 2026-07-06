@@ -5,6 +5,9 @@ export async function apiRequest(path, options = {}) {
 
   const isFormData = fetchOptions.body instanceof FormData;
 
+  // [DEBUG-TEMP] revela método + tipo de body de cada request. Borrar cuando se confirme el bundle.
+  console.log('[apiRequest]', fetchOptions.method || 'GET', path, isFormData ? 'MULTIPART/FormData' : 'JSON');
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...fetchOptions,
     headers: {
@@ -236,6 +239,7 @@ export function createChequeCertificado(body, token) {
 
 // Mapea el itemData del formulario (CreateObjectStep1/2) al ProductoNewRequest (multipart).
 export async function createProducto(itemData, photos, token) {
+  console.log('[createProducto] BUNDLE-NUEVO-JSON v2 — si NO ves esto al enviar, corre código viejo');
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   const form = new FormData();

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
@@ -28,12 +28,27 @@ export default function CreateObjectStep3({ route, navigation }) {
 
   const [isChecked, setIsChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const submittingRef = useRef(false);
+
+  // [DEBUG-TEMP] detectar re-montajes de la pantalla
+  console.log('[Step3] RENDER');
+  useEffect(() => {
+    console.log('[Step3] MOUNT');
+    return () => console.log('[Step3] UNMOUNT');
+  }, []);
 
   const photoCount = Object.values(photos || {}).filter(Boolean).length;
   const isArtOrDesigner = !!(itemData?.artistName);
 
   // RF-45 / RF-46: payload completo + declaración jurada → POST real al backend
   const handleConfirmAndSubmit = async () => {
+    // Guard síncrono: evita envíos re-entrantes (el disabled por isLoading no se
+    // commitea a tiempo y se colaban múltiples createProducto en paralelo).
+    if (submittingRef.current) {
+      console.log('[submit] ignorado: ya hay un envío en curso');
+      return;
+    }
+    submittingRef.current = true;
     setIsLoading(true);
     try {
       const producto = await createProducto(itemData, photos, user?.token);
@@ -41,6 +56,7 @@ export default function CreateObjectStep3({ route, navigation }) {
     } catch (error) {
       Alert.alert('No se pudo enviar el artículo', error.message);
     } finally {
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
