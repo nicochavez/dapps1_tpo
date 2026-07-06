@@ -31,12 +31,13 @@ public class EmailService {
 
     public EmailService(@Value("${app.mail.brevo.api-key:}") String apiKey,
                         @Value("${app.mail.from:}") String from,
-                        @Value("${app.mail.from-name:BidFlow}") String fromName,
-                        RestClient.Builder restClientBuilder) {
+                        @Value("${app.mail.from-name:BidFlow}") String fromName) {
         this.apiKey = apiKey;
         this.from = from;
         this.fromName = fromName;
-        this.restClient = restClientBuilder.build();
+        // RestClient.create() no depende del bean RestClient.Builder autoconfigurado
+        // (que en Spring Boot 4 + starter-webmvc puede no estar presente).
+        this.restClient = RestClient.create();
     }
 
     public void enviarAprobacion(String emailDestino, String nombre, String contraseniaTemporal) {
