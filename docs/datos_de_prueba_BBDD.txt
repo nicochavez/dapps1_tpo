@@ -127,28 +127,63 @@ UPDATE public.productos SET artista='Carlos Ferreyra', fecha_obra=DATE '1960-01-
 UPDATE public.productos SET artista='Luis Ortega',     fecha_obra=DATE '1975-09-15', resena_historica='Grabado en punta seca, firmado y numerado a mano (12/50).'                             WHERE identificador=10;
 UPDATE public.productos SET artista='Ana Belmonte',    fecha_obra=DATE '1982-03-20', resena_historica='Litografía original sobre papel de algodón, tirada limitada y numerada.'               WHERE identificador=11;
 
--- ─── 8) Fotos: 6 por producto ──────────────────────────────────────────────
--- Para la demo, `fotos.url` apunta a imágenes públicas en internet relacionadas con
--- cada producto (LoremFlickr: fotos Creative Commons de Flickr filtradas por palabras
--- clave). `?lock=<n>` fija una imagen distinta y estable por posición, así el mismo
--- lote muestra siempre las mismas 6 fotos. No requiere subir nada al bucket.
+-- ─── 8) Fotos: imágenes por producto (vía proxy de imágenes) ────────────────
+-- Imágenes públicas específicas de cada objeto, tomadas de Wikimedia Commons.
+-- IMPORTANTE: upload.wikimedia.org BLOQUEA el hotlinking desde User-Agents que no son
+-- de navegador (el cliente okhttp de React Native en Android recibe HTTP 403), por eso
+-- la app no podía cargar NINGUNA aunque en el navegador se vean bien.
+-- Solución: se sirven a través de wsrv.nl (images.weserv.nl), un CDN/proxy que trae la
+-- imagen del origen server-side y la reexpone SIN restricción de UA (okhttp → 200),
+-- además redimensionada a 800px (mucho más liviana). La primera URL de cada array es la
+-- más representativa (se usa como miniatura del lote).
+-- La columna se crea como varchar(255) (FotoEntity.url guardaba object keys cortos), pero
+-- estas URLs públicas pueden superar los 255 chars: se amplía (idempotente / no reduce).
+ALTER TABLE public.fotos ALTER COLUMN url TYPE varchar(2048);
 INSERT INTO public.fotos (producto, url)
 SELECT t.producto,
-       'https://loremflickr.com/800/600/' || t.tags || '/all?lock=' || g
+       'https://wsrv.nl/?url=' || replace(u.url, 'https://', '') || '&w=800&output=jpg&q=80'
 FROM (VALUES
-  (1,  'rolex,watch'),              -- Rolex Submariner
-  (2,  'omega,speedmaster,watch'),  -- Omega Speedmaster
-  (3,  'abstract,oil,painting'),    -- Óleo Abstracto
-  (4,  'bronze,sculpture'),         -- Escultura de bronce
-  (5,  'collectible,figure,toy'),   -- Figura coleccionable
-  (6,  'ancient,silver,coin'),      -- Moneda antigua
-  (7,  'vintage,comic,book'),       -- Cómic de colección
-  (8,  'vinyl,record'),             -- Vinilo 70s
-  (9,  'vintage,camera'),           -- Cámara antigua
-  (10, 'engraving,art,print'),      -- Grabado firmado
-  (11, 'lithography,art,print')     -- Litografía original
-) AS t(producto, tags)
-CROSS JOIN generate_series(1, 6) AS g;
+  (1, ARRAY[  -- Rolex Submariner
+    'https://upload.wikimedia.org/wikipedia/commons/c/cd/Rolex-Submariner.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Rolex_Submariner_Professional.JPG/960px-Rolex_Submariner_Professional.JPG',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Rolex_Submariner_diving_watch.jpg/960px-Rolex_Submariner_diving_watch.jpg']),
+  (2, ARRAY[  -- Omega Speedmaster
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/OMEGA_Speedmaster_CK2915_%28cropped_to_watch_case%29.JPG/960px-OMEGA_Speedmaster_CK2915_%28cropped_to_watch_case%29.JPG',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Omega_Speedmaster_Omega_Speedmaster_Schumacher_Edition_compo.jpg/960px-Omega_Speedmaster_Omega_Speedmaster_Schumacher_Edition_compo.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Omega_Speedmaster_Schumacher_Edition_.jpeg/960px-Omega_Speedmaster_Schumacher_Edition_.jpeg']),
+  (3, ARRAY[  -- Óleo Abstracto
+    'https://upload.wikimedia.org/wikipedia/commons/4/40/Museum_Oil_painting_in_new_abstract_style.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Original_Abstract_Oil_Painting_by_Brooklyn_Denaro.jpg/960px-Original_Abstract_Oil_Painting_by_Brooklyn_Denaro.jpg']),
+  (4, ARRAY[  -- Escultura de bronce (Victorious Youth, Getty)
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Statue_of_a_Victorious_Youth%2C_front_-_Getty_Museum_%2877.AB.30%29.jpg/960px-Statue_of_a_Victorious_Youth%2C_front_-_Getty_Museum_%2877.AB.30%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Statue_of_a_Victorious_Youth%2C_left_front_-_Getty_Museum_%2877.AB.30%29.jpg/960px-Statue_of_a_Victorious_Youth%2C_left_front_-_Getty_Museum_%2877.AB.30%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Statue_of_a_Victorious_Youth%2C_right_front_-_Getty_Museum_%2877.AB.30%29.jpg/960px-Statue_of_a_Victorious_Youth%2C_right_front_-_Getty_Museum_%2877.AB.30%29.jpg']),
+  (5, ARRAY[  -- Figura coleccionable
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Han_Solo_Figure_%287865109398%29.jpg/960px-Han_Solo_Figure_%287865109398%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/c/c0/Action_Figure_Leatherface_Sideshow_Collectibles.jpg']),
+  (6, ARRAY[  -- Moneda antigua de plata
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Tenedos_-_360-340_BC_-_silver_tetradrachm_-_janiform_head_of_man_and_woman_-_double_axe_-_Berlin_MK_AM_18216483.jpg/960px-Tenedos_-_360-340_BC_-_silver_tetradrachm_-_janiform_head_of_man_and_woman_-_double_axe_-_Berlin_MK_AM_18216483.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/8/81/Tetradrachm%2C_Chios%2C_Athenagores_inscription%2C_380-350_BC.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Coin_cabinet_with_ancient_silver_Greek_coins_in_trays.jpg/960px-Coin_cabinet_with_ancient_silver_Greek_coins_in_trays.jpg']),
+  (7, ARRAY[  -- Cómic de colección (Golden Age)
+    'https://upload.wikimedia.org/wikipedia/commons/d/dd/Exciting_Comics_9.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/c/cc/Wow_Comics_1.png']),
+  (8, ARRAY[  -- Vinilo 70s
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/12in-LP-Vinyl-Record-Macro-Grooves.jpg/960px-12in-LP-Vinyl-Record-Macro-Grooves.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/12in-Vinyl-LP-Record-Angle.jpg/960px-12in-Vinyl-LP-Record-Angle.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/LP_Label_Queen.jpg/960px-LP_Label_Queen.jpg']),
+  (9, ARRAY[  -- Cámara antigua
+    'https://upload.wikimedia.org/wikipedia/commons/5/57/PM_110082_E_Antique_Photo_camera.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/OH%21_Look_its_6_30%2C_Time_for_a_Vintage_Camera_%2851952884425%29.jpg/960px-OH%21_Look_its_6_30%2C_Time_for_a_Vintage_Camera_%2851952884425%29.jpg']),
+  (10, ARRAY[  -- Grabado firmado
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Last_Supper_ca.1519_print_by_Master_S.%2C_S.II_4869%2C_Prints_Department%2C_Royal_Library_of_Belgium.jpg/960px-Last_Supper_ca.1519_print_by_Master_S.%2C_S.II_4869%2C_Prints_Department%2C_Royal_Library_of_Belgium.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Master_of_the_Die_Mount_Calvary.jpg/960px-Master_of_the_Die_Mount_Calvary.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Chalcography.PNG/960px-Chalcography.PNG']),
+  (11, ARRAY[  -- Litografía original
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Edvard_Munch_-_Madonna_-_Google_Art_Project_%28495100%29.jpg/960px-Edvard_Munch_-_Madonna_-_Google_Art_Project_%28495100%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg/960px-Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg'])
+) AS t(producto, urls)
+CROSS JOIN LATERAL unnest(t.urls) AS u(url);
 
 -- ─── 9) Catálogos (subasta se setea luego para evitar FK circular) ──────────
 INSERT INTO public.catalogos (identificador, descripcion, responsable, subasta)

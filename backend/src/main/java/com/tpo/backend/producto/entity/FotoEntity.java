@@ -20,7 +20,8 @@ public class FotoEntity {
     private ProductoEntity producto;
 
     // Object key within the Railway bucket (e.g. "fotos/uuid.jpg"); render URL is a
-    // presigned GET derived from this per response.
-    @Column(name = "url", nullable = false)
+    // presigned GET derived from this per response. También puede guardar una URL pública
+    // absoluta (imagen en internet), que puede superar los 255 chars por defecto.
+    @Column(name = "url", nullable = false, length = 2048)
     private String url;
 }
