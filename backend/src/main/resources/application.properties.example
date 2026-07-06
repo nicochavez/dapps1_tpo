@@ -20,7 +20,6 @@ app.storage.region=${REGION:auto}
 app.storage.access-key=${ACCESS_KEY_ID:}
 app.storage.secret-key=${SECRET_ACCESS_KEY:}
 app.storage.get-ttl-seconds=86400
-app.storage.put-ttl-seconds=600
 
 # Mail (Gmail SMTP). NEVER hardcode the App Password here.
 # Provide secrets via env vars (Railway: service Variables; local: shell export).

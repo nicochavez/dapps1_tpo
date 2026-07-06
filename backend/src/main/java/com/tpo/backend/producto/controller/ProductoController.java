@@ -9,9 +9,11 @@ import com.tpo.backend.producto.dto.PropuestaDto;
 import com.tpo.backend.producto.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -44,23 +46,23 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.listarPorDuenio(me.personaId()));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> crear(@AuthenticationPrincipal AuthenticatedUser me,
-                                             @Valid @RequestBody ProductoNewRequest request) {
+                                             @Valid @ModelAttribute ProductoNewRequest request) {
         if (me == null) throw new UnauthorizedException("No autenticado: falta o es invalido el token.");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(productoService.crear(me.personaId(), request, request.getFotos()));
     }
 
-    @PutMapping("/{productoId}")
+    @PutMapping(value = "/{productoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> actualizar(@PathVariable Long productoId,
-                                                  @RequestBody ProductoUpdateRequest request) {
+                                                  @ModelAttribute ProductoUpdateRequest request) {
         return ResponseEntity.ok(productoService.actualizar(productoId, request, request.getFotos()));
     }
 
-    @PatchMapping("/{productoId}/fotos")
+    @PatchMapping(value = "/{productoId}/fotos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoDto> agregarFotos(@PathVariable Long productoId,
-                                                    @RequestBody List<String> fotos) {
+                                                    @RequestPart("fotos") List<MultipartFile> fotos) {
         return ResponseEntity.ok(productoService.agregarFotos(productoId, fotos));
     }
 

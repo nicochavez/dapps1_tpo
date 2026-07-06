@@ -4,6 +4,7 @@ import com.tpo.backend.producto.entity.EstadoProducto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,6 +26,6 @@ public class ProductoNewRequest {
     private String fechaObra;
     private String resenia;
     private EstadoProducto estado;
-    /** Object keys de las fotos, ya subidas al bucket via presigned PUT. */
-    private List<String> fotos;
+    /** Fotos subidas por el cliente; el backend las guarda en el bucket. */
+    private List<MultipartFile> fotos;
 }

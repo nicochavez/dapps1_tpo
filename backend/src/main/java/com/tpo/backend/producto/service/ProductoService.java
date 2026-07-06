@@ -2,6 +2,7 @@ package com.tpo.backend.producto.service;
 
 import com.tpo.backend.catalogo.entity.ItemCatalogoEntity;
 import com.tpo.backend.catalogo.repository.ItemCatalogoRepository;
+import com.tpo.backend.common.exception.BadRequestException;
 import com.tpo.backend.common.exception.ForbiddenException;
 import com.tpo.backend.common.exception.ResourceNotFoundException;
 import com.tpo.backend.common.exception.UnprocessableEntityException;
@@ -28,7 +29,9 @@ import com.tpo.backend.seguro.repository.SeguroRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -103,7 +106,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<String> fotos) {
+    public ProductoDto actualizar(Long id, ProductoUpdateRequest request, List<MultipartFile> fotos) {
         ProductoEntity prod = productoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + id));
         if (request.getFecha() != null) prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -124,7 +127,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public ProductoDto agregarFotos(Long productoId, List<String> fotos) {
+    public ProductoDto agregarFotos(Long productoId, List<MultipartFile> fotos) {
         ProductoEntity prod = productoRepository.findById(productoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
         saveFotos(prod, fotos);
@@ -147,7 +150,7 @@ public class ProductoService {
     }
 
     @Transactional
-    public ProductoDto crear(Long duenioId, ProductoNewRequest request, List<String> fotos) {
+    public ProductoDto crear(Long duenioId, ProductoNewRequest request, List<MultipartFile> fotos) {
         DuenioEntity duenio = ensureDuenio(duenioId);
         ProductoEntity prod = new ProductoEntity();
         prod.setFecha(LocalDate.parse(request.getFecha()));
@@ -189,9 +192,18 @@ public class ProductoService {
         });
     }
 
-    private void saveFotos(ProductoEntity prod, List<String> keys) {
-        if (keys == null) return;
-        keys.forEach(key -> {
+    private void saveFotos(ProductoEntity prod, List<MultipartFile> fotos) {
+        if (fotos == null) return;
+        fotos.forEach(file -> {
+            if (file == null || file.isEmpty()) return;
+            byte[] bytes;
+            try {
+                bytes = file.getBytes();
+            } catch (IOException e) {
+                throw new BadRequestException("Error al leer la foto: " + file.getOriginalFilename());
+            }
+            String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+            String key = storageService.upload(bytes, contentType);
             FotoEntity foto = new FotoEntity();
             foto.setProducto(prod);
             foto.setUrl(key);
