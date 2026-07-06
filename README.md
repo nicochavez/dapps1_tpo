@@ -8,7 +8,7 @@ REST API for an online auction platform that integrates with an existing on-prem
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
 | API Spec (Swagger/OpenAPI) | [`docs/arquitectura/swagger.yaml`](docs/arquitectura/swagger.yaml)                                                            |
 | Figma Workspace            | [BidFlow — Figma](https://www.figma.com/design/37w5bak9cnELI1c5UNrcEF/BidFlow?t=Fab6gcKx8vtaq7sA-1) |
-| Figma Export (PDF)         | [`docs/figma-export.pdf`](docs/requerimientos/BidFlow.pdf)                                                     |
+| Figma Export (PDF)         | [`docs/requerimientos/BidFlow.pdf`](docs/requerimientos/BidFlow.pdf)                                                     |
 | Source Repository          | This repo                                                                                           |
 
 ---
@@ -37,6 +37,46 @@ Then open [http://localhost:8080](http://localhost:8080).
 ### Option 3 — VS Code extension
 
 Install the **OpenAPI (Swagger) Editor** extension (`42Crunch.vscode-openapi`), then open `docs/arquitectura/swagger.yaml` directly in VS Code for inline preview and validation.
+
+---
+
+## Documentation
+
+All project documentation lives under [`docs/`](docs/README.md), grouped by purpose. Start from the [documentation index](docs/README.md).
+
+| Folder                                            | Contents                                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`docs/requerimientos/`](docs/requerimientos/)    | Assignment statement, functional requirements (RF), user stories (HU), MVP scope and design decisions |
+| [`docs/arquitectura/`](docs/arquitectura/)        | Implementation analysis, endpoint↔requirement traceability, frontend↔backend flows, JWT auth, and the OpenAPI spec |
+| [`docs/planes/`](docs/planes/)                    | Implementation plans per feature (seller flow, live bids over WebSocket, auth/address/payment wiring, photo storage) |
+| [`docs/demo/`](docs/demo/)                        | Demo script and walkthrough notes                                               |
+| [`docs/base-de-datos/`](docs/base-de-datos/)      | ERDs, seed scripts, backups and test data (`.sql`)                              |
+| [`docs/assets/`](docs/assets/)                    | Images and supporting material                                                  |
+
+---
+
+## Build & Run
+
+The repository has two apps: a Spring Boot backend and a React Native (Expo) frontend.
+
+### Backend (Spring Boot, Java 21)
+
+```bash
+cd backend
+./mvnw spring-boot:run        # runs on http://localhost:8080
+```
+
+Swagger UI is served at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html). Package/tests: `./mvnw package -DskipTests`, `./mvnw test`.
+
+### Frontend (React Native / Expo)
+
+```bash
+cd frontend
+npm install
+npm start                     # Expo dev server; also: npm run android | ios | web
+```
+
+The app calls the backend at `http://<host>:8080/api/v1` (configured in `frontend/services/api.js`).
 
 ---
 
