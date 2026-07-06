@@ -13,7 +13,7 @@
 --   40000014    | CLIENTE platino          | platino@bidflow.com
 --   50000020    | CLIENTE comun + DUEÑO    | duenio@bidflow.com
 --
--- Subastas:  #1 LIVE plata (cat.1) · #2 ENDED oro (cat.2) · #3 LIVE comun (cat.3) · #4 UPCOMING especial (cat.4, sin items)
+-- Subastas:  #1 LIVE plata (cat.1) · #2 ENDED oro (cat.2) · #3 LIVE comun (cat.3) · #4 UPCOMING especial (cat.4, 1 item)
 -- Casos: estados de lote (en_puja/pendiente/subastado), dueño vs no-dueño,
 --        visibilidad de precios por rango, historial de pujas, multa suelta,
 --        notificaciones, medios de pago (3 tipos), direcciones, flujo vendedor
@@ -114,7 +114,8 @@ OVERRIDING SYSTEM VALUE VALUES
   (8, 20, 1, CURRENT_DATE, false, 'Vinilo raro de los 70',                'Vinilo 70s',          'Coleccionables', 'Música',      'en_revision', 'en_revision',         NULL),
   (9, 20, 1, CURRENT_DATE, false, 'Cámara antigua dañada',                'Cámara Antigua',      'Coleccionables', 'Fotografía',  'rechazado',   'rechazado',           NULL),
   (10,20, 1, CURRENT_DATE, false, 'Grabado firmado a mano',               'Grabado Firmado',     'Arte',           'Grabado',     'aceptado',    'incluido_en_subasta', 'POL-001'),
-  (11,20, 1, CURRENT_DATE, false, 'Litografía original numerada',         'Litografía Original', 'Arte',           'Litografía',  'aceptado',    'incluido_en_subasta', 'POL-001');
+  (11,20, 1, CURRENT_DATE, false, 'Litografía original numerada',         'Litografía Original', 'Arte',           'Litografía',  'aceptado',    'incluido_en_subasta', 'POL-001'),
+  (12,20, 1, CURRENT_DATE, false, 'Guitarra eléctrica tipo Stratocaster vintage','Guitarra Eléctrica','Instrumentos Musicales','Cuerdas','aceptado','incluido_en_subasta', 'POL-001');
 
 -- Motivo del rechazo (para que la vista del item rechazado lo muestre)
 UPDATE public.productos
@@ -181,7 +182,11 @@ FROM (VALUES
     'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Chalcography.PNG/960px-Chalcography.PNG']),
   (11, ARRAY[  -- Litografía original
     'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Edvard_Munch_-_Madonna_-_Google_Art_Project_%28495100%29.jpg/960px-Edvard_Munch_-_Madonna_-_Google_Art_Project_%28495100%29.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg/960px-Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg'])
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg/960px-Raja_Ravi_Varma%2C_Vasantika_%28oleographic_print%29.jpg']),
+  (12, ARRAY[  -- Guitarra eléctrica (Stratocaster)
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Isonez_Stratocaster_Type_electric_guitar_01.jpg/960px-Isonez_Stratocaster_Type_electric_guitar_01.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Isonez_Stratocaster_Type_electric_guitar_Body.jpg/960px-Isonez_Stratocaster_Type_electric_guitar_Body.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Isonez_Stratocaster_Type_electric_guitar_neck.jpg/960px-Isonez_Stratocaster_Type_electric_guitar_neck.jpg'])
 ) AS t(producto, urls)
 CROSS JOIN LATERAL unnest(t.urls) AS u(url);
 
@@ -229,7 +234,7 @@ UPDATE public.catalogos SET subasta = 4 WHERE identificador = 4;
 --  cat.2 (ENDED):   item3 vendido a oro · item4 a la empresa (sin pujas) ·
 --                   item8 vendido a oro (pagado) · item9 vendido a platino (con mora)
 --  cat.3 (LIVE):    item5 aceptado · item6 propuesta pendiente · item7 aceptado
---  cat.4 (UPCOMING): sin items todavía — para probar que el admin puede agregar items
+--  cat.4 (UPCOMING): item10 (Guitarra Eléctrica) — para que la subasta próxima no quede vacía
 INSERT INTO public.itemscatalogo
   (identificador, catalogo, producto, numeropieza, preciobase, comision, subastado, estado_acuerdo, cierre_programado)
 OVERRIDING SYSTEM VALUE VALUES
@@ -241,7 +246,8 @@ OVERRIDING SYSTEM VALUE VALUES
   (6, 3, 6,  2,   200000,   20000, false, 'propuesto', NULL),  -- Moneda Antigua (ARS)
   (7, 3, 7,  3,   500000,   50000, false, 'aceptado',  NULL),  -- Cómic de Colección (ARS)
   (8, 2, 10, 3,     2500,     250, true,  'aceptado',  NULL),  -- Grabado Firmado (USD)
-  (9, 2, 11, 4,     3500,     350, true,  'aceptado',  NULL);  -- Litografía Original (USD)
+  (9, 2, 11, 4,     3500,     350, true,  'aceptado',  NULL),  -- Litografía Original (USD)
+  (10, 4, 12, 1, 1800000,  180000, false, 'aceptado',  NULL);  -- Guitarra Eléctrica (ARS, subasta #4 UPCOMING)
 
 -- ─── 12) Asistentes (postores conectados a cada subasta) ────────────────────
 INSERT INTO public.asistentes (identificador, numeropostor, cliente, subasta, rol, conectado, espectador)

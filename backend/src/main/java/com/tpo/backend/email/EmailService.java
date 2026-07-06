@@ -3,22 +3,40 @@ package com.tpo.backend.email;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Envía correos transaccionales a través de la API HTTP de Brevo (https://api.brevo.com).
+ *
+ * Se usa HTTP (puerto 443) en lugar de SMTP porque Railway bloquea el tráfico SMTP saliente
+ * (puertos 25/465/587/2525) en el plan Hobby: por eso el envío por smtp.gmail.com:587 daba
+ * timeout una vez deployado aunque anduviera en local. La API key y el remitente (que debe
+ * estar verificado en Brevo como "single sender") se toman de variables de entorno.
+ */
 @Service
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+    private static final String BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 
-    private final JavaMailSender mailSender;
+    private final RestClient restClient;
+    private final String apiKey;
     private final String from;
+    private final String fromName;
 
-    public EmailService(JavaMailSender mailSender,
-                        @Value("${app.mail.from:${spring.mail.username}}") String from) {
-        this.mailSender = mailSender;
+    public EmailService(@Value("${app.mail.brevo.api-key:}") String apiKey,
+                        @Value("${app.mail.from:}") String from,
+                        @Value("${app.mail.from-name:BidFlow}") String fromName,
+                        RestClient.Builder restClientBuilder) {
+        this.apiKey = apiKey;
         this.from = from;
+        this.fromName = fromName;
+        this.restClient = restClientBuilder.build();
     }
 
     public void enviarAprobacion(String emailDestino, String nombre, String contraseniaTemporal) {
@@ -50,14 +68,26 @@ public class EmailService {
     }
 
     private void enviar(String emailDestino, String asunto, String cuerpo, String tipo) {
-        SimpleMailMessage mensaje = new SimpleMailMessage();
-        mensaje.setFrom(from);
-        mensaje.setTo(emailDestino);
-        mensaje.setSubject(asunto);
-        mensaje.setText(cuerpo);
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("[MAIL] app.mail.brevo.api-key no configurada; se omite el envío de {} a {}", tipo, emailDestino);
+            return;
+        }
+
+        Map<String, Object> payload = Map.of(
+                "sender", Map.of("email", from, "name", fromName),
+                "to", List.of(Map.of("email", emailDestino)),
+                "subject", asunto,
+                "textContent", cuerpo);
 
         try {
-            mailSender.send(mensaje);
+            restClient.post()
+                    .uri(BREVO_URL)
+                    .header("api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
             log.info("[MAIL] {} enviado a {}", tipo, emailDestino);
         } catch (Exception e) {
             log.error("[MAIL] Error al enviar {} a {}: {}", tipo, emailDestino, e.getMessage());
