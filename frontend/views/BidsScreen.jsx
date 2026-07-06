@@ -53,7 +53,7 @@ function BidRow({ bid }) {
   );
 }
 
-function AuctionCard({ participacion, expanded, onToggle, navigation }) {
+function AuctionCard({ participacion, expanded, onToggle }) {
   const { catalogoDescripcion, catalogoImage, categoria, itemCategory, misPujas = [], items = [], won, activa } = participacion;
   const colors = CATEGORY_COLORS[categoria] || CATEGORY_COLORS.comun;
 
@@ -348,7 +348,7 @@ export default function BidsScreen({ navigation }) {
           {['Active', 'History'].map(tab => {
             const isSel = activeTab === tab;
             return (
-              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} className={`flex-1 items-center py-3 rounded-full ${isSel ? 'bg-white shadow-sm' : ''}`}>
+              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} className={`flex-1 items-center py-3 rounded-full shadow-sm ${isSel ? 'bg-white' : ''}`}>
                 <Text className={`text-sm font-bold ${isSel ? 'text-[#7C3AED]' : 'text-slate-500'}`}>{tab}</Text>
               </TouchableOpacity>
             );
@@ -369,7 +369,6 @@ export default function BidsScreen({ navigation }) {
                   participacion={activeAuction}
                   expanded={expandedAuction === activeAuction.subastaId}
                   onToggle={() => toggleAuction(activeAuction.subastaId)}
-                  navigation={navigation}
                 />
               </>
             ) : (
@@ -387,7 +386,6 @@ export default function BidsScreen({ navigation }) {
                   participacion={p}
                   expanded={expandedAuction === p.subastaId}
                   onToggle={() => toggleAuction(p.subastaId)}
-                  navigation={navigation}
                 />
               ))
             ) : (

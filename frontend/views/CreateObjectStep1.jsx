@@ -173,10 +173,10 @@ export default function CreateObjectStep1({ navigation }) {
         {/* --- CONDICIÓN DEL PRODUCTO --- */}
         <Text className="font-bold text-[10px] text-slate-800 mb-2 tracking-widest uppercase">Product Condition</Text>
         <View className="flex-row bg-slate-200/60 rounded-xl p-1 mb-6">
-          <TouchableOpacity onPress={() => setCondition('New')} className={`flex-1 py-2.5 rounded-lg items-center ${condition === 'New' ? 'bg-white shadow-sm' : ''}`}>
+          <TouchableOpacity onPress={() => setCondition('New')} className={`flex-1 py-2.5 rounded-lg items-center shadow-sm ${condition === 'New' ? 'bg-white' : ''}`}>
             <Text className={`font-bold text-xs ${condition === 'New' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>New</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setCondition('Used')} className={`flex-1 py-2.5 rounded-lg items-center ${condition === 'Used' ? 'bg-white shadow-sm' : ''}`}>
+          <TouchableOpacity onPress={() => setCondition('Used')} className={`flex-1 py-2.5 rounded-lg items-center shadow-sm ${condition === 'Used' ? 'bg-white' : ''}`}>
             <Text className={`font-bold text-xs ${condition === 'Used' ? 'text-[#7C3AED]' : 'text-slate-500'}`}>Used</Text>
           </TouchableOpacity>
         </View>

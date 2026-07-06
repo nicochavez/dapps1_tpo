@@ -2,46 +2,80 @@
 // para no caer nunca a una IP local muerta si la env no está definida en un build.
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://dapps1tpo-production.up.railway.app/api/v1';
 
+// Métodos idempotentes por semántica HTTP: seguros de reintentar ante un error de
+// TRANSPORTE (respuesta perdida) sin duplicar efectos.
+const METODOS_REINTENTABLES = new Set(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS']);
+
 export async function apiRequest(path, options = {}) {
-  const { token, headers, ...fetchOptions } = options;
+  // `idempotent`/`retries` son control interno; no se envían en el fetch.
+  const { token, headers, idempotent, retries, ...fetchOptions } = options;
 
   const isFormData = fetchOptions.body instanceof FormData;
+  const method = (fetchOptions.method || 'GET').toUpperCase();
 
-  // [DEBUG-TEMP] revela método + tipo de body de cada request. Borrar cuando se confirme el bundle.
-  console.log('[apiRequest]', fetchOptions.method || 'GET', path, isFormData ? 'MULTIPART/FormData' : 'JSON');
+  // ¿Podemos reintentar si se pierde la respuesta (keep-alive reseteado por el edge)?
+  // Sí para GET/PUT/DELETE, y para POST solo si el caller lo declara idempotente
+  // (login = sin efecto colateral; puja = deduplicada por idempotencyKey en el back).
+  // NO para POST de pago/alta: reintentar duplicaría la acción que ya se ejecutó.
+  const puedeReintentar = idempotent === true || METODOS_REINTENTABLES.has(method);
+  const maxIntentos = puedeReintentar ? (retries ?? 2) + 1 : 1;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...fetchOptions,
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
-  });
+  const finalHeaders = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // Desactiva el reuso de conexiones keep-alive: el edge de Railway cierra las
+    // conexiones ociosas sin anunciar timeout y okhttp reusa una ya muerta → la
+    // request llega y se ejecuta pero la respuesta se pierde ("Network request failed").
+    // Abrir conexión nueva por request (como curl) elimina esa race.
+    Connection: 'close',
+    ...(headers || {}),
+  };
 
-  const text = await response.text();
+  let ultimoError;
+  for (let intento = 1; intento <= maxIntentos; intento++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        ...fetchOptions,
+        headers: finalHeaders,
+      });
 
-  let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
+      const text = await response.text();
+
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+
+      if (!response.ok) {
+        const fieldErrors = data?.errors
+          ? Object.values(data.errors).join(', ')
+          : null;
+        const err = new Error(
+          typeof data === 'string'
+            ? data
+            : fieldErrors || data?.error || data?.mensaje || data?.message || `Error HTTP ${response.status}`
+        );
+        err.status = response.status; // permite a los callers distinguir 400/409/422/etc.
+        throw err;
+      }
+
+      return data;
+    } catch (e) {
+      // Un error HTTP tiene `status` (el server respondió): NO se reintenta.
+      // Un error de transporte (fetch rechaza con TypeError, sin status) sí, si queda intento.
+      const esErrorDeTransporte = typeof e?.status !== 'number';
+      if (esErrorDeTransporte && intento < maxIntentos) {
+        ultimoError = e;
+        console.log('[apiRequest] retry', intento, method, path, e?.message);
+        await new Promise((r) => setTimeout(r, 300 * intento)); // backoff corto
+        continue;
+      }
+      throw e;
+    }
   }
-
-  if (!response.ok) {
-    const fieldErrors = data?.errors
-      ? Object.values(data.errors).join(', ')
-      : null;
-    const err = new Error(
-      typeof data === 'string'
-        ? data
-        : fieldErrors || data?.error || data?.mensaje || data?.message || `Error HTTP ${response.status}`
-    );
-    err.status = response.status; // permite a los callers distinguir 400/409/422/etc.
-    throw err;
-  }
-
-  return data;
+  throw ultimoError;
 }
 
 export function buildImageUrl(path) {
@@ -56,6 +90,9 @@ export function buildImageUrl(path) {
 export function loginRequest(documento, contrasenia) {
   return apiRequest('/auth/login', {
     method: 'POST',
+    // Sin efecto colateral: reintentar ante respuesta perdida es seguro (evita el
+    // "Network request failed" fantasma que castiga sobre todo al login).
+    idempotent: true,
     body: JSON.stringify({ documento, contrasenia }),
   });
 }
@@ -329,6 +366,9 @@ export function realizarPuja(subastaId, itemId, importe, medioPagoId, token, ide
   return apiRequest(`/subastas/${subastaId}/items/${itemId}/pujas`, {
     method: 'POST',
     token,
+    // La idempotencyKey hace que el back deduplique un reintento: seguro reintentar
+    // si se pierde la respuesta tras un reset de conexión.
+    idempotent: true,
     body: JSON.stringify({ importe: Number(importe), medioPagoId, idempotencyKey }),
   });
 }

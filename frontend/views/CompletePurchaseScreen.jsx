@@ -186,10 +186,10 @@ export default function CompletePurchaseScreen({ route, navigation }) {
           <Text className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-3 px-1">Delivery Details</Text>
           <View className="bg-white rounded-3xl p-5 shadow-sm shadow-slate-200">
             <View className="flex-row bg-slate-100 rounded-xl p-1 mb-5">
-              <TouchableOpacity onPress={() => setDeliveryMethod('shipping')} className={`flex-1 py-2 rounded-lg items-center ${deliveryMethod === 'shipping' ? 'bg-[#7C3AED] shadow-sm' : ''}`}>
+              <TouchableOpacity onPress={() => setDeliveryMethod('shipping')} className={`flex-1 py-2 rounded-lg items-center shadow-sm ${deliveryMethod === 'shipping' ? 'bg-[#7C3AED]' : ''}`}>
                 <Text className={`font-bold text-xs ${deliveryMethod === 'shipping' ? 'text-white' : 'text-slate-500'}`}>Shipping</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setDeliveryMethod('pickup')} className={`flex-1 py-2 rounded-lg items-center ${deliveryMethod === 'pickup' ? 'bg-[#7C3AED] shadow-sm' : ''}`}>
+              <TouchableOpacity onPress={() => setDeliveryMethod('pickup')} className={`flex-1 py-2 rounded-lg items-center shadow-sm ${deliveryMethod === 'pickup' ? 'bg-[#7C3AED]' : ''}`}>
                 <Text className={`font-bold text-xs ${deliveryMethod === 'pickup' ? 'text-white' : 'text-slate-500'}`}>Local Pickup</Text>
               </TouchableOpacity>
             </View>

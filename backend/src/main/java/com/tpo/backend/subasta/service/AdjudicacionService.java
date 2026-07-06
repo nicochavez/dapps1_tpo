@@ -17,6 +17,7 @@ import com.tpo.backend.puja.repository.PujaRepository;
 import com.tpo.backend.subasta.entity.AsistenteEntity;
 import com.tpo.backend.subasta.entity.RegistroDeSubastaEntity;
 import com.tpo.backend.subasta.entity.SubastaEntity;
+import com.tpo.backend.subasta.repository.AsistenteRepository;
 import com.tpo.backend.subasta.repository.RegistroDeSubastaRepository;
 import com.tpo.backend.subasta.repository.SubastaRepository;
 import org.slf4j.Logger;
@@ -56,6 +57,7 @@ public class AdjudicacionService {
     private final SubastaEventPublisher eventPublisher;
     private final NotificacionService notificacionService;
     private final ProductoRepository productoRepository;
+    private final AsistenteRepository asistenteRepository;
 
     public AdjudicacionService(SubastaRepository subastaRepository,
                                ItemCatalogoRepository itemRepository,
@@ -64,7 +66,8 @@ public class AdjudicacionService {
                                RegistroDeSubastaRepository registroRepository,
                                SubastaEventPublisher eventPublisher,
                                NotificacionService notificacionService,
-                               ProductoRepository productoRepository) {
+                               ProductoRepository productoRepository,
+                               AsistenteRepository asistenteRepository) {
         this.subastaRepository = subastaRepository;
         this.itemRepository = itemRepository;
         this.pujaRepository = pujaRepository;
@@ -73,6 +76,7 @@ public class AdjudicacionService {
         this.eventPublisher = eventPublisher;
         this.notificacionService = notificacionService;
         this.productoRepository = productoRepository;
+        this.asistenteRepository = asistenteRepository;
     }
 
     /**
@@ -256,8 +260,16 @@ public class AdjudicacionService {
         if (!quedanItems) {
             subasta.setEstado("finalizada");
             subastaRepository.save(subasta);
+            // Desconexion automatica: al finalizar, todos sus asistentes quedan libres para
+            // conectarse a otra subasta (el bloqueo de "una a la vez" solo mira conectado=true).
+            List<AsistenteEntity> asistentes = asistenteRepository.findBySubastaId(subasta.getId());
+            for (AsistenteEntity a : asistentes) {
+                if (!Boolean.FALSE.equals(a.getConectado())) a.setConectado(false);
+            }
+            asistenteRepository.saveAll(asistentes);
             eventPublisher.publish(subasta.getId(), "subasta-finalizada", Map.of("subastaId", subasta.getId()));
-            log.info("[ADJUDICACION] Subasta {} finalizada (sin items pendientes).", subasta.getId());
+            log.info("[ADJUDICACION] Subasta {} finalizada (sin items pendientes). {} asistentes desconectados.",
+                    subasta.getId(), asistentes.size());
         }
     }
 }

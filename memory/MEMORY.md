@@ -1,0 +1,1 @@
+- [NativeWind conditional-shadow crash](nativewind-conditional-shadow-crash.md) — toggling `shadow-*` per-branch red-screens on tap; keep shadow static, toggle only bg.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, Linking } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import ItemDetailBase from './ItemDetailBase';
@@ -42,6 +42,13 @@ export default function ItemDetailLiveView(props) {
   const [bidAmount, setBidAmount] = useState('');
   const [placing, setPlacing]     = useState(false);
   const [numeroPostor, setNumeroPostor] = useState(null);
+  // true una vez que el usuario aceptó unirse y quedó conectado a esta subasta.
+  const [joined, setJoined] = useState(false);
+  // Motivo por el que no quedamos conectados (ej: ya conectado a otra subasta, o canceló el
+  // alistamiento). Lo mostramos al pujar en vez del genérico "Debe conectarse antes de pujar".
+  const [connectError, setConnectError] = useState(null);
+  // Subasta para la que ya mostramos el alert de "unirse": evita re-preguntar en cada re-render.
+  const promptedForRef = useRef(null);
   // Piso optimista: tras un 201 propio subimos el precio local sin esperar el WS,
   // así el próximo mínimo ya refleja nuestra puja y no se manda un importe viejo (→ 400).
   const [optimisticBid, setOptimisticBid] = useState(null);
@@ -81,17 +88,48 @@ export default function ItemDetailLiveView(props) {
   const minBid = sinLimites ? currentPriceNum : currentPriceNum + precioBase * 0.01;
   const maxBid = sinLimites ? null : currentPriceNum + precioBase * 0.20;
 
-  // Conectar a la subasta al montar (para poder pujar)
-  useEffect(() => {
-    if (!subastaId || !currentUser?.token || isOwner || !bidEligible) return;
-    let cancelled = false;
+  // Efectúa la conexión real a la subasta (tras aceptar el alert). Al finalizar los lotes,
+  // el backend desconecta automáticamente a los asistentes.
+  const joinAuction = useCallback(() => {
+    if (!subastaId || !currentUser?.token) return;
+    setConnectError(null);
     conectarASubasta(subastaId, currentUser.token)
       .then(res => {
-        if (!cancelled) setNumeroPostor(res?.asistente?.numeroPostor ?? null);
+        setNumeroPostor(res?.asistente?.numeroPostor ?? null);
+        setJoined(true);
       })
-      .catch(() => {}); // ya conectado o espectador — no bloquear
-    return () => { cancelled = true; };
-  }, [subastaId, currentUser?.token, isOwner, bidEligible]);
+      .catch(e => {
+        // Ej: "Ya esta conectado a otra subasta". Guardamos el motivo real para mostrarlo al pujar.
+        setJoined(false);
+        setConnectError(e?.message || 'No se pudo unir a la subasta.');
+      });
+  }, [subastaId, currentUser?.token]);
+
+  // Pide confirmación antes de conectarse: al aceptar queda ligado a ESTA subasta y no podrá
+  // unirse a otra hasta que finalice. Al cancelar, no se conecta (podrá reintentar al pujar).
+  const promptJoin = useCallback(() => {
+    Alert.alert(
+      'Unirse a la subasta',
+      'Si te unís, quedarás conectado a esta subasta y no vas a poder conectarte a otra hasta que finalice. Cuando termine, se te desconectará automáticamente.\n\n¿Querés unirte para poder pujar?',
+      [
+        // Al cancelar no marcamos error de bloqueo: quedamos sin unir y volveremos a
+        // preguntar cuando el usuario toque "Pujar".
+        { text: 'Ahora no', style: 'cancel', onPress: () => {} },
+        { text: 'Unirme', onPress: joinAuction },
+      ],
+      { cancelable: false },
+    );
+  }, [joinAuction]);
+
+  // Al entrar a la subasta en vivo (una vez por subasta), mostramos el alert de alistamiento.
+  useEffect(() => {
+    if (!subastaId || !currentUser?.token || isOwner || !bidEligible) return;
+    if (promptedForRef.current === subastaId) return; // ya preguntamos para esta subasta
+    promptedForRef.current = subastaId;
+    setJoined(false);
+    setNumeroPostor(null);
+    promptJoin();
+  }, [subastaId, currentUser?.token, isOwner, bidEligible, promptJoin]);
 
   // Puja mínima permitida. En oro/platino solo hay que superar la oferta actual (+1 mínimo);
   // en el resto, redondeada hacia arriba para no caer por debajo del límite +1%.
@@ -112,6 +150,13 @@ export default function ItemDetailLiveView(props) {
     }
     if (!amount || isNaN(amount) || amount <= 0) {
       Alert.alert('Importe inválido', 'Ingresá un monto mayor a 0.');
+      return;
+    }
+    // Si no estamos unidos a la subasta: si el backend nos bloqueó (ya conectado a otra),
+    // mostramos ese motivo; si sólo fue que cancelamos el alistamiento, lo volvemos a ofrecer.
+    if (!joined) {
+      if (connectError) Alert.alert('No se pudo pujar', connectError);
+      else promptJoin();
       return;
     }
     // Misma key para el intento y su reintento: si el primero sí entró pese al corte,

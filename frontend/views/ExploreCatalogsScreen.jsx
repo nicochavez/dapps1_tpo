@@ -28,7 +28,7 @@ const CustomDropdown = ({ label, options, selectedValue, isOpen, onToggle, onSel
       <TouchableOpacity 
         activeOpacity={0.8}
         onPress={onToggle}
-        className={`flex-row justify-between items-center bg-white border rounded-xl px-2.5 py-2.5 ${isOpen ? 'border-[#a78bfa] shadow-sm shadow-purple-200' : 'border-slate-200'}`}
+        className={`flex-row justify-between items-center bg-white border rounded-xl px-2.5 py-2.5 shadow-sm ${isOpen ? 'border-[#a78bfa] shadow-purple-200' : 'border-slate-200'}`}
       >
         <Text 
           className={`font-medium text-xs flex-1 mr-1 ${selectedValue === 'All' ? 'text-slate-400' : 'text-slate-800'}`} 

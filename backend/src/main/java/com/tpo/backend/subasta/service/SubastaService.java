@@ -184,8 +184,13 @@ public class SubastaService {
 
         Long clienteId = cliente.getId();
 
+        // Solo bloquea una conexion ACTIVA a otra subasta que siga ABIERTA. Las subastas
+        // ya finalizadas (o programadas) no cuentan: al finalizar la subasta en curso el
+        // cliente queda libre para conectarse a otra sin desconectarse a mano.
         boolean elsewhere = asistenteRepository.findByClienteId(clienteId).stream()
-                .anyMatch(a -> !a.getSubasta().getId().equals(subastaId));
+                .filter(a -> a.getSubasta() != null && !a.getSubasta().getId().equals(subastaId))
+                .filter(a -> !Boolean.FALSE.equals(a.getConectado()))
+                .anyMatch(a -> "abierta".equalsIgnoreCase(a.getSubasta().getEstado()));
 
         if (elsewhere) throw new ConflictException("Ya esta conectado a otra subasta.");
 
@@ -203,14 +208,17 @@ public class SubastaService {
                     a.setCliente(cliente);
                     a.setNumeroPostor((int) (100 + asistenteRepository.countBySubastaId(subastaId) + 1));
                     a.setEspectador(espectador);
-                    return asistenteRepository.save(a);
+                    return a;
                 });
 
+        // Marca la conexion como activa: el flag es la fuente de verdad para el bloqueo de
+        // "una subasta a la vez" y para la desconexion automatica al finalizar.
+        asistente.setConectado(true);
         // Permite promover de espectador a postor al reconectar con medio de pago verificado.
         if (!espectador && Boolean.TRUE.equals(asistente.getEspectador())) {
             asistente.setEspectador(false);
-            asistente = asistenteRepository.save(asistente);
         }
+        asistente = asistenteRepository.save(asistente);
 
         return new ConectarResponse(new AsistenteDto(asistente.getCliente().getId(), asistente.getNumeroPostor()));
     }
@@ -218,8 +226,13 @@ public class SubastaService {
     public void desconectar(Long subastaId) {
         findOrThrow(subastaId);
         Long clienteId = clienteService.currentClienteEntity().getId();
+        // No se borra la fila: se marca desconectado para conservar numeroPostor e historial
+        // de pujas. El bloqueo de "una a la vez" ignora las conexiones con conectado=false.
         asistenteRepository.findBySubastaIdAndClienteId(subastaId, clienteId)
-                .ifPresent(asistenteRepository::delete);
+                .ifPresent(a -> {
+                    a.setConectado(false);
+                    asistenteRepository.save(a);
+                });
     }
 
     @Transactional

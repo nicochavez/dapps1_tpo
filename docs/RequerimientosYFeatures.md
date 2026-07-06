@@ -35,7 +35,7 @@ Documento derivado del enunciado en [`TPO.md`](./TPO.md). Recoge el alcance de l
 ✅ - **RF-20** El sistema debe listar al usuario las subastas abiertas a las que puede acceder en función de su categoría (categoría de la subasta ≤ categoría del usuario).
 ✅ - **RF-21** El sistema debe permitir el ingreso a una subasta como *espectador* a cualquier usuario aprobado, aunque no tenga medio de pago verificado.
 ✅ - **RF-22** El sistema debe permitir *pujar* solo a usuarios con al menos un medio de pago verificado y en la moneda de la subasta.
-❌ - **RF-23** El sistema debe impedir que un usuario esté conectado simultáneamente a más de una subasta. **Entiendo que se puede actualmente**
+✅ - **RF-23** El sistema debe impedir que un usuario esté conectado simultáneamente a más de una subasta.
 ✅ - **RF-24** Al ingresar a una subasta el sistema debe mostrar el ítem en curso y la mayor oferta vigente.
 ✅ - **RF-25** El sistema debe entregar a los usuarios conectados las actualizaciones de las ofertas en tiempo real.
 ✅ - **RF-26** El sistema debe brindar acceso al servicio de streaming externo a cualquier usuario registrado y aprobado (no forma parte del desarrollo, pero debe enlazarse).
@@ -123,7 +123,7 @@ Formato: **Como** _rol_, **quiero** _objetivo_, **para** _beneficio_.
 ✅ - **HU-19** Como postor, quiero que la app bloquee una nueva puja hasta confirmar la anterior, para evitar enviar pujas duplicadas o conflictivas.
 ✅ - **HU-20** Como postor de categoría `oro` o `platino`, quiero pujar sin los límites del +1% / +20%, para operar con mayor libertad.
 ✅ - **HU-21** Como usuario sin medio de pago verificado, quiero entrar como espectador, para conocer la dinámica antes de habilitarme.
-❌ - **HU-22** Como usuario, quiero saber que no puedo entrar a dos subastas al mismo tiempo, para no confundirme entre salas.
+✅ - **HU-22** Como usuario, quiero saber que no puedo entrar a dos subastas al mismo tiempo, para no confundirme entre salas.
 
 ### 2.5 Adjudicación y pago
 ✅ - **HU-23** Como ganador, quiero recibir un mensaje con el desglose de importe, comisiones y envío, para conocer cuánto debo abonar.
